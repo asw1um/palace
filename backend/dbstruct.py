@@ -4,9 +4,14 @@ from sqlalchemy.orm import backref
 
 db = SQLAlchemy()
 
-# association tables at the top, use table names not class 
+# association tables at the top, use table names not class
 movie_list = db.Table('movie_list',
     db.Column('movie_id', db.Integer, db.ForeignKey('movies.id'), primary_key=True),
+    db.Column('list_id', db.Integer, db.ForeignKey('movielists.id'), primary_key=True)
+)
+
+show_list = db.Table('show_list',
+    db.Column('show_id', db.Integer, db.ForeignKey('shows.id'), primary_key=True),
     db.Column('list_id', db.Integer, db.ForeignKey('movielists.id'), primary_key=True)
 )
 
@@ -21,6 +26,8 @@ class user(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     discord_id = db.Column(db.String(64), unique=True, nullable=True)  # nullable for testing
     nickname = db.Column(db.String(16), nullable=False, unique=True)
+    pinned_list_ids = db.Column(db.JSON, default=list)
+    pinned_club_ids = db.Column(db.JSON, default=list)
     
     # relationships
     movies = db.relationship('movie', backref='author', lazy=True)
@@ -32,7 +39,9 @@ class user(db.Model):
         return {
             'id': self.id,
             'nickname': self.nickname,
-            'discord_id': self.discord_id
+            'discord_id': self.discord_id,
+            'pinned_list_ids': self.pinned_list_ids or [],
+            'pinned_club_ids': self.pinned_club_ids or [],
         }
 
 # movies
@@ -55,6 +64,53 @@ class movie(db.Model):
             'tmdb_id': self.tmdbID,
             'user_id': self.userID
         }
+
+# shows
+class show(db.Model):
+    __tablename__ = 'shows'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    posterURL = db.Column(db.String(200))
+    tmdbID = db.Column(db.Integer)
+    userID = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    total_seasons = db.Column(db.Integer, default=0)
+    current_season = db.Column(db.Integer, nullable=True)
+    current_episode = db.Column(db.Integer, nullable=True)
+
+    seasons = db.relationship('show_season', backref='show', lazy=True, cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f"Show('{self.title}')"
+
+    def to_dict(self, include_seasons=False):
+        data = {
+            'id': self.id,
+            'title': self.title,
+            'poster_url': self.posterURL,
+            'tmdb_id': self.tmdbID,
+            'user_id': self.userID,
+            'total_seasons': self.total_seasons,
+            'current_season': self.current_season,
+            'current_episode': self.current_episode,
+        }
+        if include_seasons:
+            data['seasons'] = [s.to_dict() for s in sorted(self.seasons, key=lambda x: x.season_number)]
+        return data
+
+
+class show_season(db.Model):
+    __tablename__ = 'show_seasons'
+    id = db.Column(db.Integer, primary_key=True)
+    show_id = db.Column(db.Integer, db.ForeignKey('shows.id'), nullable=False)
+    season_number = db.Column(db.Integer, nullable=False)
+    episode_count = db.Column(db.Integer, nullable=False)
+
+    def to_dict(self):
+        return {
+            'season_number': self.season_number,
+            'episode_count': self.episode_count
+        }
+
 
 # clubs
 class club(db.Model):
@@ -138,8 +194,8 @@ class movielist(db.Model):
     userID = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     club_id = db.Column(db.Integer, db.ForeignKey('clubs.id'), nullable=True)
 
-    # relationship to movies
     movies = db.relationship('movie', secondary=movie_list, backref='lists', lazy=True)
+    shows = db.relationship('show', secondary=show_list, backref='show_lists', lazy=True)
 
     def __repr__(self):
         return f"List('{self.name}')"
@@ -157,17 +213,72 @@ class movielist(db.Model):
             return self.club.is_member(user)
         return False
 
-    def to_dict(self, include_movies=False):
+    def to_dict(self, include_movies=False, include_shows=False):
         data = {
             'id': self.id,
             'name': self.name,
             'user_id': self.userID,
             'club_id': self.club_id,
             'type': 'club' if self.is_club_list() else 'personal',
-            'movie_count': len(self.movies)
+            'movie_count': len(self.movies),
+            'show_count': 0,
         }
-        
+
         if include_movies:
             data['movies'] = [m.to_dict() for m in self.movies]
-        
+        if include_shows:
+            try:
+                data['show_count'] = len(self.shows)
+                data['shows'] = [s.to_dict(include_seasons=True) for s in self.shows]
+            except Exception:
+                data['show_count'] = 0
+                data['shows'] = []
         return data
+
+
+# activity logs
+class activity_log(db.Model):
+    __tablename__ = 'activity_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    event_type = db.Column(db.String(50), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    club_id = db.Column(db.Integer, db.ForeignKey('clubs.id'), nullable=True)
+    list_id = db.Column(db.Integer, db.ForeignKey('movielists.id'), nullable=True)
+    movie_id = db.Column(db.Integer, db.ForeignKey('movies.id'), nullable=True)
+    show_id = db.Column(db.Integer, db.ForeignKey('shows.id'), nullable=True)
+    target_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    description = db.Column(db.Text, nullable=False)
+    data = db.Column(db.JSON, default=dict)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # relationships
+    actor = db.relationship('user', foreign_keys=[user_id], backref='activities')
+    target_user = db.relationship('user', foreign_keys=[target_user_id])
+    club = db.relationship('club', backref='activities')
+    movie = db.relationship('movie')
+    show = db.relationship('show')
+    list_obj = db.relationship('movielist')
+
+    def __repr__(self):
+        return f"ActivityLog('{self.event_type}', user={self.user_id})"
+
+    def to_dict(self, include_actor=False):
+        data = {
+            'id': self.id,
+            'event_type': self.event_type,
+            'user_id': self.user_id,
+            'club_id': self.club_id,
+            'list_id': self.list_id,
+            'movie_id': self.movie_id,
+            'show_id': self.show_id,
+            'target_user_id': self.target_user_id,
+            'description': self.description,
+            'data': self.data or {},
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+        if include_actor and self.actor:
+            data['actor'] = self.actor.to_dict()
+        return data
+
+        

@@ -1,14 +1,16 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 
-from search import searchMovie
-from dbstruct import db, user, movie, movielist
+from search import searchMovie, searchShow, searchMulti
+from dbstruct import db, user, movie
 from auth import auth
 from watchlist import movies
 from lists import lists
 from clubs import clubs
 from notifications import notifications
+from activity import activity
+import cache  # registers tmdb_cache model
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'dev-secret-key-change-in-production'
@@ -26,6 +28,7 @@ app.register_blueprint(movies, url_prefix='/api/movies')
 app.register_blueprint(lists, url_prefix='/api/lists')
 app.register_blueprint(clubs, url_prefix='/api/clubs')
 app.register_blueprint(notifications, url_prefix='/api/notifications')
+app.register_blueprint(activity, url_prefix='/api/activity')
 
 # route here
 @app.route('/api/')
@@ -39,14 +42,22 @@ def home():
 @app.route('/api/search')
 def search():
     query = request.args.get('query', '')
-    
     results = searchMovie(query) if query else []
-    
-    return jsonify({
-        'query': query,
-        'results': results
-    })
+    return jsonify({'query': query, 'results': results})
 
+
+@app.route('/api/search/tv')
+def search_tv():
+    query = request.args.get('query', '')
+    results = searchShow(query) if query else []
+    return jsonify({'query': query, 'results': results})
+
+
+@app.route('/api/search/multi')
+def search_multi():
+    query = request.args.get('query', '')
+    results = searchMulti(query) if query else []
+    return jsonify({'query': query, 'results': results})
 
 if __name__ == '__main__':
     with app.app_context():

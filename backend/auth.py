@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 
 from dbstruct import db, user as User, movielist
+from activity import log_event
 
 auth = Blueprint('auth', __name__)
 
@@ -29,6 +30,12 @@ def signup():
     db.session.commit()
 
     # fixes the login issue (fuck duran)
+    log_event(
+        event_type='new_user',
+        user_id=new_user.id,
+        description=f"{new_user.nickname} joined the forum"
+    )
+
     access_token = create_access_token(identity=str(new_user.id))
     
     return jsonify({

@@ -251,21 +251,6 @@ class ClubListNameChangeNotification(ClubBroadcastNotification):
         new_name = kwargs.get('new_name', 'New Name')
         return f"List renamed from '{old_name}' to '{new_name}'."
 
-
-class ClubDeletedNotification(Notification):
-    __mapper_args__ = {'polymorphic_identity': 'club_deleted'}
-    
-    # expected: {club_name, deleted_by_user_id, deleted_by_name}
-
-
-class UserMentionNotification(Notification):
-    __mapper_args__ = {'polymorphic_identity': 'user_mention'}
-    
-    # expected data: {review_id, movie_id, movie_title, mentioned_by_user_id, mentioned_by_name, excerpt}
-    
-    def get_navigation_url(self):
-        return f"/movies/{self.data.get('movie_id')}" if self.data else None
-
 # routes
 @notifications.route('/user', methods=['GET'])
 @jwt_required()
