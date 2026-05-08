@@ -25,8 +25,10 @@ def signup():
     # default lists for the user
     default1 = movielist(name="want to watch", userID=new_user.id)
     default2 = movielist(name="watched", userID=new_user.id)
+    default3 = movielist(name="currently watching", userID=new_user.id)
     db.session.add(default1)
     db.session.add(default2)
+    db.session.add(default3)
     db.session.commit()
 
     # fixes the login issue (fuck duran)
