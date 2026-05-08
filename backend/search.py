@@ -209,3 +209,31 @@ def getShow(showID):
         if s.get('episode_count', 0) > 0
     ]
     return result
+
+
+def discoverTrending():
+    data = _cached_tmdb_request(f"{baseURL}/trending/all/week", {"page": 1})
+    if not data:
+        return []
+    results = []
+    for item in data.get("results", []):
+        mt = item.get('media_type')
+        if mt == 'movie':
+            results.append(formatMovie(item))
+        elif mt == 'tv':
+            results.append(formatShow(item))
+    return results
+
+
+def discoverPopularMovies():
+    data = _cached_tmdb_request(f"{baseURL}/movie/popular", {"page": 1})
+    if not data:
+        return []
+    return [formatMovie(m) for m in data.get("results", [])]
+
+
+def discoverPopularShows():
+    data = _cached_tmdb_request(f"{baseURL}/tv/popular", {"page": 1})
+    if not data:
+        return []
+    return [formatShow(s) for s in data.get("results", [])]
