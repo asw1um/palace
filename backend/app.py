@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 
-from search import searchMovie, searchShow, searchMulti
+from search import searchMovie, searchShow, searchMulti, discoverTrending
 from dbstruct import db, user, movie
 from auth import auth
 from watchlist import movies
@@ -58,6 +58,13 @@ def search_multi():
     query = request.args.get('query', '')
     results = searchMulti(query) if query else []
     return jsonify({'query': query, 'results': results})
+
+
+@app.route('/api/discover')
+def discover():
+    results = discoverTrending()
+    return jsonify({'results': results})
+
 
 if __name__ == '__main__':
     with app.app_context():
