@@ -1,3 +1,4 @@
+import os
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
@@ -29,6 +30,16 @@ app.register_blueprint(lists, url_prefix='/api/lists')
 app.register_blueprint(clubs, url_prefix='/api/clubs')
 app.register_blueprint(notifications, url_prefix='/api/notifications')
 app.register_blueprint(activity, url_prefix='/api/activity')
+
+# uploads
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+
+@app.route('/uploads/<path:filename>')
+def serve_upload(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
+
 
 # route here
 @app.route('/api/')
