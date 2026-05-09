@@ -116,6 +116,8 @@ def get_global_activity():
         'user_left_club',
         'user_renamed_club',
         'user_deleted_club',
+        'user_changed_pfp',
+        'user_changed_banner',
     ]
     logs = activity_log.query.filter(
         activity_log.event_type.in_(public_types)

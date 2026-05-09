@@ -23,6 +23,10 @@ PROFILE_FOLDER = os.path.join(UPLOAD_FOLDER, 'profiles')
 BANNER_FOLDER = os.path.join(UPLOAD_FOLDER, 'banners')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
+# ensure upload directories exist
+os.makedirs(PROFILE_FOLDER, exist_ok=True)
+os.makedirs(BANNER_FOLDER, exist_ok=True)
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -139,7 +143,15 @@ def upload_profile_picture():
                 os.remove(old_path)
 
         current_user.profile_picture = f"/uploads/profiles/{filename}"
+        current_user.pfp_zoom = request.form.get('zoom', 1.0, type=float)
+        current_user.pfp_pos_x = request.form.get('pos_x', 50, type=int)
+        current_user.pfp_pos_y = request.form.get('pos_y', 50, type=int)
         db.session.commit()
+        log_event(
+            event_type='user_changed_pfp',
+            user_id=current_user.id,
+            description=f"{current_user.nickname} changed their profile picture"
+        )
         return jsonify({'message': 'Profile picture updated', 'url': _abs_url(current_user.profile_picture)}), 200
 
     return jsonify({'error': 'Invalid file type'}), 400
@@ -173,9 +185,15 @@ def upload_banner():
                 os.remove(old_path)
 
         current_user.banner = f"/uploads/banners/{filename}"
+        current_user.banner_zoom = request.form.get('zoom', 1.0, type=float)
+        current_user.banner_pos_x = request.form.get('pos_x', 50, type=int)
         current_user.banner_pos_y = request.form.get('pos_y', 50, type=int)
-        current_user.banner_size = request.form.get('size', 'cover', type=str)
         db.session.commit()
+        log_event(
+            event_type='user_changed_banner',
+            user_id=current_user.id,
+            description=f"{current_user.nickname} changed their banner"
+        )
         return jsonify({'message': 'Banner updated', 'url': _abs_url(current_user.banner)}), 200
 
     return jsonify({'error': 'Invalid file type'}), 400
@@ -187,3 +205,65 @@ def logout():
     # jwt is currently stateless, have to logout client side
     # cleanup can be used serverside
     return jsonify({'message': 'Logout successful'}), 200
+
+
+@auth.route('/users', methods=['GET'])
+@jwt_required()
+def get_users():
+    users = User.query.all()
+    return jsonify({
+        'users': [
+            {
+                'id': u.id,
+                'nickname': u.nickname,
+                'profile_picture': _abs_url(u.profile_picture),
+                'banner': _abs_url(u.banner),
+            }
+            for u in users
+        ]
+    }), 200
+
+
+@auth.route('/users/<int:user_id>', methods=['GET'])
+@jwt_required()
+def get_user_profile(user_id):
+    target_user = User.query.get(user_id)
+    if not target_user:
+        return jsonify({'error': 'User not found'}), 404
+
+    from dbstruct import movielist, club
+    user_lists = movielist.query.filter_by(userID=user_id).all()
+    user_clubs = target_user.clubs
+
+    return jsonify({
+        'user': {
+            'id': target_user.id,
+            'nickname': target_user.nickname,
+            'profile_picture': _abs_url(target_user.profile_picture),
+            'banner': _abs_url(target_user.banner),
+            'banner_zoom': target_user.banner_zoom,
+            'banner_pos_x': target_user.banner_pos_x,
+            'banner_pos_y': target_user.banner_pos_y,
+            'pfp_zoom': target_user.pfp_zoom,
+            'pfp_pos_x': target_user.pfp_pos_x,
+            'pfp_pos_y': target_user.pfp_pos_y,
+        },
+        'lists': [
+            {
+                'id': l.id,
+                'name': l.name,
+                'movie_count': len(l.movies),
+                'show_count': len(l.shows),
+            }
+            for l in user_lists
+        ],
+        'clubs': [
+            {
+                'id': c.id,
+                'name': c.name,
+                'description': c.description,
+                'member_count': len(c.members),
+            }
+            for c in user_clubs
+        ],
+    }), 200

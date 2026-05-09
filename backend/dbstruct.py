@@ -27,9 +27,13 @@ class user(db.Model):
     discord_id = db.Column(db.String(64), unique=True, nullable=True)  # nullable for testing
     nickname = db.Column(db.String(16), nullable=False, unique=True)
     profile_picture = db.Column(db.String(300), nullable=True)
+    pfp_zoom = db.Column(db.Float, nullable=True, default=1.0)
+    pfp_pos_x = db.Column(db.Integer, nullable=True, default=50)
+    pfp_pos_y = db.Column(db.Integer, nullable=True, default=50)
     banner = db.Column(db.String(300), nullable=True)
+    banner_zoom = db.Column(db.Float, nullable=True, default=1.0)
+    banner_pos_x = db.Column(db.Integer, nullable=True, default=50)
     banner_pos_y = db.Column(db.Integer, nullable=True, default=50)
-    banner_size = db.Column(db.String(20), nullable=True, default='100% auto')
     pinned_list_ids = db.Column(db.JSON, default=list)
     pinned_club_ids = db.Column(db.JSON, default=list)
     
@@ -45,9 +49,13 @@ class user(db.Model):
             'nickname': self.nickname,
             'discord_id': self.discord_id,
             'profile_picture': self.profile_picture,
+            'pfp_zoom': self.pfp_zoom,
+            'pfp_pos_x': self.pfp_pos_x,
+            'pfp_pos_y': self.pfp_pos_y,
             'banner': self.banner,
+            'banner_zoom': self.banner_zoom,
+            'banner_pos_x': self.banner_pos_x,
             'banner_pos_y': self.banner_pos_y,
-            'banner_size': self.banner_size,
             'pinned_list_ids': self.pinned_list_ids or [],
             'pinned_club_ids': self.pinned_club_ids or [],
         }

@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 
@@ -13,7 +13,11 @@ from notifications import notifications
 from activity import activity
 import cache  # registers tmdb_cache model
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=None, static_url_path=None)
+
+# Frontend dist folder
+FRONTEND_DIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'frontend', 'dist')
+ASSETS_DIR = os.path.join(FRONTEND_DIST, 'assets')
 app.config['JWT_SECRET_KEY'] = 'dev-secret-key-change-in-production'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -39,6 +43,22 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 @app.route('/uploads/<path:filename>')
 def serve_upload(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
+
+
+# Serve built frontend assets
+@app.route('/assets/<path:filename>')
+def serve_assets(filename):
+    return send_from_directory(ASSETS_DIR, filename)
+
+
+# Serve React frontend (SPA catch-all)
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_frontend(path):
+    if path.startswith('api/'):
+        return jsonify({'error': 'Not found'}), 404
+    index_file = os.path.join(FRONTEND_DIST, 'index.html')
+    return send_file(index_file)
 
 
 # route here
