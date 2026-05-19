@@ -3,7 +3,7 @@ from flask import Flask, jsonify, request, send_from_directory, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 
-from search import searchMovie, searchShow, searchMulti, discoverTrending, getMovie, getShow, getSeasonDetails
+from search import searchMovie, searchShow, searchMulti, discoverTrending, getMovie, getShow, getSeasonDetails, searchPerson, getPersonCredits
 from dbstruct import db, user, movie
 from auth import auth
 from watchlist import movies, watchlist
@@ -123,6 +123,21 @@ def show_detail(show_id):
     result = getShow(show_id)
     if not result:
         return jsonify({'error': 'Show not found'}), 404
+    return jsonify(result)
+
+
+@app.route('/api/search/person')
+def search_person():
+    query = request.args.get('query', '')
+    results = searchPerson(query) if query else []
+    return jsonify({'query': query, 'results': results})
+
+
+@app.route('/api/person/<int:person_id>/credits')
+def person_credits(person_id):
+    result = getPersonCredits(person_id)
+    if not result:
+        return jsonify({'error': 'Person not found'}), 404
     return jsonify(result)
 
 

@@ -233,6 +233,73 @@ def getSeasonDetails(showID, seasonNumber):
     }
 
 
+def searchPerson(query):
+    data = _cached_tmdb_request(f"{baseURL}/search/person", {"query": query, "page": 1})
+    if not data:
+        return []
+    results = []
+    for p in data.get("results", [])[:12]:
+        results.append({
+            'id': p.get('id'),
+            'name': p.get('name'),
+            'profile_url': getProfileURL(p.get('profile_path')),
+            'department': p.get('known_for_department', ''),
+            'popularity': p.get('popularity', 0),
+            'known_for': [
+                {
+                    'id': k.get('id'),
+                    'title': k.get('title') or k.get('name'),
+                    'media_type': k.get('media_type'),
+                    'poster_url': getPosterURL(k.get('poster_path')),
+                }
+                for k in p.get('known_for', [])[:3]
+            ]
+        })
+    return results
+
+
+def getPersonCredits(person_id):
+    person = _cached_tmdb_request(f"{baseURL}/person/{person_id}")
+    credits = _cached_tmdb_request(f"{baseURL}/person/{person_id}/combined_credits")
+    if not credits:
+        return None
+
+    seen = set()
+    items = []
+
+    # Combine cast + crew, deduplicate by id+media_type
+    for entry in credits.get('cast', []) + credits.get('crew', []):
+        mt = entry.get('media_type')
+        if mt not in ('movie', 'tv'):
+            continue
+        key = (entry.get('id'), mt)
+        if key in seen:
+            continue
+        seen.add(key)
+        role = entry.get('character') or entry.get('job') or ''
+        items.append({
+            'id': entry.get('id'),
+            'media_type': mt,
+            'title': entry.get('title') or entry.get('name'),
+            'poster_url': getPosterURL(entry.get('poster_path')),
+            'release_date': entry.get('release_date') or entry.get('first_air_date') or '',
+            'rating': entry.get('vote_average'),
+            'popularity': entry.get('popularity', 0),
+            'role': role,
+        })
+
+    items.sort(key=lambda x: x.get('popularity') or 0, reverse=True)
+
+    return {
+        'id': person_id,
+        'name': person.get('name') if person else '',
+        'profile_url': getProfileURL(person.get('profile_path')) if person else None,
+        'department': person.get('known_for_department', '') if person else '',
+        'biography': person.get('biography', '') if person else '',
+        'credits': items,
+    }
+
+
 def discoverTrending():
     data = _cached_tmdb_request(f"{baseURL}/trending/all/week", {"page": 1})
     if not data:
