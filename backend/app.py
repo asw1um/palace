@@ -3,22 +3,26 @@ from flask import Flask, jsonify, request, send_from_directory, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 
-from search import searchMovie, searchShow, searchMulti, discoverTrending
+from search import searchMovie, searchShow, searchMulti, discoverTrending, getMovie, getShow, getSeasonDetails
 from dbstruct import db, user, movie
 from auth import auth
-from watchlist import movies
+from watchlist import movies, watchlist
 from lists import lists
 from clubs import clubs
 from notifications import notifications
 from activity import activity
+from settings import settings
+from reviews import reviews
 import cache  # registers tmdb_cache model
 
 app = Flask(__name__, static_folder=None, static_url_path=None)
+app.url_map.strict_slashes = False
 
-# Frontend dist folder
+# frontend dist folder
 FRONTEND_DIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'frontend', 'dist')
 ASSETS_DIR = os.path.join(FRONTEND_DIST, 'assets')
 app.config['JWT_SECRET_KEY'] = 'dev-secret-key-change-in-production'
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -30,13 +34,16 @@ CORS(app)
 # register blueprints here
 app.register_blueprint(auth, url_prefix='/api/auth')
 app.register_blueprint(movies, url_prefix='/api/movies')
+app.register_blueprint(watchlist, url_prefix='/api/watchlist')
 app.register_blueprint(lists, url_prefix='/api/lists')
 app.register_blueprint(clubs, url_prefix='/api/clubs')
 app.register_blueprint(notifications, url_prefix='/api/notifications')
 app.register_blueprint(activity, url_prefix='/api/activity')
+app.register_blueprint(settings, url_prefix='/api/settings')
+app.register_blueprint(reviews, url_prefix='/api/reviews')
 
 # uploads
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'uploads')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 
@@ -48,7 +55,9 @@ def serve_upload(filename):
 # Serve built frontend assets
 @app.route('/assets/<path:filename>')
 def serve_assets(filename):
-    return send_from_directory(ASSETS_DIR, filename)
+    response = send_from_directory(ASSETS_DIR, filename)
+    response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+    return response
 
 
 # Serve React frontend (SPA catch-all)
@@ -58,7 +67,11 @@ def serve_frontend(path):
     if path.startswith('api/'):
         return jsonify({'error': 'Not found'}), 404
     index_file = os.path.join(FRONTEND_DIST, 'index.html')
-    return send_file(index_file)
+    response = send_file(index_file)
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 
 # route here
@@ -95,6 +108,30 @@ def search_multi():
 def discover():
     results = discoverTrending()
     return jsonify({'results': results})
+
+
+@app.route('/api/movie/<int:movie_id>')
+def movie_detail(movie_id):
+    result = getMovie(movie_id)
+    if not result:
+        return jsonify({'error': 'Movie not found'}), 404
+    return jsonify(result)
+
+
+@app.route('/api/tv/<int:show_id>')
+def show_detail(show_id):
+    result = getShow(show_id)
+    if not result:
+        return jsonify({'error': 'Show not found'}), 404
+    return jsonify(result)
+
+
+@app.route('/api/tv/<int:show_id>/season/<int:season_number>')
+def season_detail(show_id, season_number):
+    result = getSeasonDetails(show_id, season_number)
+    if not result:
+        return jsonify({'error': 'Season not found'}), 404
+    return jsonify(result)
 
 
 if __name__ == '__main__':

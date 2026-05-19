@@ -15,13 +15,21 @@ Thumbs*.db
 instance/
 *.db
 
-# Frontend (general)
-frontend/node_modules/
-frontend/dist/
-frontend/.cache/
-frontend/package-lock.json
-frontend/*.local
-frontend/instance/
+# Frontend — entire directory excluded
+frontend/
+
+# Misc folders
+random/
+
+# Media files
+*.gif
+*.png
+*.jpg
+*.jpeg
+*.mp4
+*.mov
+*.webm
+*.webp
 
 # Logs
 *.log

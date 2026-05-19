@@ -8,9 +8,9 @@ load_dotenv()
 apiKey = os.getenv('TMDB_API_KEY')
 baseURL = "https://api.themoviedb.org/3"
 imageBaseURL = "https://image.tmdb.org/t/p"
-posterSize = "w200"
-backdropSize = "w500"
-profileSize = "w185"
+posterSize = "w500"
+backdropSize = "w1280"
+profileSize = "h632"
 
 
 def getPosterURL(posterPath):
@@ -209,6 +209,28 @@ def getShow(showID):
         if s.get('episode_count', 0) > 0
     ]
     return result
+
+
+def getSeasonDetails(showID, seasonNumber):
+    data = _cached_tmdb_request(f"{baseURL}/tv/{showID}/season/{seasonNumber}")
+    if not data:
+        return None
+    return {
+        'season_number': data.get('season_number'),
+        'name': data.get('name'),
+        'overview': data.get('overview'),
+        'episodes': [
+            {
+                'episode_number': ep.get('episode_number'),
+                'name': ep.get('name'),
+                'overview': ep.get('overview') or '',
+                'air_date': ep.get('air_date') or '',
+                'runtime': ep.get('runtime'),
+                'still_url': getPosterURL(ep.get('still_path')) if ep.get('still_path') else None,
+            }
+            for ep in data.get('episodes', [])
+        ]
+    }
 
 
 def discoverTrending():

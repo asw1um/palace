@@ -85,6 +85,18 @@ def get_user_activity():
     }), 200
 
 
+@activity.route('/user/<int:target_id>', methods=['GET'])
+@jwt_required()
+def get_user_activity_by_id(target_id):
+    limit = request.args.get('limit', 50, type=int)
+    logs = activity_log.query.filter(
+        (activity_log.user_id == target_id) | (activity_log.target_user_id == target_id)
+    ).order_by(activity_log.created_at.desc()).limit(limit).all()
+    return jsonify({
+        'activities': [_log_to_dict(l) for l in logs]
+    }), 200
+
+
 @activity.route('/club/<int:club_id>', methods=['GET'])
 @jwt_required()
 def get_club_activity(club_id):

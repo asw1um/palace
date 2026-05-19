@@ -47,7 +47,6 @@ class tmdb_cache(db.Model):
         db.session.commit()
 
 
-# convenience functions for search.py
 def cache_get(key):
     return tmdb_cache.get(key)
 

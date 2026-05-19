@@ -96,7 +96,7 @@ class ClubInviteNotification(Notification):
             club_id=club_obj.id,
             exclude_user_id=self.user_id,
             new_member_user_id=self.user_id,
-            new_member_name=invited_user.nickname
+            new_member_name=invited_user.display_name
         )
         
         return club_obj

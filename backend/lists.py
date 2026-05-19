@@ -41,6 +41,7 @@ def create_list():
     if not list_name:
         return jsonify({'error': 'List name cannot be empty'}), 400
     
+    current_user = user.query.get(user_id)
     new_list = movielist(name=list_name, userID=user_id)
     db.session.add(new_list)
     db.session.commit()
@@ -49,7 +50,7 @@ def create_list():
         event_type='user_created_list',
         user_id=user_id,
         list_id=new_list.id,
-        description=f"Created list: {list_name}",
+        description=f"{current_user.display_name} created list: {list_name}",
         extra_data={'list_name': list_name}
     )
     
@@ -101,7 +102,7 @@ def get_list(list_id):
     }), 200
 
 # rename user list
-@lists.route('/<int:list_id>/rename', methods=['POST'])
+@lists.route('/<int:list_id>/rename', methods=['PUT', 'POST'])
 @jwt_required()
 def rename_list(list_id):
     user_id = int(get_jwt_identity())
@@ -145,12 +146,13 @@ def pin_list(list_id):
     if list_obj.is_club_list() and not list_obj.club.is_member(current_user):
         return jsonify({'error': 'Must be a club member'}), 403
     
-    pinned = current_user.pinned_list_ids or []
+    pinned = list(current_user.pinned_list_ids or [])
     if list_id not in pinned:
-        pinned.append(list_id)
-        current_user.pinned_list_ids = pinned
+        if len(pinned) >= 4:
+            return jsonify({'error': 'Maximum of 4 pinned lists allowed'}), 400
+        current_user.pinned_list_ids = pinned + [list_id]
         db.session.commit()
-    
+
     return jsonify({'message': 'List pinned'}), 200
 
 # unpin list
@@ -160,12 +162,11 @@ def unpin_list(list_id):
     user_id = int(get_jwt_identity())
     current_user = user.query.get(user_id)
     
-    pinned = current_user.pinned_list_ids or []
+    pinned = list(current_user.pinned_list_ids or [])
     if list_id in pinned:
-        pinned.remove(list_id)
-        current_user.pinned_list_ids = pinned
+        current_user.pinned_list_ids = [x for x in pinned if x != list_id]
         db.session.commit()
-    
+
     return jsonify({'message': 'List unpinned'}), 200
 
 # get pinned lists
@@ -178,3 +179,82 @@ def get_pinned_lists():
     
     pinned = movielist.query.filter(movielist.id.in_(pinned_ids)).all()
     return jsonify({'lists': [l.to_dict(include_movies=True, include_shows=True) for l in pinned]}), 200
+
+
+@lists.route('/<int:list_id>/add', methods=['POST'])
+@jwt_required()
+def add_movie_to_list(list_id):
+    user_id = int(get_jwt_identity())
+    current_user = user.query.get(user_id)
+    list_obj = movielist.query.get_or_404(list_id)
+
+    if not list_obj.can_edit(current_user):
+        return jsonify({'error': 'No permission to edit this list'}), 403
+
+    data = request.get_json()
+    movie_data = data.get('movie')
+    if not movie_data:
+        return jsonify({'error': 'Movie object is required'}), 400
+
+    from dbstruct import movie as MovieModel, show as ShowModel
+
+    tmdb_id = movie_data.get('tmdb_id') or movie_data.get('id')
+    title = movie_data.get('title')
+    poster_url = movie_data.get('poster_url') or movie_data.get('poster')
+    media_type = movie_data.get('media_type', 'movie')
+
+    if media_type == 'tv':
+        existing = ShowModel.query.filter_by(userID=user_id, tmdbID=tmdb_id).first()
+        if existing:
+            show_obj = existing
+        else:
+            show_obj = ShowModel(title=title, posterURL=poster_url, tmdbID=tmdb_id, userID=user_id)
+            db.session.add(show_obj)
+            db.session.commit()
+        if show_obj not in list_obj.shows:
+            list_obj.shows.append(show_obj)
+            db.session.commit()
+        return jsonify({'message': 'Show added to list', 'list': list_obj.to_dict(include_movies=True, include_shows=True)}), 200
+    else:
+        existing = MovieModel.query.filter_by(userID=user_id, tmdbID=tmdb_id).first()
+        if existing:
+            movie_obj = existing
+        else:
+            movie_obj = MovieModel(title=title, posterURL=poster_url, tmdbID=tmdb_id, userID=user_id)
+            db.session.add(movie_obj)
+            db.session.commit()
+        if movie_obj not in list_obj.movies:
+            list_obj.movies.append(movie_obj)
+            db.session.commit()
+        return jsonify({'message': 'Movie added to list', 'list': list_obj.to_dict(include_movies=True, include_shows=True)}), 200
+
+
+@lists.route('/<int:list_id>/remove/<int:movie_id>', methods=['DELETE'])
+@jwt_required()
+def remove_movie_from_list(list_id, movie_id):
+    user_id = int(get_jwt_identity())
+    current_user = user.query.get(user_id)
+    list_obj = movielist.query.get_or_404(list_id)
+
+    if not list_obj.can_edit(current_user):
+        return jsonify({'error': 'No permission to edit this list'}), 403
+
+    from dbstruct import movie as MovieModel, show as ShowModel
+
+    # Try movie first, then show
+    movie_obj = MovieModel.query.get(movie_id)
+    if movie_obj and movie_obj in list_obj.movies:
+        list_obj.movies.remove(movie_obj)
+        db.session.commit()
+        if not movie_obj.lists:
+            db.session.delete(movie_obj)
+            db.session.commit()
+        return jsonify({'message': 'Movie removed from list'}), 200
+
+    show_obj = ShowModel.query.get(movie_id)
+    if show_obj and show_obj in list_obj.shows:
+        list_obj.shows.remove(show_obj)
+        db.session.commit()
+        return jsonify({'message': 'Show removed from list'}), 200
+
+    return jsonify({'error': 'Item not found in list'}), 404

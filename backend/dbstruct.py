@@ -25,7 +25,11 @@ class user(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     discord_id = db.Column(db.String(64), unique=True, nullable=True)  # nullable for testing
-    nickname = db.Column(db.String(16), nullable=False, unique=True)
+    username = db.Column(db.String(32), nullable=False, unique=True)
+    nickname = db.Column(db.String(16), nullable=True)
+    password_hash = db.Column(db.String(256), nullable=False)
+    bio = db.Column(db.String(500), nullable=True, default='')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     profile_picture = db.Column(db.String(300), nullable=True)
     pfp_zoom = db.Column(db.Float, nullable=True, default=1.0)
     pfp_pos_x = db.Column(db.Integer, nullable=True, default=50)
@@ -40,13 +44,20 @@ class user(db.Model):
     # relationships
     movies = db.relationship('movie', backref='author', lazy=True)
     clubs = db.relationship('club', secondary=club_members, backref='members', lazy=True)
+
+    @property
+    def display_name(self):
+        return self.nickname or self.username
+
     def __repr__(self):
-        return f"User('{self.nickname}')"
+        return f"User('{self.username}')"
 
     def to_dict(self):
         return {
             'id': self.id,
+            'username': self.username,
             'nickname': self.nickname,
+            'bio': self.bio or '',
             'discord_id': self.discord_id,
             'profile_picture': self.profile_picture,
             'pfp_zoom': self.pfp_zoom,
@@ -58,6 +69,7 @@ class user(db.Model):
             'banner_pos_y': self.banner_pos_y,
             'pinned_list_ids': self.pinned_list_ids or [],
             'pinned_club_ids': self.pinned_club_ids or [],
+            'created_at': self.created_at.isoformat() if self.created_at else None,
         }
 
 # movies
@@ -133,8 +145,10 @@ class club(db.Model):
     __tablename__ = 'clubs'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False)
-    description = db.Column(db.String(200))
+    description = db.Column(db.String(500))
+    image_url = db.Column(db.String(300), nullable=True)
     admin_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    mod_ids = db.Column(db.JSON, default=list)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # club owns multiple lists (if club is gone, lists are gone) 
@@ -145,6 +159,12 @@ class club(db.Model):
 
     def is_member(self, user):
         return user in self.members
+
+    def is_mod(self, user):
+        return user.id in (self.mod_ids or [])
+
+    def can_manage(self, user):
+        return user.id == self.admin_id or self.is_mod(user)
 
     def add_member(self, user):
         if user not in self.members:
@@ -158,8 +178,10 @@ class club(db.Model):
         data = {
             'id': self.id,
             'name': self.name,
-            'description': self.description,
+            'description': self.description or '',
+            'image_url': self.image_url,
             'admin_id': self.admin_id,
+            'mod_ids': self.mod_ids or [],
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
         
@@ -169,7 +191,7 @@ class club(db.Model):
             data['member_count'] = len(self.members)
         
         if include_lists:
-            data['lists'] = [lst.to_dict() for lst in self.lists]
+            data['lists'] = [lst.to_dict(include_movies=True, include_shows=True) for lst in self.lists]
         
         if include_name_history:
             data['name_history'] = self.get_name_history()
@@ -289,12 +311,114 @@ class activity_log(db.Model):
             'movie_id': self.movie_id,
             'show_id': self.show_id,
             'target_user_id': self.target_user_id,
-            'description': self.description,
+            'description': self.description or '',
             'data': self.data or {},
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
         if include_actor and self.actor:
             data['actor'] = self.actor.to_dict()
         return data
+
+
+class Review(db.Model):
+    __tablename__ = 'reviews'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    tmdb_id = db.Column(db.Integer, nullable=False)
+    media_type = db.Column(db.String(10), nullable=False)  # 'movie' or 'tv'
+    title = db.Column(db.String(200))
+    poster_url = db.Column(db.String(300))
+    rating = db.Column(db.Float, nullable=True)   # 0.5–5 stars
+    content = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    author = db.relationship('user', backref='reviews')
+
+    def to_dict(self, include_author=False):
+        data = {
+            'id': self.id,
+            'user_id': self.user_id,
+            'tmdb_id': self.tmdb_id,
+            'media_type': self.media_type,
+            'title': self.title or '',
+            'poster_url': self.poster_url or '',
+            'rating': self.rating,
+            'content': self.content or '',
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+        if include_author and self.author:
+            data['author'] = {
+                'id': self.author.id,
+                'username': self.author.username,
+                'nickname': self.author.nickname,
+                'profile_picture': self.author.profile_picture,
+            }
+        return data
+
+
+class ShowProgress(db.Model):
+    __tablename__ = 'show_progress'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    show_id = db.Column(db.Integer, nullable=False)  # TMDB show ID
+    season_number = db.Column(db.Integer, nullable=False)
+    episode_number = db.Column(db.Integer, nullable=False)
+    watched = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'show_id': self.show_id,
+            'season_number': self.season_number,
+            'episode_number': self.episode_number,
+            'watched': self.watched,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class MovieProgress(db.Model):
+    __tablename__ = 'movie_progress'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    movie_id = db.Column(db.Integer, nullable=False)  # TMDB movie ID
+    watched_minutes = db.Column(db.Integer, default=0)
+    total_minutes = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'movie_id': self.movie_id,
+            'watched_minutes': self.watched_minutes,
+            'total_minutes': self.total_minutes,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class UserSettings(db.Model):
+    __tablename__ = 'user_settings'
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    displayed_list = db.Column(db.Integer, nullable=True)
+    pinned_lists = db.Column(db.JSON, default=list)
+    pinned_clubs = db.Column(db.JSON, default=list)
+    theme = db.Column(db.String(20), default='dark')
+
+    user = db.relationship('user', backref=db.backref('settings', uselist=False))
+
+    def to_dict(self):
+        return {
+            'user_id': self.user_id,
+            'displayed_list': self.displayed_list,
+            'pinned_lists': self.pinned_lists or [],
+            'pinned_clubs': self.pinned_clubs or [],
+            'theme': self.theme or 'dark',
+        }
 
         
