@@ -16,7 +16,6 @@ instance/
 *.db
 
 # Frontend — entire directory excluded
-frontend/
 
 # Misc folders
 random/
