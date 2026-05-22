@@ -9,8 +9,8 @@ function userGradient(nickname: string) {
   const hash = nickname.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
   const hues = [200, 220, 240, 180, 260, 210, 230, 190];
   const hue1 = hues[hash % hues.length];
-  const hue2 = (hue1 + 30) % 360;
-  return `linear-gradient(135deg, hsl(${hue1}, 60%, 45%), hsl(${hue2}, 50%, 30%))`;
+  const hue2 = (hue1 + 40) % 360;
+  return `radial-gradient(circle at 30% 30%, hsl(${hue1}, 65%, 58%), hsl(${hue2}, 50%, 28%))`;
 }
 
 function userBannerGradient(nickname: string) {

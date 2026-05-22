@@ -307,7 +307,7 @@ export default function Settings() {
               {profilePicture ? (
                 <img src={profilePicture} alt="avatar" style={{ width: '84px', height: '84px', borderRadius: '50%', objectFit: 'cover', border: '4px solid rgba(0,0,0,0.5)', boxShadow: '0 4px 14px rgba(0,0,0,0.5)', display: 'block' }} />
               ) : (
-                <div style={{ width: '84px', height: '84px', borderRadius: '50%', background: `linear-gradient(135deg, ${activeTheme.primary}99, ${activeTheme.primary}55)`, border: '4px solid rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', fontWeight: 700, color: '#fff', boxShadow: '0 4px 14px rgba(0,0,0,0.5)' }}>
+                <div style={{ width: '84px', height: '84px', borderRadius: '50%', background: `radial-gradient(circle at 30% 30%, ${activeTheme.primary}ff, ${activeTheme.primary}66)`, border: '4px solid rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', fontWeight: 700, color: '#fff', boxShadow: '0 4px 14px rgba(0,0,0,0.5)' }}>
                   {nickname.slice(0, 2).toUpperCase() || 'U'}
                 </div>
               )}
