@@ -16,9 +16,8 @@ interface Props {
 
 function findItemInList(list: ListType, tmdbId?: number, title?: string): { id: number } | undefined {
   if (tmdbId !== undefined) {
-    const byId = list.movies?.find((m: Movie) => m.tmdb_id === tmdbId || m.id === tmdbId)
+    return list.movies?.find((m: Movie) => m.tmdb_id === tmdbId || m.id === tmdbId)
       ?? (list.shows as Array<{ id: number; tmdb_id?: number; title: string }> | undefined)?.find(s => s.tmdb_id === tmdbId || s.id === tmdbId);
-    if (byId) return byId;
   }
   if (!title) return undefined;
   const inMovies = list.movies?.find((m: Movie) => m.title === title);
