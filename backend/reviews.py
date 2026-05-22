@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from dbstruct import db, Review, user
+from models import db, Review, user
 from activity import log_event
 
 reviews = Blueprint('reviews', __name__)

@@ -1,7 +1,10 @@
 import os
 import requests
+from flask import Blueprint, request, jsonify
 from dotenv import load_dotenv
 from cache import cache_get, cache_set, cache_flush, cache_flush_expired
+
+tmdb = Blueprint('tmdb', __name__)
 
 load_dotenv()
 
@@ -35,7 +38,17 @@ def _cache_key(url, params=None):
     return f"{url}:{repr(sorted((params or {}).items()))}"
 
 
-def _cached_tmdb_request(url, params=None):
+# ttl list, tuneable here
+_TTL_FOREVER  = 365 * 24 # movies and ended/cancelled shows: 1 year
+_TTL_DETAILS  = 7 * 24   # celeb credits: 7 days
+_TTL_SEASON   = 7 * 24   # season episode lists: 7 days 
+_TTL_POPULAR  = 24       # trending: 1 day
+_TTL_SEARCH   = 30 * 24  # search results: 30 days
+
+_ENDED_STATUSES = {'Ended', 'Canceled', 'Cancelled'}
+
+
+def _cached_tmdb_request(url, params=None, ttl_hours=_TTL_DETAILS):
     key = _cache_key(url, params)
     cached = cache_get(key)
     if cached is not None:
@@ -43,7 +56,7 @@ def _cached_tmdb_request(url, params=None):
 
     data = _tmdb_request(url, params)
     if data is not None:
-        cache_set(key, data, ttl_hours=24)
+        cache_set(key, data, ttl_hours=ttl_hours)
     return data
 
 
@@ -53,7 +66,11 @@ def _tmdb_request(url, params=None):
         p.update(params)
     response = requests.get(url, params=p, timeout=10)
     if response.status_code == 200:
-        return response.json()
+        try:
+            return response.json()
+        except Exception:
+            print(f"TMDB invalid response body: {url} — {response.text[:200]!r}")
+            return None
     print(f"TMDB Error {response.status_code}: {url}")
     return None
 
@@ -157,7 +174,7 @@ def formatShow(show_data):
 
 
 def _search(endpoint, query):
-    data = _cached_tmdb_request(f"{baseURL}/{endpoint}", {"query": query, "page": 1})
+    data = _cached_tmdb_request(f"{baseURL}/{endpoint}", {"query": query, "page": 1}, ttl_hours=_TTL_SEARCH)
     if data:
         return data.get("results", [])
     return []
@@ -172,7 +189,7 @@ def searchShow(query):
 
 
 def searchMulti(query):
-    data = _cached_tmdb_request(f"{baseURL}/search/multi", {"query": query, "page": 1})
+    data = _cached_tmdb_request(f"{baseURL}/search/multi", {"query": query, "page": 1}, ttl_hours=_TTL_SEARCH)
     if not data:
         return []
     results = [
@@ -190,16 +207,23 @@ _APPEND = "credits,videos,similar,recommendations,images,watch/providers"
 def getMovie(movieID):
     data = _cached_tmdb_request(
         f"{baseURL}/movie/{movieID}",
-        {"append_to_response": _APPEND}
+        {"append_to_response": _APPEND},
+        ttl_hours=_TTL_FOREVER,
     )
     return formatMovie(data) if data else None
 
 
 def getShow(showID):
-    data = _cached_tmdb_request(
-        f"{baseURL}/tv/{showID}",
-        {"append_to_response": _APPEND}
-    )
+    url = f"{baseURL}/tv/{showID}"
+    params = {"append_to_response": _APPEND}
+    key = _cache_key(url, params)
+
+    data = cache_get(key)
+    if data is None:
+        data = _tmdb_request(url, params)
+        if data and data.get('status') in _ENDED_STATUSES:
+            cache_set(key, data, ttl_hours=_TTL_FOREVER)
+
     if not data:
         return None
     result = formatShow(data)
@@ -212,7 +236,7 @@ def getShow(showID):
 
 
 def getSeasonDetails(showID, seasonNumber):
-    data = _cached_tmdb_request(f"{baseURL}/tv/{showID}/season/{seasonNumber}")
+    data = _cached_tmdb_request(f"{baseURL}/tv/{showID}/season/{seasonNumber}", ttl_hours=_TTL_SEASON)
     if not data:
         return None
     return {
@@ -234,7 +258,7 @@ def getSeasonDetails(showID, seasonNumber):
 
 
 def searchPerson(query):
-    data = _cached_tmdb_request(f"{baseURL}/search/person", {"query": query, "page": 1})
+    data = _cached_tmdb_request(f"{baseURL}/search/person", {"query": query, "page": 1}, ttl_hours=_TTL_SEARCH)
     if not data:
         return []
     results = []
@@ -259,15 +283,19 @@ def searchPerson(query):
 
 
 def getPersonCredits(person_id):
-    person = _cached_tmdb_request(f"{baseURL}/person/{person_id}")
-    credits = _cached_tmdb_request(f"{baseURL}/person/{person_id}/combined_credits")
-    if not credits:
+    # single request: person details + combined_credits to append_to_response (less http requests)
+    data = _cached_tmdb_request(
+        f"{baseURL}/person/{person_id}",
+        {"append_to_response": "combined_credits"},
+    )
+    if not data:
         return None
+
+    credits = data.get('combined_credits', {})
 
     seen = set()
     items = []
 
-    # Combine cast + crew, deduplicate by id+media_type
     for entry in credits.get('cast', []) + credits.get('crew', []):
         mt = entry.get('media_type')
         if mt not in ('movie', 'tv'):
@@ -292,16 +320,16 @@ def getPersonCredits(person_id):
 
     return {
         'id': person_id,
-        'name': person.get('name') if person else '',
-        'profile_url': getProfileURL(person.get('profile_path')) if person else None,
-        'department': person.get('known_for_department', '') if person else '',
-        'biography': person.get('biography', '') if person else '',
+        'name': data.get('name', ''),
+        'profile_url': getProfileURL(data.get('profile_path')),
+        'department': data.get('known_for_department', ''),
+        'biography': data.get('biography', ''),
         'credits': items,
     }
 
 
 def discoverTrending():
-    data = _cached_tmdb_request(f"{baseURL}/trending/all/week", {"page": 1})
+    data = _cached_tmdb_request(f"{baseURL}/trending/all/week", {"page": 1}, ttl_hours=_TTL_POPULAR)
     if not data:
         return []
     results = []
@@ -315,14 +343,80 @@ def discoverTrending():
 
 
 def discoverPopularMovies():
-    data = _cached_tmdb_request(f"{baseURL}/movie/popular", {"page": 1})
+    data = _cached_tmdb_request(f"{baseURL}/movie/popular", {"page": 1}, ttl_hours=_TTL_POPULAR)
     if not data:
         return []
     return [formatMovie(m) for m in data.get("results", [])]
 
 
 def discoverPopularShows():
-    data = _cached_tmdb_request(f"{baseURL}/tv/popular", {"page": 1})
+    data = _cached_tmdb_request(f"{baseURL}/tv/popular", {"page": 1}, ttl_hours=_TTL_POPULAR)
     if not data:
         return []
     return [formatShow(s) for s in data.get("results", [])]
+
+# routes
+
+@tmdb.route('/search')
+def search():
+    query = request.args.get('query', '')
+    results = searchMovie(query) if query else []
+    return jsonify({'query': query, 'results': results})
+
+
+@tmdb.route('/search/tv')
+def search_tv():
+    query = request.args.get('query', '')
+    results = searchShow(query) if query else []
+    return jsonify({'query': query, 'results': results})
+
+
+@tmdb.route('/search/multi')
+def search_multi():
+    query = request.args.get('query', '')
+    results = searchMulti(query) if query else []
+    return jsonify({'query': query, 'results': results})
+
+
+@tmdb.route('/search/person')
+def search_person():
+    query = request.args.get('query', '')
+    results = searchPerson(query) if query else []
+    return jsonify({'query': query, 'results': results})
+
+
+@tmdb.route('/discover')
+def discover():
+    return jsonify({'results': discoverTrending()})
+
+
+@tmdb.route('/movie/<int:movie_id>')
+def movie_detail(movie_id):
+    result = getMovie(movie_id)
+    if not result:
+        return jsonify({'error': 'Movie not found'}), 404
+    return jsonify(result)
+
+
+@tmdb.route('/tv/<int:show_id>')
+def show_detail(show_id):
+    result = getShow(show_id)
+    if not result:
+        return jsonify({'error': 'Show not found'}), 404
+    return jsonify(result)
+
+
+@tmdb.route('/person/<int:person_id>/credits')
+def person_credits(person_id):
+    result = getPersonCredits(person_id)
+    if not result:
+        return jsonify({'error': 'Person not found'}), 404
+    return jsonify(result)
+
+
+@tmdb.route('/tv/<int:show_id>/season/<int:season_number>')
+def season_detail(show_id, season_number):
+    result = getSeasonDetails(show_id, season_number)
+    if not result:
+        return jsonify({'error': 'Season not found'}), 404
+    return jsonify(result)

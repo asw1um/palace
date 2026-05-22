@@ -1,18 +1,20 @@
 import os
 import time
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 
-from dbstruct import db, user, club, movielist
+from models import db, user, club
 from activity import log_event
 
 CLUB_IMAGE_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'uploads', 'clubs')
 os.makedirs(CLUB_IMAGE_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 def _abs_url(path):
     if not path:
@@ -22,15 +24,16 @@ def _abs_url(path):
     host = request.host_url.rstrip('/')
     return f"{host}{path}"
 
+
 clubs = Blueprint('clubs', __name__)
 
-# fetch all clubs 
+
 @clubs.route('/', methods=['GET'])
 @jwt_required()
 def get_clubs():
     user_id = int(get_jwt_identity())
     current_user = user.query.get(user_id)
-    
+
     def _club_dict(c):
         d = c.to_dict()
         d['image_url'] = _abs_url(d.get('image_url'))
@@ -41,7 +44,7 @@ def get_clubs():
         'all_clubs': [_club_dict(c) for c in club.query.all()]
     }), 200
 
-# create club
+
 @clubs.route('/', methods=['POST'])
 @jwt_required()
 def create_club():
@@ -49,20 +52,13 @@ def create_club():
     data = request.get_json()
     club_name = data.get('name', '').strip()
     description = data.get('description', '')
-    
+
     if not club_name:
         return jsonify({'error': 'Club name cannot be empty'}), 400
-    
+
     current_user = user.query.get(user_id)
-    
-    # creator becomes admin (stored in admin_id)
-    new_club = club(
-        name=club_name,
-        description=description,
-        admin_id=user_id
-    )
+    new_club = club(name=club_name, description=description, admin_id=user_id)
     new_club.members.append(current_user)
-    
     db.session.add(new_club)
     db.session.commit()
 
@@ -73,13 +69,10 @@ def create_club():
         description=f"Created club: {club_name}",
         extra_data={'club_name': club_name}
     )
-    
-    return jsonify({
-        'message': f'Created club: {club_name}',
-        'club': new_club.to_dict()
-    }), 201
 
-# club details
+    return jsonify({'message': f'Created club: {club_name}', 'club': new_club.to_dict()}), 201
+
+
 @clubs.route('/<int:club_id>', methods=['GET'])
 @jwt_required()
 def get_club(club_id):
@@ -91,7 +84,7 @@ def get_club(club_id):
         m['banner'] = _abs_url(m.get('banner'))
     return jsonify({'club': data}), 200
 
-# update club (admin or mod)
+
 @clubs.route('/<int:club_id>', methods=['PUT'])
 @jwt_required()
 def update_club(club_id):
@@ -111,42 +104,55 @@ def update_club(club_id):
     return jsonify({'club': result}), 200
 
 
-# grant mod status (admin only)
-@clubs.route('/<int:club_id>/mods/<int:target_user_id>', methods=['POST'])
+@clubs.route('/<int:club_id>', methods=['DELETE'])
 @jwt_required()
-def grant_mod(club_id, target_user_id):
+def delete_club(club_id):
     user_id = int(get_jwt_identity())
     club_obj = club.query.get_or_404(club_id)
     if club_obj.admin_id != user_id:
-        return jsonify({'error': 'Only the admin can grant mod status'}), 403
-    if target_user_id == user_id:
-        return jsonify({'error': 'Admin is already the owner'}), 400
-    target = user.query.get_or_404(target_user_id)
-    if not club_obj.is_member(target):
-        return jsonify({'error': 'User is not a member'}), 400
-    mods = list(club_obj.mod_ids or [])
-    if target_user_id not in mods:
-        mods.append(target_user_id)
-        club_obj.mod_ids = mods
-        db.session.commit()
-    return jsonify({'mod_ids': club_obj.mod_ids}), 200
+        return jsonify({'error': 'Only admin can delete'}), 403
 
-
-# revoke mod status (admin only)
-@clubs.route('/<int:club_id>/mods/<int:target_user_id>', methods=['DELETE'])
-@jwt_required()
-def revoke_mod(club_id, target_user_id):
-    user_id = int(get_jwt_identity())
-    club_obj = club.query.get_or_404(club_id)
-    if club_obj.admin_id != user_id:
-        return jsonify({'error': 'Only the admin can revoke mod status'}), 403
-    mods = [m for m in (club_obj.mod_ids or []) if m != target_user_id]
-    club_obj.mod_ids = mods
+    club_name = club_obj.name
+    log_event(
+        event_type='user_deleted_club',
+        user_id=user_id,
+        club_id=club_obj.id,
+        description=f"Deleted club: {club_name}",
+        extra_data={'club_name': club_name}
+    )
+    db.session.delete(club_obj)
     db.session.commit()
-    return jsonify({'mod_ids': club_obj.mod_ids}), 200
+    return jsonify({'message': f'Deleted club: {club_name}'}), 200
 
 
-# upload club thumbnail (admin or mod)
+@clubs.route('/<int:club_id>/rename', methods=['POST'])
+@jwt_required()
+def rename_club(club_id):
+    user_id = int(get_jwt_identity())
+    club_obj = club.query.get_or_404(club_id)
+    if club_obj.admin_id != user_id:
+        return jsonify({'error': 'Only admin can rename'}), 403
+
+    data = request.get_json()
+    new_name = data.get('name', '').strip()
+    if not new_name:
+        return jsonify({'error': 'Name cannot be empty'}), 400
+
+    old_name = club_obj.name
+    club_obj.name = new_name
+    db.session.commit()
+
+    log_event(
+        event_type='user_renamed_club',
+        user_id=user_id,
+        club_id=club_obj.id,
+        description=f"Renamed club from '{old_name}' to '{new_name}'",
+        extra_data={'old_name': old_name, 'new_name': new_name}
+    )
+
+    return jsonify({'message': f'Renamed club to: {new_name}', 'club': club_obj.to_dict()}), 200
+
+
 @clubs.route('/<int:club_id>/upload-image', methods=['POST'])
 @jwt_required()
 def upload_club_image(club_id):
@@ -170,17 +176,16 @@ def upload_club_image(club_id):
     return jsonify({'url': _abs_url(url)}), 200
 
 
-# user join club
 @clubs.route('/<int:club_id>/join', methods=['POST'])
 @jwt_required()
 def join_club(club_id):
     user_id = int(get_jwt_identity())
     current_user = user.query.get(user_id)
     club_obj = club.query.get_or_404(club_id)
-    
+
     if club_obj.is_member(current_user):
         return jsonify({'error': 'Already a member'}), 400
-    
+
     club_obj.add_member(current_user)
     db.session.commit()
 
@@ -191,20 +196,20 @@ def join_club(club_id):
         description=f"Joined club: {club_obj.name} ({len(club_obj.members)} members)",
         extra_data={'club_name': club_obj.name, 'member_count': len(club_obj.members)}
     )
-    
+
     return jsonify({'message': f'Joined club: {club_obj.name}'}), 200
 
-# user leave club
+
 @clubs.route('/<int:club_id>/leave', methods=['POST'])
 @jwt_required()
 def leave_club(club_id):
     user_id = int(get_jwt_identity())
     current_user = user.query.get(user_id)
     club_obj = club.query.get_or_404(club_id)
-    
+
     if not club_obj.is_member(current_user):
         return jsonify({'error': 'Not a member'}), 400
-    
+
     club_obj.remove_member(current_user)
     db.session.commit()
 
@@ -215,176 +220,50 @@ def leave_club(club_id):
         description=f"Left club: {club_obj.name}",
         extra_data={'club_name': club_obj.name}
     )
-    
+
     return jsonify({'message': f'Left club: {club_obj.name}'}), 200
 
-# create lists IN clubs
-@clubs.route('/<int:club_id>/lists', methods=['POST'])
+
+@clubs.route('/<int:club_id>/mods/<int:target_user_id>', methods=['POST'])
 @jwt_required()
-def create_club_list(club_id):
-    user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
-    club_obj = club.query.get_or_404(club_id)
-    
-    if not club_obj.is_member(current_user):
-        return jsonify({'error': 'Must be a member to create lists'}), 403
-    
-    data = request.get_json()
-    list_name = data.get('name', '').strip()
-    
-    if not list_name:
-        return jsonify({'error': 'List name cannot be empty'}), 400
-    
-    new_list = movielist(name=list_name, club_id=club_id)
-    db.session.add(new_list)
-    db.session.commit()
-
-    log_event(
-        event_type='user_created_club_list',
-        user_id=user_id,
-        club_id=club_id,
-        list_id=new_list.id,
-        description=f"Created list '{list_name}' in club {club_obj.name}",
-        extra_data={'list_name': list_name, 'club_name': club_obj.name}
-    )
-    
-    return jsonify({
-        'message': f'Created list: {list_name}',
-        'list': new_list.to_dict()
-    }), 201
-
-# delete user list IN club
-@clubs.route('/<int:club_id>/lists/<int:list_id>', methods=['DELETE'])
-@jwt_required()
-def delete_club_list(club_id, list_id):
-    user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
-    list_obj = movielist.query.get_or_404(list_id)
-    
-    # check if user is club member
-    club_obj = club.query.get_or_404(club_id)
-    if not club_obj.is_member(current_user):
-        return jsonify({'error': 'Not a member'}), 403
-    
-    if list_obj.club_id != club_id:
-        return jsonify({'error': 'List not in this club'}), 403
-
-    log_event(
-        event_type='user_deleted_club_list',
-        user_id=user_id,
-        club_id=club_id,
-        list_id=list_obj.id,
-        description=f"Deleted list '{list_obj.name}' from club {club_obj.name}",
-        extra_data={'list_name': list_obj.name, 'club_name': club_obj.name}
-    )
-    
-    db.session.delete(list_obj)
-    db.session.commit()
-    return jsonify({'message': 'List deleted'}), 200
-
-# rename club
-@clubs.route('/<int:club_id>/rename', methods=['POST'])
-@jwt_required()
-def rename_club(club_id):
+def grant_mod(club_id, target_user_id):
     user_id = int(get_jwt_identity())
     club_obj = club.query.get_or_404(club_id)
-    
     if club_obj.admin_id != user_id:
-        return jsonify({'error': 'Only admin can rename'}), 403
-    
-    data = request.get_json()
-    new_name = data.get('name', '').strip()
-    if not new_name:
-        return jsonify({'error': 'Name cannot be empty'}), 400
-    
-    old_name = club_obj.name
-    club_obj.name = new_name
-    db.session.commit()
+        return jsonify({'error': 'Only the admin can grant mod status'}), 403
+    if target_user_id == user_id:
+        return jsonify({'error': 'Admin is already the owner'}), 400
+    target = user.query.get_or_404(target_user_id)
+    if not club_obj.is_member(target):
+        return jsonify({'error': 'User is not a member'}), 400
+    mods = list(club_obj.mod_ids or [])
+    if target_user_id not in mods:
+        mods.append(target_user_id)
+        club_obj.mod_ids = mods
+        db.session.commit()
+    return jsonify({'mod_ids': club_obj.mod_ids}), 200
 
-    log_event(
-        event_type='user_renamed_club',
-        user_id=user_id,
-        club_id=club_obj.id,
-        description=f"Renamed club from '{old_name}' to '{new_name}'",
-        extra_data={'old_name': old_name, 'new_name': new_name}
-    )
-    
-    return jsonify({
-        'message': f'Renamed club to: {new_name}',
-        'club': club_obj.to_dict()
-    }), 200
 
-# rename club list
-@clubs.route('/<int:club_id>/lists/<int:list_id>/rename', methods=['POST'])
+@clubs.route('/<int:club_id>/mods/<int:target_user_id>', methods=['DELETE'])
 @jwt_required()
-def rename_club_list(club_id, list_id):
-    user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
-    club_obj = club.query.get_or_404(club_id)
-    list_obj = movielist.query.get_or_404(list_id)
-    
-    if not club_obj.is_member(current_user):
-        return jsonify({'error': 'Not a member'}), 403
-    
-    if list_obj.club_id != club_id:
-        return jsonify({'error': 'List not in this club'}), 403
-    
-    data = request.get_json()
-    new_name = data.get('name', '').strip()
-    if not new_name:
-        return jsonify({'error': 'Name cannot be empty'}), 400
-    
-    old_name = list_obj.name
-    list_obj.name = new_name
-    db.session.commit()
-
-    log_event(
-        event_type='user_renamed_club_list',
-        user_id=user_id,
-        club_id=club_id,
-        list_id=list_obj.id,
-        description=f"Renamed list from '{old_name}' to '{new_name}' in club {club_obj.name}",
-        extra_data={'old_name': old_name, 'new_name': new_name, 'club_name': club_obj.name}
-    )
-    
-    return jsonify({
-        'message': f'Renamed list to: {new_name}',
-        'list': list_obj.to_dict()
-    }), 200
-
-# delete clubs
-@clubs.route('/<int:club_id>', methods=['DELETE'])
-@jwt_required()
-def delete_club(club_id):
+def revoke_mod(club_id, target_user_id):
     user_id = int(get_jwt_identity())
     club_obj = club.query.get_or_404(club_id)
-    
     if club_obj.admin_id != user_id:
-        return jsonify({'error': 'Only admin can delete'}), 403
-    
-    club_name = club_obj.name
-
-    log_event(
-        event_type='user_deleted_club',
-        user_id=user_id,
-        club_id=club_obj.id,
-        description=f"Deleted club: {club_name}",
-        extra_data={'club_name': club_name}
-    )
-
-    db.session.delete(club_obj)
+        return jsonify({'error': 'Only the admin can revoke mod status'}), 403
+    mods = [m for m in (club_obj.mod_ids or []) if m != target_user_id]
+    club_obj.mod_ids = mods
     db.session.commit()
-    
-    return jsonify({'message': f'Deleted club: {club_name}'}), 200
+    return jsonify({'mod_ids': club_obj.mod_ids}), 200
 
-# pin club
+
 @clubs.route('/<int:club_id>/pin', methods=['POST'])
 @jwt_required()
 def pin_club(club_id):
     user_id = int(get_jwt_identity())
     current_user = user.query.get(user_id)
-    club_obj = club.query.get_or_404(club_id)
-    
+    club.query.get_or_404(club_id)
+
     pinned = list(current_user.pinned_club_ids or [])
     if club_id not in pinned:
         if len(pinned) >= 4:
@@ -394,13 +273,13 @@ def pin_club(club_id):
 
     return jsonify({'message': 'Club pinned'}), 200
 
-# unpin club
+
 @clubs.route('/<int:club_id>/unpin', methods=['POST'])
 @jwt_required()
 def unpin_club(club_id):
     user_id = int(get_jwt_identity())
     current_user = user.query.get(user_id)
-    
+
     pinned = list(current_user.pinned_club_ids or [])
     if club_id in pinned:
         current_user.pinned_club_ids = [x for x in pinned if x != club_id]
@@ -408,28 +287,27 @@ def unpin_club(club_id):
 
     return jsonify({'message': 'Club unpinned'}), 200
 
-# get pinned clubs
+
 @clubs.route('/pinned', methods=['GET'])
 @jwt_required()
 def get_pinned_clubs():
     user_id = int(get_jwt_identity())
     current_user = user.query.get(user_id)
     pinned_ids = current_user.pinned_club_ids or []
-    
     pinned = club.query.filter(club.id.in_(pinned_ids)).all()
     return jsonify({'clubs': [c.to_dict() for c in pinned]}), 200
 
-#get club lists
+
 @clubs.route('/my-clubs-with-lists', methods=['GET'])
 @jwt_required()
 def get_my_clubs_with_lists():
     user_id = int(get_jwt_identity())
     current_user = user.query.get(user_id)
-    
+
     clubs_data = []
     for c in current_user.clubs:
         club_data = c.to_dict()
         club_data['lists'] = [lst.to_dict(include_movies=True, include_shows=True) for lst in c.lists]
         clubs_data.append(club_data)
-    
+
     return jsonify({'clubs': clubs_data}), 200

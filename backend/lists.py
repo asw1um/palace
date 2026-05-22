@@ -1,8 +1,9 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
-from dbstruct import db, movielist, user
+from models import db, movielist, user
 from activity import log_event
+from cache import lists_cache_get, lists_cache_set, lists_cache_invalidate
 
 lists = Blueprint('lists', __name__)
 
@@ -24,11 +25,15 @@ def get_user_lists():
 @jwt_required()
 def get_user_lists_with_movies():
     user_id = int(get_jwt_identity())
+
+    cached = lists_cache_get(user_id)
+    if cached is not None:
+        return jsonify({'lists': cached}), 200
+
     user_lists = movielist.query.filter_by(userID=user_id).all()
-    
-    return jsonify({
-        'lists': [lst.to_dict(include_movies=True, include_shows=True) for lst in user_lists]
-    }), 200
+    result = [lst.to_dict(include_movies=True, include_shows=True) for lst in user_lists]
+    lists_cache_set(user_id, result)
+    return jsonify({'lists': result}), 200
 
 # create user list
 @lists.route('/', methods=['POST'])
@@ -45,6 +50,7 @@ def create_list():
     new_list = movielist(name=list_name, userID=user_id)
     db.session.add(new_list)
     db.session.commit()
+    lists_cache_invalidate(user_id)
 
     log_event(
         event_type='user_created_list',
@@ -79,6 +85,7 @@ def delete_list(list_id):
 
     db.session.delete(list_obj)
     db.session.commit()
+    lists_cache_invalidate(user_id)
     return jsonify({'message': 'list deleted'}), 200
 
 # get specific lists
@@ -98,7 +105,7 @@ def get_list(list_id):
             return jsonify({'error': 'You must be a club member to view this list'}), 403
     
     return jsonify({
-        'list': list_obj.to_dict(include_movies=True)
+        'list': list_obj.to_dict(include_movies=True, include_shows=True)
     }), 200
 
 # rename user list
@@ -119,6 +126,7 @@ def rename_list(list_id):
     old_name = list_obj.name
     list_obj.name = new_name
     db.session.commit()
+    lists_cache_invalidate(user_id)
 
     log_event(
         event_type='user_renamed_list',
@@ -196,7 +204,7 @@ def add_movie_to_list(list_id):
     if not movie_data:
         return jsonify({'error': 'Movie object is required'}), 400
 
-    from dbstruct import movie as MovieModel, show as ShowModel
+    from models import movie as MovieModel, show as ShowModel
 
     tmdb_id = movie_data.get('tmdb_id') or movie_data.get('id')
     title = movie_data.get('title')
@@ -214,6 +222,7 @@ def add_movie_to_list(list_id):
         if show_obj not in list_obj.shows:
             list_obj.shows.append(show_obj)
             db.session.commit()
+        lists_cache_invalidate(user_id)
         return jsonify({'message': 'Show added to list', 'list': list_obj.to_dict(include_movies=True, include_shows=True)}), 200
     else:
         existing = MovieModel.query.filter_by(userID=user_id, tmdbID=tmdb_id).first()
@@ -226,6 +235,7 @@ def add_movie_to_list(list_id):
         if movie_obj not in list_obj.movies:
             list_obj.movies.append(movie_obj)
             db.session.commit()
+        lists_cache_invalidate(user_id)
         return jsonify({'message': 'Movie added to list', 'list': list_obj.to_dict(include_movies=True, include_shows=True)}), 200
 
 
@@ -239,7 +249,7 @@ def remove_movie_from_list(list_id, movie_id):
     if not list_obj.can_edit(current_user):
         return jsonify({'error': 'No permission to edit this list'}), 403
 
-    from dbstruct import movie as MovieModel, show as ShowModel
+    from models import movie as MovieModel, show as ShowModel
 
     # Try movie first, then show
     movie_obj = MovieModel.query.get(movie_id)
@@ -249,12 +259,14 @@ def remove_movie_from_list(list_id, movie_id):
         if not movie_obj.lists:
             db.session.delete(movie_obj)
             db.session.commit()
+        lists_cache_invalidate(user_id)
         return jsonify({'message': 'Movie removed from list'}), 200
 
     show_obj = ShowModel.query.get(movie_id)
     if show_obj and show_obj in list_obj.shows:
         list_obj.shows.remove(show_obj)
         db.session.commit()
+        lists_cache_invalidate(user_id)
         return jsonify({'message': 'Show removed from list'}), 200
 
     return jsonify({'error': 'Item not found in list'}), 404

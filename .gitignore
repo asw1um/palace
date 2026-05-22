@@ -54,3 +54,7 @@ dist/
 # Temporary files
 *.tmp
 *.temp
+
+# No commit marker
+NOGITCOMMIT
+**/NOGITCOMMIT

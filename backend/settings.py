@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
-from dbstruct import db, user, UserSettings
+from models import db, user, UserSettings
 
 settings = Blueprint('settings', __name__)
 

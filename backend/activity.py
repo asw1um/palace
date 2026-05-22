@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from datetime import datetime
-from dbstruct import db, activity_log, user, club, movielist
+from models import db, activity_log, user, club, movielist
+from utils import time_ago
 
 activity = Blueprint('activity', __name__)
 
@@ -24,30 +24,6 @@ def log_event(event_type, user_id=None, club_id=None, list_id=None,
     return entry
 
 
-def get_time_ago(created_at):
-    if not created_at:
-        return "unknown"
-    now = datetime.utcnow()
-    diff = now - created_at
-    seconds = int(diff.total_seconds())
-
-    if seconds < 60:
-        return "just now"
-    elif seconds < 3600:
-        minutes = seconds // 60
-        return f"{minutes}m" if minutes > 1 else "1m"
-    elif seconds < 86400:
-        hours = seconds // 3600
-        return f"{hours}h" if hours > 1 else "1h"
-    elif seconds < 604800:
-        days = seconds // 86400
-        return f"{days}d" if days > 1 else "1d"
-    elif seconds < 2592000:
-        weeks = seconds // 604800
-        return f"{weeks}w" if weeks > 1 else "1w"
-    else:
-        months = seconds // 2592000
-        return f"{months}mo" if months > 1 else "1mo"
 
 #api 
 @activity.route('/', methods=['GET'])
@@ -142,5 +118,5 @@ def get_global_activity():
 
 def _log_to_dict(log_entry):
     data = log_entry.to_dict(include_actor=True)
-    data['time_ago'] = get_time_ago(log_entry.created_at)
+    data['time_ago'] = time_ago(log_entry.created_at)
     return data
