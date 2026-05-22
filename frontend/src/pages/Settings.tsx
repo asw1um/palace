@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/data/ThemeContext';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { THEMES } from '@/data/themeStore';
 import GlassBox from '@/components/GlassBox';
 import ImageCropModal from '@/components/ImageCropModal';
@@ -20,6 +21,7 @@ const LS_KEYS = {
 export default function Settings() {
   const { themeId, setTheme } = useTheme();
   const { user, updateProfile, refreshUser, logout } = useAuth();
+  const confirm = useConfirm();
   const [saved, setSaved] = useState(false);
 
   /* ─── Real data from API ─── */
@@ -76,6 +78,8 @@ export default function Settings() {
   const [profileBanner, setProfileBanner] = useState<string | null>(
     user?.banner ?? null
   );
+  const [pendingPicture, setPendingPicture] = useState<File | null>(null);
+  const [pendingBanner, setPendingBanner] = useState<File | null>(null);
 
   /* ─── Nickname & Bio ─── */
   const [nickname, setNickname] = useState(user?.nickname || '');
@@ -143,16 +147,18 @@ export default function Settings() {
     setCropModal({ src, type });
   };
 
-  // Called when user hits Apply in the crop modal
+  // Called when user hits Apply in the crop modal — stores locally, does NOT upload yet
   const handleCropApply = async (dataUrl: string) => {
     if (!cropModal) return;
     const res = await fetch(dataUrl);
     const blob = await res.blob();
     const file = new File([blob], 'image.jpg', { type: 'image/jpeg' });
     if (cropModal.type === 'picture') {
-      await handleFile(file, setProfilePicture, LS_KEYS.profilePicture, uploadPicture);
+      setPendingPicture(file);
+      setProfilePicture(dataUrl);
     } else {
-      await handleFile(file, setProfileBanner, LS_KEYS.profileBanner, uploadBanner);
+      setPendingBanner(file);
+      setProfileBanner(dataUrl);
     }
     if (cropModal.src.startsWith('blob:')) URL.revokeObjectURL(cropModal.src);
     setCropModal(null);
@@ -339,7 +345,26 @@ export default function Settings() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <button
-                  onClick={() => { updateProfile({ nickname, bio }); window.dispatchEvent(new CustomEvent('settingschange')); setProfileSaved(true); setTimeout(() => setProfileSaved(false), 2000); }}
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: 'Save Profile',
+                      message: 'Are you sure you want to save these changes?',
+                      confirmLabel: 'Save',
+                    });
+                    if (!ok) return;
+                    if (pendingPicture) {
+                      await handleFile(pendingPicture, setProfilePicture, LS_KEYS.profilePicture, uploadPicture);
+                      setPendingPicture(null);
+                    }
+                    if (pendingBanner) {
+                      await handleFile(pendingBanner, setProfileBanner, LS_KEYS.profileBanner, uploadBanner);
+                      setPendingBanner(null);
+                    }
+                    await updateProfile({ nickname, bio });
+                    window.dispatchEvent(new CustomEvent('settingschange'));
+                    setProfileSaved(true);
+                    setTimeout(() => setProfileSaved(false), 2000);
+                  }}
                   style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '8px 16px', borderRadius: '8px', background: profileSaved ? 'rgba(80,200,120,0.8)' : 'linear-gradient(180deg, var(--t-primary)99, var(--t-primary)55)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}
                 >
                   {profileSaved ? <><Check style={{ width: '13px' }} /> Saved</> : <><Save style={{ width: '13px' }} /> Save Profile</>}
