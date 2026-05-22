@@ -24,7 +24,6 @@ def log_event(event_type, user_id=None, club_id=None, list_id=None,
     return entry
 
 
-
 #api 
 @activity.route('/', methods=['GET'])
 @jwt_required()

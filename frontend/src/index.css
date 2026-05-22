@@ -244,6 +244,29 @@
   animation: modalIn 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* ===== Responsive scaling for smaller screens ===== */
+@media screen and (max-width: 1400px) {
+  html { zoom: 0.9; }
+}
+@media screen and (max-width: 1200px) {
+  html { zoom: 0.8; }
+}
+@media screen and (max-width: 1024px) {
+  html { zoom: 0.7; }
+}
+
+/*
+  CSS zoom on a parent breaks overflow:hidden + border-radius clipping in
+  many browsers, causing images inside circular containers to appear square.
+  Promoting circular containers to their own compositing layer restores clipping.
+*/
+.avatar-circle {
+  border-radius: 50%;
+  overflow: hidden;
+  transform: translateZ(0);
+  flex-shrink: 0;
+}
+
 /* ===== Hide-scrollbar utility ===== */
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

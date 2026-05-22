@@ -129,9 +129,10 @@ def delete_club(club_id):
 @jwt_required()
 def rename_club(club_id):
     user_id = int(get_jwt_identity())
+    current_user = user.query.get(user_id)
     club_obj = club.query.get_or_404(club_id)
-    if club_obj.admin_id != user_id:
-        return jsonify({'error': 'Only admin can rename'}), 403
+    if not club_obj.can_manage(current_user):
+        return jsonify({'error': 'Only admin or mod can rename'}), 403
 
     data = request.get_json()
     new_name = data.get('name', '').strip()

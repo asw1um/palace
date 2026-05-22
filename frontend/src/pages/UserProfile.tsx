@@ -98,9 +98,11 @@ export default function UserProfile() {
             {/* Avatar */}
             <div style={{ position: 'relative', marginTop: '-54px', padding: '0 18px' }}>
               {user.profile_picture ? (
-                <img src={user.profile_picture} alt="avatar" style={{ width: '108px', height: '108px', borderRadius: '50%', objectFit: 'cover', border: '5px solid var(--t-primary-40)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', display: 'block' }} />
+                <div className="avatar-circle" style={{ width: '108px', height: '108px', border: '5px solid var(--t-primary-40)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                  <img src={user.profile_picture} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                </div>
               ) : (
-                <div style={{ width: '108px', height: '108px', borderRadius: '50%', background: userGradient(displayName), border: '5px solid var(--t-primary-40)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', fontWeight: 700, color: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                <div className="avatar-circle" style={{ width: '108px', height: '108px', background: userGradient(displayName), border: '5px solid var(--t-primary-40)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', fontWeight: 700, color: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
                   {displayName.slice(0, 2).toUpperCase()}
                 </div>
               )}

@@ -707,8 +707,8 @@ export default function ShowDetailModal({ item, onClose }: Props) {
                       <div key={r.id} style={{ padding: '12px', borderRadius: '8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                           {r.author?.profile_picture
-                            ? <img src={r.author.profile_picture} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
-                            : <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--t-primary-25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, color: '#fff' }}>{name.slice(0,2).toUpperCase()}</div>}
+                            ? <div className="avatar-circle" style={{ width: '28px', height: '28px' }}><img src={r.author.profile_picture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /></div>
+                            : <div style={{ width: '28px', height: '28px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--t-primary-25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, color: '#fff' }}>{name.slice(0,2).toUpperCase()}</div>}
                           <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff', flex: 1 }}>{name}</span>
                           {r.rating !== null && (
                             <div style={{ display: 'flex', gap: '2px' }}>

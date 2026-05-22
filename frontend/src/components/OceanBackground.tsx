@@ -30,24 +30,30 @@ export default function OceanBackground() {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden' }}>
-      {/* Video */}
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        style={{
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          filter: 'blur(8px) brightness(0.45)',
-          transform: 'scale(1.04)',
-        }}
-      >
-        <source src="./ocean-bg.mp4" type="video/mp4" />
-      </video>
+      {/* Video — filter applied to wrapper so GPU doesn't re-blur each decoded frame */}
+      <div style={{
+        position: 'absolute', inset: '-5%',
+        filter: 'blur(6px) brightness(0.45)',
+        willChange: 'transform',
+        transform: 'translateZ(0)',
+      }}>
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            transform: 'scale(1.04) translateZ(0)',
+          }}
+        >
+          <source src="./ocean-bg.mp4" type="video/mp4" />
+        </video>
+      </div>
 
       {/* Theme colour tint */}
       <div

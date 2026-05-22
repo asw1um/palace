@@ -174,7 +174,7 @@ export default function MediaDetailModal({ item, onClose }: Props) {
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)' }}
       onClick={onClose}>
       <div className="modal-in"
-        style={{ width: 'min(920px, 96vw)', maxHeight: '90vh', borderRadius: '16px', overflow: 'hidden', background: 'linear-gradient(180deg, var(--t-primary-18) 0%, var(--t-primary-10) 100%)', border: '1px solid rgba(255,255,255,0.2)', boxShadow: '0 24px 64px rgba(0,0,0,0.6)', display: 'flex', position: 'relative' }}
+        style={{ width: 'min(920px, 96vw)', maxHeight: '90vh', borderRadius: '16px', overflow: 'hidden', background: 'linear-gradient(180deg, var(--t-primary-18) 0%, var(--t-primary-10) 100%)', border: '1px solid rgba(255,255,255,0.2)', boxShadow: '0 24px 64px rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', position: 'relative' }}
         onClick={e => e.stopPropagation()}>
 
         {/* Close */}
@@ -184,42 +184,39 @@ export default function MediaDetailModal({ item, onClose }: Props) {
           <X style={{ width: '14px' }} />
         </button>
 
-        {/* ── LEFT: Full-height poster ── */}
-        <div style={{ width: '280px', flexShrink: 0, position: 'relative', overflow: 'hidden', background: '#08080f' }}>
-          {displayItem.poster_url && (
-            <div style={{ position: 'absolute', inset: '-30px', backgroundImage: `url(${displayItem.poster_url})`, backgroundSize: 'cover', backgroundPosition: 'center top', filter: 'blur(22px)', transform: 'scale(1.15)', opacity: 0.55 }} />
-          )}
-          {displayItem.poster_url
-            ? <img src={displayItem.poster_url} alt={displayItem.title} style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center top', display: 'block' }} />
-            : <div style={{ width: '100%', height: '100%', background: 'var(--t-primary-20)' }} />}
-          <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: 'linear-gradient(90deg, transparent 55%, rgba(12,8,24,0.7) 100%)' }} />
-        </div>
+        {/* ── HEADER: poster + info ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '20px', padding: '20px', flexShrink: 0, background: 'linear-gradient(180deg, var(--t-primary-25) 0%, var(--t-primary-12) 100%)' }}>
+          {/* Poster */}
+          <div style={{ aspectRatio: '2/3', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.12)', background: '#0a0814', flexShrink: 0 }}>
+            {displayItem.poster_url
+              ? <img src={displayItem.poster_url} alt={displayItem.title} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
+              : <div style={{ width: '100%', height: '100%', background: 'var(--t-primary-20)' }} />}
+          </div>
 
-        {/* ── RIGHT: Info + body ── */}
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto', borderLeft: '1px solid var(--t-primary-15)' }}>
-
-          {/* Header */}
-          <div style={{ padding: '24px 24px 16px', flexShrink: 0, background: 'linear-gradient(180deg, var(--t-primary-20) 0%, var(--t-primary-10) 100%)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+          {/* Info */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0, paddingTop: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--t-primary-18)', color: 'var(--t-primary)', fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '99px', letterSpacing: '0.5px' }}>
                 {isMovie ? <Film style={{ width: '10px' }} /> : <Tv style={{ width: '10px' }} />}
                 {isMovie ? 'MOVIE' : 'TV SHOW'}
               </span>
-              {displayItem.rating > 0 && <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#fbd700', fontSize: '12px', fontWeight: 700 }}><Star style={{ width: '12px' }} />{displayItem.rating.toFixed(1)}</span>}
+              {displayItem.rating > 0 && <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#fbbf24', fontSize: '12px', fontWeight: 700 }}><Star style={{ width: '12px' }} />{displayItem.rating.toFixed(1)}</span>}
               {year && <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>{year}</span>}
               {runtimeDisplay && <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '12px' }}>{runtimeDisplay}</span>}
               {displayItem.status && <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>{displayItem.status}</span>}
             </div>
-            <h2 style={{ margin: '0 0 4px', color: '#fff', fontSize: '26px', fontWeight: 700, lineHeight: 1.15, overflowWrap: 'break-word' }}>{displayItem.title}</h2>
-            {displayItem.tagline && <p style={{ margin: '0 0 10px', color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontStyle: 'italic' }}>{displayItem.tagline}</p>}
-            {displayItem.overview && <p style={{ margin: '0 0 10px', color: 'rgba(255,255,255,0.7)', fontSize: '12px', lineHeight: 1.55, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' as any }}>{displayItem.overview}</p>}
+            <div>
+              <h2 style={{ margin: 0, color: '#fff', fontSize: '26px', fontWeight: 700, lineHeight: 1.15, overflowWrap: 'break-word' }}>{displayItem.title}</h2>
+              {displayItem.tagline && <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontStyle: 'italic' }}>{displayItem.tagline}</p>}
+            </div>
+            {displayItem.overview && <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '12px', lineHeight: 1.55, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' as any }}>{displayItem.overview}</p>}
             {displayItem.genres && displayItem.genres.length > 0 && (
-              <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                 {displayItem.genres.slice(0, 5).map(g => <span key={g} style={{ background: 'var(--t-primary-18)', color: 'var(--t-primary)', fontSize: '11px', padding: '3px 9px', borderRadius: '99px', border: '1px solid var(--t-primary-25)' }}>{g}</span>)}
               </div>
             )}
             {/* Buttons */}
-            <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap', marginTop: '4px' }}>
               <div style={{ position: 'relative', display: 'inline-block' }}>
                 <button ref={addButtonRef} onClick={() => setMenuOpen(!menuOpen)}
                   style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 13px', borderRadius: '8px', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
@@ -253,9 +250,10 @@ export default function MediaDetailModal({ item, onClose }: Props) {
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Body */}
-          <div style={{ flex: 1, minHeight: 0 }}>
+        {/* ── BODY: scrollable ── */}
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
 
             {/* Movie progress */}
             {isMovie && displayItem.runtime && displayItem.runtime > 0 && (
@@ -337,8 +335,8 @@ export default function MediaDetailModal({ item, onClose }: Props) {
                             <div key={r.id} style={{ padding: '12px', borderRadius: '8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                                 {r.author?.profile_picture
-                                  ? <img src={r.author.profile_picture} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
-                                  : <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--t-primary-25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, color: '#fff' }}>{name.slice(0,2).toUpperCase()}</div>}
+                                  ? <div className="avatar-circle" style={{ width: '28px', height: '28px' }}><img src={r.author.profile_picture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /></div>
+                                  : <div style={{ width: '28px', height: '28px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--t-primary-25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, color: '#fff' }}>{name.slice(0,2).toUpperCase()}</div>}
                                 <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff', flex: 1 }}>{name}</span>
                                 {r.rating !== null && (
                                   <div style={{ display: 'flex', gap: '2px' }}>
@@ -355,7 +353,6 @@ export default function MediaDetailModal({ item, onClose }: Props) {
                 </div>
               </div>
             )}
-          </div>
         </div>
       </div>
     </div>,

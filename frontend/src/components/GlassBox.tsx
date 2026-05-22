@@ -55,82 +55,83 @@ export default function GlassBox({ title, children, style, className, collapsibl
       }}
     >
       {/* ====== LAYER 0: Edge pulse glow ring (outermost) ====== */}
-      <div style={{
-        position: 'absolute',
-        inset: '-1px',
-        borderRadius: '11px',
-        opacity: hovered ? 1 : 0,
-        transition: 'opacity 0.5s ease',
-        pointerEvents: 'none',
-        zIndex: 0,
-        boxShadow: `0 0 12px ${glow}44, 0 0 24px ${glow}22, 0 0 48px ${glow}11, inset 0 0 12px ${glow}15`,
-      }} />
+      {hovered && (
+        <div style={{
+          position: 'absolute',
+          inset: '-1px',
+          borderRadius: '11px',
+          pointerEvents: 'none',
+          zIndex: 0,
+          boxShadow: `0 0 12px ${glow}44, 0 0 24px ${glow}22, 0 0 48px ${glow}11, inset 0 0 12px ${glow}15`,
+        }} />
+      )}
 
       {/* ====== LAYER 1: Traveling sweep sheen (light leak across surface) ====== */}
-      <div className="glass-box__sweep" style={{
-        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-        background: `linear-gradient(105deg,
-          transparent 20%,
-          ${glow}18 40%,
-          ${glow}40 50%,
-          ${glow}55 52%,
-          ${glow}35 54%,
-          ${glow}20 60%,
-          transparent 80%)`,
-        pointerEvents: 'none',
-        zIndex: 2,
-        opacity: hovered ? 1 : 0,
-        transition: 'opacity 0.4s ease',
-      }} />
+      {hovered && (
+        <div className="glass-box__sweep" style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          background: `linear-gradient(105deg,
+            transparent 20%,
+            ${glow}18 40%,
+            ${glow}40 50%,
+            ${glow}55 52%,
+            ${glow}35 54%,
+            ${glow}20 60%,
+            transparent 80%)`,
+          pointerEvents: 'none',
+          zIndex: 2,
+          willChange: 'transform',
+        }} />
+      )}
 
-      {/* ====== LAYER 2: Internal fluid aurora (drifting colour blobs) ====== */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        opacity: hovered ? 1 : 0,
-        transition: 'opacity 0.6s ease',
-        pointerEvents: 'none',
-        zIndex: 0,
-      }}>
-        {/* Aurora blob 1 — large slow drift */}
+      {/* ====== LAYER 2: Internal fluid aurora — only mounted while hovered ====== */}
+      {hovered && (
         <div style={{
-          position: 'absolute', width: '160%', height: '160%',
-          top: '-30%', left: '-30%',
-          background: `radial-gradient(circle at 30% 30%, ${glow}55 0%, transparent 40%),
-                       radial-gradient(circle at 70% 60%, ${glow}38 0%, transparent 45%),
-                       radial-gradient(circle at 50% 50%, ${glow}22 0%, transparent 50%)`,
-          animation: 'boxAurora-drift 8s ease-in-out infinite, boxAurora-pulse 5s ease-in-out infinite',
-          mixBlendMode: 'screen',
-          filter: 'blur(2px)',
-        }} />
-        {/* Aurora blob 2 — faster reverse drift */}
-        <div style={{
-          position: 'absolute', width: '130%', height: '130%',
-          top: '-15%', left: '-15%',
-          background: `radial-gradient(circle at 60% 40%, ${glow}35 0%, transparent 50%),
-                       radial-gradient(circle at 40% 70%, ${glow}25 0%, transparent 45%)`,
-          animation: 'boxAurora-drift-alt 10s ease-in-out infinite reverse',
-          mixBlendMode: 'screen',
-          filter: 'blur(2px)',
-        }} />
-        {/* Light leak from top-left corner */}
-        <div style={{
-          position: 'absolute', width: '60%', height: '60%',
-          top: '-10%', left: '-10%',
-          background: `radial-gradient(ellipse 80% 60% at 10% 10%, ${glow}50 0%, transparent 60%)`,
-          animation: 'boxAurora-drift 12s ease-in-out infinite',
-          mixBlendMode: 'screen',
-          filter: 'blur(4px)',
-        }} />
-        {/* Light leak from bottom-right corner */}
-        <div style={{
-          position: 'absolute', width: '60%', height: '60%',
-          bottom: '-10%', right: '-10%',
-          background: `radial-gradient(ellipse 80% 60% at 90% 90%, ${glow}35 0%, transparent 60%)`,
-          animation: 'boxAurora-drift-alt 14s ease-in-out infinite',
-          mixBlendMode: 'screen',
-          filter: 'blur(4px)',
-        }} />
-      </div>
+          position: 'absolute', inset: 0,
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}>
+          <div style={{
+            position: 'absolute', width: '160%', height: '160%',
+            top: '-30%', left: '-30%',
+            background: `radial-gradient(circle at 30% 30%, ${glow}55 0%, transparent 40%),
+                         radial-gradient(circle at 70% 60%, ${glow}38 0%, transparent 45%),
+                         radial-gradient(circle at 50% 50%, ${glow}22 0%, transparent 50%)`,
+            animation: 'boxAurora-drift 8s ease-in-out infinite, boxAurora-pulse 5s ease-in-out infinite',
+            mixBlendMode: 'screen',
+            filter: 'blur(2px)',
+            willChange: 'transform',
+          }} />
+          <div style={{
+            position: 'absolute', width: '130%', height: '130%',
+            top: '-15%', left: '-15%',
+            background: `radial-gradient(circle at 60% 40%, ${glow}35 0%, transparent 50%),
+                         radial-gradient(circle at 40% 70%, ${glow}25 0%, transparent 45%)`,
+            animation: 'boxAurora-drift-alt 10s ease-in-out infinite reverse',
+            mixBlendMode: 'screen',
+            filter: 'blur(2px)',
+            willChange: 'transform',
+          }} />
+          <div style={{
+            position: 'absolute', width: '60%', height: '60%',
+            top: '-10%', left: '-10%',
+            background: `radial-gradient(ellipse 80% 60% at 10% 10%, ${glow}50 0%, transparent 60%)`,
+            animation: 'boxAurora-drift 12s ease-in-out infinite',
+            mixBlendMode: 'screen',
+            filter: 'blur(4px)',
+            willChange: 'transform',
+          }} />
+          <div style={{
+            position: 'absolute', width: '60%', height: '60%',
+            bottom: '-10%', right: '-10%',
+            background: `radial-gradient(ellipse 80% 60% at 90% 90%, ${glow}35 0%, transparent 60%)`,
+            animation: 'boxAurora-drift-alt 14s ease-in-out infinite',
+            mixBlendMode: 'screen',
+            filter: 'blur(4px)',
+            willChange: 'transform',
+          }} />
+        </div>
+      )}
 
       {/* ====== LAYER 3: Top highlight bar ====== */}
       <div style={{

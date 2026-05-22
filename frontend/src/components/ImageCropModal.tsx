@@ -67,6 +67,7 @@ export default function ImageCropModal({ src, shape, aspectRatio, onApply, onCan
     const rotRad = (rotation * Math.PI) / 180;
 
     function applyTransform() {
+      if (!ctx) return;
       ctx.translate(centerX + offset.x, centerY + offset.y);
       ctx.rotate(rotRad);
       ctx.scale(zoom, zoom);

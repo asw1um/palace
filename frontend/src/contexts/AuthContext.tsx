@@ -76,6 +76,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem('palace_profile_picture');
+    localStorage.removeItem('palace_profile_banner');
     setToken(null);
     setUser(null);
     window.location.href = '/#/login';

@@ -1,5 +1,4 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/data/ThemeContext';
@@ -121,8 +120,8 @@ export default function Layout() {
       getListsWithMovies().then(data => setMyLists(data)).catch(() => {});
     };
     window.addEventListener('palace-lists-changed', refresh);
-    // Also poll every 10s as fallback
-    const interval = setInterval(refresh, 10000);
+    // Poll every 60s as a fallback in case events are missed
+    const interval = setInterval(refresh, 60000);
     return () => {
       window.removeEventListener('palace-lists-changed', refresh);
       clearInterval(interval);
@@ -158,16 +157,9 @@ export default function Layout() {
           <SidebarBox title="My Profile">
             <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
               {user?.profile_picture ? (
-                <img
-                  src={user.profile_picture}
-                  alt="avatar"
-                  style={{
-                    width: '72px', height: '72px', borderRadius: '50%',
-                    objectFit: 'cover',
-                    border: '3px solid rgba(255,255,255,0.35)',
-                    boxShadow: `0 2px 16px ${glow25}`,
-                  }}
-                />
+                <div className="avatar-circle" style={{ width: '72px', height: '72px', border: '3px solid rgba(255,255,255,0.35)', boxShadow: `0 2px 16px ${glow25}` }}>
+                  <img src={user.profile_picture} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                </div>
               ) : (
                 <div style={{
                   width: '72px', height: '72px', borderRadius: '50%',
@@ -304,23 +296,9 @@ export default function Layout() {
               })}
             </div>
 
-            {/* Content with page transition */}
+            {/* Content */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px', position: 'relative', zIndex: 1 }}>
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={location.pathname}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{
-                    duration: 0.25,
-                    ease: 'easeOut',
-                  }}
-                  style={{ height: '100%' }}
-                >
-                  <Outlet />
-                </motion.div>
-              </AnimatePresence>
+              <Outlet />
             </div>
           </div>
         </main>

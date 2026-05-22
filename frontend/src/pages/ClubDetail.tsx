@@ -263,9 +263,11 @@ export default function ClubDetail() {
                       onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
                     >
                       {m.profile_picture ? (
-                        <img src={m.profile_picture} alt="" style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${isSelected ? 'var(--t-primary)' : 'rgba(255,255,255,0.2)'}`, boxShadow: isSelected ? '0 0 0 3px var(--t-primary-30)' : 'none', transition: 'all 0.15s' }} />
+                        <div className="avatar-circle" style={{ width: '52px', height: '52px', border: `2px solid ${isSelected ? 'var(--t-primary)' : 'rgba(255,255,255,0.2)'}`, boxShadow: isSelected ? '0 0 0 3px var(--t-primary-30)' : 'none', transition: 'all 0.15s' }}>
+                          <img src={m.profile_picture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        </div>
                       ) : (
-                        <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: userGradient(displayName), border: `2px solid ${isSelected ? 'var(--t-primary)' : 'rgba(255,255,255,0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#fff', boxShadow: isSelected ? '0 0 0 3px var(--t-primary-30)' : 'none', transition: 'all 0.15s' }}>
+                        <div className="avatar-circle" style={{ width: '52px', height: '52px', background: userGradient(displayName), border: `2px solid ${isSelected ? 'var(--t-primary)' : 'rgba(255,255,255,0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#fff', boxShadow: isSelected ? '0 0 0 3px var(--t-primary-30)' : 'none', transition: 'all 0.15s' }}>
                           {displayName.slice(0, 2).toUpperCase()}
                         </div>
                       )}
@@ -488,9 +490,11 @@ export default function ClubDetail() {
           {/* Avatar overlapping banner — Discord style */}
           <div style={{ position: 'relative', marginTop: '-44px', padding: '0 18px 0' }}>
             {m.profile_picture ? (
-              <img src={m.profile_picture} alt="" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '5px solid var(--t-primary-18)', boxShadow: '0 4px 16px rgba(0,0,0,0.5)', display: 'block' }} />
+              <div className="avatar-circle" style={{ width: '80px', height: '80px', border: '5px solid var(--t-primary-18)', boxShadow: '0 4px 16px rgba(0,0,0,0.5)' }}>
+                <img src={m.profile_picture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              </div>
             ) : (
-              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: userGradient(displayName), border: '5px solid var(--t-primary-18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 700, color: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,0.5)' }}>
+              <div className="avatar-circle" style={{ width: '80px', height: '80px', background: userGradient(displayName), border: '5px solid var(--t-primary-18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 700, color: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,0.5)' }}>
                 {displayName.slice(0, 2).toUpperCase()}
               </div>
             )}

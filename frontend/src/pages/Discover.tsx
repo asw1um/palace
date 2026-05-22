@@ -196,7 +196,7 @@ export default function Discover() {
           {viewMode === 'grid' ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px', alignItems: 'start' }}>
               {selectedPerson.credits.map(item => {
-                const asResult: TMDBResult = { id: item.id, media_type: item.media_type, title: item.title, poster_url: item.poster_url, rating: item.rating ?? undefined, overview: '' };
+                const asResult: TMDBResult = { id: item.id, media_type: item.media_type, title: item.title, poster_url: item.poster_url, rating: item.rating ?? 0, overview: '', backdrop_url: null, release_date: item.release_date ?? '', popularity: item.popularity ?? 0, genre_ids: [] };
                 const isInList = inListIds.has(item.id);
                 return (
                   <div key={`${item.id}-${item.media_type}`} style={{ cursor: 'pointer', transition: 'transform 0.15s', minHeight: 0, minWidth: 0 }} onClick={() => setSelectedItem(asResult)} onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-4px)')} onMouseLeave={e => (e.currentTarget.style.transform = 'none')}>
@@ -220,7 +220,7 @@ export default function Discover() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {selectedPerson.credits.map(item => {
-                const asResult: TMDBResult = { id: item.id, media_type: item.media_type, title: item.title, poster_url: item.poster_url, rating: item.rating ?? undefined, overview: '' };
+                const asResult: TMDBResult = { id: item.id, media_type: item.media_type, title: item.title, poster_url: item.poster_url, rating: item.rating ?? 0, overview: '', backdrop_url: null, release_date: item.release_date ?? '', popularity: item.popularity ?? 0, genre_ids: [] };
                 return (
                   <GlassCard key={`${item.id}-${item.media_type}`} onClick={() => setSelectedItem(asResult)}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

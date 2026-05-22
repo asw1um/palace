@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Trash2, Search, LayoutGrid, List as ListIcon, Star, Clock, Tv } from 'lucide-react';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { getList, removeMovieFromList } from '@/api/lists';
-import { getMediaDetails } from '@/api/search';
+import { getMovieDetails } from '@/api/search';
 import MediaDetailModal from '@/components/MediaDetailModal';
 import ShowDetailModal from '@/components/ShowDetailModal';
 import Poster from '@/components/Poster';
@@ -140,7 +140,7 @@ export default function ListDetail() {
       setSelectedItem(item);
       return;
     }
-    const details = await getMediaDetails(item.id);
+    const details = await getMovieDetails(item.id);
     if (details) {
       setSelectedItem({ ...item, ...details });
     } else {

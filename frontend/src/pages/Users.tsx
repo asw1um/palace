@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, LayoutGrid, List } from 'lucide-react';
 import { getUsers } from '@/api/users';
-import GlassBox, { GlassCard } from '@/components/GlassBox';
+import { GlassCard } from '@/components/GlassBox';
 import type { User } from '@/types/api';
 
 function userGradient(nickname: string) {

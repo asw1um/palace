@@ -7,7 +7,7 @@ import ImageCropModal from '@/components/ImageCropModal';
 import { Check, Image, List as ListIcon, Users, Pin, PinOff, Upload, Save, LogOut } from 'lucide-react';
 import { uploadPicture, uploadBanner } from '@/api/auth';
 import { getLists, getPinnedLists, pinList, unpinList } from '@/api/lists';
-import { getMyClubsWithLists, getPinnedClubs, pinClub, unpinClub } from '@/api/clubs';
+import { getMyClubsWithLists, getPinnedClubs } from '@/api/clubs';
 import { getSettings, updateSettings } from '@/api/settings';
 import { toast } from 'sonner';
 import type { List as ListType, Club } from '@/types/api';
@@ -34,7 +34,7 @@ export default function Settings() {
   const [pinnedLists, setPinnedLists] = useState<Record<number, boolean>>({});
 
   /* ─── Pin Club Lists ─── */
-  const [pinnedClubs, setPinnedClubs] = useState<Record<number, boolean>>({});
+  const [, setPinnedClubs] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -70,11 +70,11 @@ export default function Settings() {
   }, []);
 
   /* ─── Profile images ─── */
-  const [profilePicture, setProfilePicture] = useState<string | null>(() =>
-    user?.profile_picture || localStorage.getItem(LS_KEYS.profilePicture)
+  const [profilePicture, setProfilePicture] = useState<string | null>(
+    user?.profile_picture ?? null
   );
-  const [profileBanner, setProfileBanner] = useState<string | null>(() =>
-    user?.banner || localStorage.getItem(LS_KEYS.profileBanner)
+  const [profileBanner, setProfileBanner] = useState<string | null>(
+    user?.banner ?? null
   );
 
   /* ─── Nickname & Bio ─── */
@@ -119,27 +119,6 @@ export default function Settings() {
     }
   }, [pinnedLists]);
 
-  const togglePinnedClub = useCallback(async (id: number) => {
-    const currentlyPinned = !!pinnedClubs[id];
-    try {
-      if (currentlyPinned) {
-        await unpinClub(id);
-        setPinnedClubs(prev => {
-          const next = { ...prev };
-          delete next[id];
-          return next;
-        });
-        toast.success('Club unpinned');
-      } else {
-        await pinClub(id);
-        setPinnedClubs(prev => ({ ...prev, [id]: true }));
-        toast.success('Club pinned');
-      }
-      window.dispatchEvent(new CustomEvent('settingschange'));
-    } catch {
-      // error handled by client interceptor
-    }
-  }, [pinnedClubs]);
 
   const handleFile = async (
     file: File,

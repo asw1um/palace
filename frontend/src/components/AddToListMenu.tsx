@@ -14,7 +14,12 @@ interface Props {
   placement?: 'above' | 'below';
 }
 
-function findItemInList(list: ListType, title?: string): { id: number } | undefined {
+function findItemInList(list: ListType, tmdbId?: number, title?: string): { id: number } | undefined {
+  if (tmdbId !== undefined) {
+    const byId = list.movies?.find((m: Movie) => m.tmdb_id === tmdbId || m.id === tmdbId)
+      ?? (list.shows as Array<{ id: number; tmdb_id?: number; title: string }> | undefined)?.find(s => s.tmdb_id === tmdbId || s.id === tmdbId);
+    if (byId) return byId;
+  }
   if (!title) return undefined;
   const inMovies = list.movies?.find((m: Movie) => m.title === title);
   if (inMovies) return inMovies;
@@ -89,7 +94,7 @@ export default function AddToListMenu({ onClose, triggerRef, movieTitle, movieDa
       toast.info('Open the detail page to add this item to a list.');
       return;
     }
-    const existing = findItemInList(list, movieData.title);
+    const existing = findItemInList(list, movieData.tmdb_id, movieData.title);
     try {
       if (existing) {
         await removeMovieFromList(list.id, existing.id);
@@ -129,7 +134,7 @@ export default function AddToListMenu({ onClose, triggerRef, movieTitle, movieDa
   const BTN_IN_LIST_HOVER = 'rgba(80,200,120,0.35)';
 
   const getListStyle = (list: ListType) => {
-    const inList = !!findItemInList(list, movieTitle);
+    const inList = !!findItemInList(list, movieData?.tmdb_id, movieTitle);
     if (feedback?.name === list.name && feedback.action === 'added') {
       return { bg: 'rgba(80,200,120,0.4)', hover: 'rgba(80,200,120,0.4)', color: '#fff', inList: true };
     }

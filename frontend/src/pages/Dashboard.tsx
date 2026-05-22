@@ -7,11 +7,11 @@ import MediaDetailModal from '@/components/MediaDetailModal';
 import ShowDetailModal from '@/components/ShowDetailModal';
 import QuickAddButton from '@/components/QuickAddButton';
 import Poster from '@/components/Poster';
-import GlassBox, { GlassCard } from '@/components/GlassBox';
+import GlassBox from '@/components/GlassBox';
 import { getPinnedLists, getListsWithMovies } from '@/api/lists';
 import { getPinnedClubs, getMyClubsWithLists } from '@/api/clubs';
 import { getActivity } from '@/api/activity';
-import { getTrending, getMediaDetails } from '@/api/search';
+import { getTrending, getMovieDetails } from '@/api/search';
 
 import { getSettings } from '@/api/settings';
 import { getAllProgress } from '@/api/progress';
@@ -23,13 +23,11 @@ export default function Dashboard() {
   const [selectedItem, setSelectedItem] = useState<TMDBResult | null>(null);
 
   const handleItemClick = async (item: TMDBResult) => {
-    // If media_type is already tv, open directly
     if (item.media_type === 'tv') {
       setSelectedItem(item);
       return;
     }
-    // Otherwise try to resolve actual media type from TMDB
-    const details = await getMediaDetails(item.id);
+    const details = await getMovieDetails(item.id);
     if (details) {
       setSelectedItem({ ...item, ...details });
     } else {
@@ -38,7 +36,7 @@ export default function Dashboard() {
   };
 
   const [lists, setLists] = useState<List[]>([]);
-  const [clubs, setClubs] = useState<Club[]>([]);
+  const [, setClubs] = useState<Club[]>([]);
   const [myClubsWithLists, setMyClubsWithLists] = useState<Club[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [trending, setTrending] = useState<TMDBResult[]>([]);
