@@ -43,6 +43,11 @@ def update_profile():
     nickname = data.get('nickname', '').strip()
     bio = data.get('bio', '').strip()
 
+    if len(nickname) > 16:
+        return jsonify({'error': 'Nickname must be 16 characters or fewer'}), 400
+    if len(bio) > 500:
+        return jsonify({'error': 'Bio must be 500 characters or fewer'}), 400
+
     if nickname is not None:
         current_user.nickname = nickname or None
     if bio is not None:
