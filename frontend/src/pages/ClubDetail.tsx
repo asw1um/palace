@@ -221,7 +221,7 @@ export default function ClubDetail() {
             <div style={{ padding: '16px 18px' }}>
               <div style={{ fontSize: '24px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{club.name}</div>
               <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.45)', marginTop: '4px' }}>
-                {club.member_count} {club.member_count === 1 ? 'member' : 'members'} · Admin: {admin?.nickname || admin?.username || 'Unknown'}
+                {members.length} {members.length === 1 ? 'member' : 'members'} · Admin: {admin?.nickname || admin?.username || 'Unknown'}
               </div>
               {club.description && (
                 <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.6, marginTop: '12px', marginBottom: 0 }}>{club.description}</p>
