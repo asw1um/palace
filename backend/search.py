@@ -257,12 +257,15 @@ def getSeasonDetails(showID, seasonNumber):
     }
 
 
+_MIN_PERSON_POPULARITY = 1.0
+
 def searchPerson(query):
     data = _cached_tmdb_request(f"{baseURL}/search/person", {"query": query, "page": 1}, ttl_hours=_TTL_SEARCH)
     if not data:
         return []
     results = []
-    for p in data.get("results", [])[:12]:
+    candidates = [p for p in data.get("results", []) if p.get('popularity', 0) >= _MIN_PERSON_POPULARITY]
+    for p in candidates[:12]:
         results.append({
             'id': p.get('id'),
             'name': p.get('name'),
