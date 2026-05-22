@@ -89,8 +89,8 @@ export default function Settings() {
   useEffect(() => {
     if (user?.nickname) setNickname(user.nickname);
     if (user?.bio !== undefined) setBio(user.bio);
-    if (user?.profile_picture) setProfilePicture(user.profile_picture);
-    if (user?.banner) setProfileBanner(user.banner);
+    setProfilePicture(user?.profile_picture ?? null);
+    setProfileBanner(user?.banner ?? null);
   }, [user?.nickname, user?.bio, user?.profile_picture, user?.banner]);
 
   const picInputRef = useRef<HTMLInputElement>(null);

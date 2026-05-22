@@ -53,6 +53,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (username: string, password: string): Promise<boolean> => {
     try {
       const res = await api.login(username, password);
+      localStorage.removeItem('palace_profile_picture');
+      localStorage.removeItem('palace_profile_banner');
       localStorage.setItem(TOKEN_KEY, res.access_token);
       setToken(res.access_token);
       setUser(res.user);
@@ -65,6 +67,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signup = useCallback(async (username: string, password: string, nickname: string): Promise<boolean> => {
     try {
       const res = await api.register(username, password, nickname);
+      localStorage.removeItem('palace_profile_picture');
+      localStorage.removeItem('palace_profile_banner');
       localStorage.setItem(TOKEN_KEY, res.access_token);
       setToken(res.access_token);
       setUser(res.user);
