@@ -4,6 +4,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, user, show, show_season, movielist
 from search import getShow as fetchShowDetails
 from activity import log_event
+from cache import lists_cache_invalidate
 
 shows = Blueprint('shows', __name__)
 
@@ -135,6 +136,7 @@ def update_show_progress(show_id):
     show_obj.current_season = data.get('season')
     show_obj.current_episode = data.get('episode')
     db.session.commit()
+    lists_cache_invalidate(user_id)
     return jsonify({'message': f'Progress updated for {show_obj.title}', 'show': show_obj.to_dict(include_seasons=True)}), 200
 
 

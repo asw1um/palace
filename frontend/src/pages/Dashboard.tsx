@@ -247,8 +247,7 @@ export default function Dashboard() {
 
                     let progress: { pct: number; label: string };
                     if (isShow && showData) {
-                      // Use DB show ID for progress lookup (allProgress is keyed by DB id)
-                      const progressId = showData.id ?? item.id;
+                      const progressId = showData.tmdb_id ?? item.id;
                       const sp = getShowProgress(progressId, showData.seasons || []);
                       progress = { pct: sp.pct, label: `${sp.watched}/${sp.total}` };
                     } else if (!isShow) {
