@@ -6,7 +6,7 @@ A Flask-based REST API for tracking movies and TV shows, and sharing collections
 
 ## Note on Frontend
 
-The frontend is not included in this repository. It was built entirely with AI and has been removed to keep the focus on the backend. If you want to use this API with a frontend, you'll need to build one yourself.
+The frontend is entirely created with the help of AI, I do not claim any credit for any of the code. This project was mainly to focus on the backend, I just wanted a nice frotend to view.
 
 ---
 
