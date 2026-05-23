@@ -168,6 +168,26 @@ export default function ListDetail() {
     }
   };
 
+  const handleDeleteShow = async (showId: number) => {
+    const show = shows.find(s => s.id === showId);
+    if (!show) return;
+    const ok = await confirm({
+      title: 'Remove Show',
+      message: `Are you sure you want to remove "${show.title}" from this list?`,
+      confirmLabel: 'Remove',
+      cancelLabel: 'Cancel',
+      danger: true,
+    });
+    if (ok) {
+      try {
+        await removeMovieFromList(listId, showId);
+        setList(prev => prev ? { ...prev, shows: prev.shows?.filter(s => s.id !== showId) || [] } : null);
+      } catch {
+        // error handled by interceptor
+      }
+    }
+  };
+
   return (
     <div style={{ height: '100%', overflowY: 'auto', paddingRight: '8px' }}>
       <button style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }} onClick={() => navigate(backPath)} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}>
@@ -221,9 +241,8 @@ export default function ListDetail() {
               {/* Progress */}
               {!isShowItem && <ProgressBar movieId={(item as Movie).tmdb_id || item.id} tick={progressTick} />}
               {/* Delete */}
-              {!isShowItem && (
               <button
-                onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+                onClick={(e) => { e.stopPropagation(); isShowItem ? handleDeleteShow(item.id) : handleDelete(item.id); }}
                 style={{
                   marginTop: '4px',
                   fontSize: '11px',
@@ -241,7 +260,6 @@ export default function ListDetail() {
               >
                 <Trash2 style={{ width: '10px' }} /> Remove
               </button>
-              )}
             </div>
             );
           })}
@@ -278,15 +296,13 @@ export default function ListDetail() {
                 </div>
                 {!isShowItem && <CompactProgress movieId={(item as Movie).tmdb_id || item.id} tick={progressTick} />}
               </div>
-              {!isShowItem && (
               <button
-                onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+                onClick={(e) => { e.stopPropagation(); isShowItem ? handleDeleteShow(item.id) : handleDelete(item.id); }}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', transition: 'all 0.15s' }}
                 onMouseEnter={e => { e.currentTarget.style.color = '#ff5555'; e.currentTarget.style.background = 'rgba(220,50,50,0.15)'; }}
                 onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; e.currentTarget.style.background = 'none'; }}>
                 <Trash2 style={{ width: '14px' }} />
               </button>
-              )}
             </div>
             );
           })}
