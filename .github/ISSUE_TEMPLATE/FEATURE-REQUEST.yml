@@ -12,7 +12,7 @@ body:
       description: Is your feature directly related to a problem/bug?
       options:
         - label: This problem IS related to a problem/bug.
-        required: false
+          required: false
   - type: textarea
     id: relationship
     attributes:
