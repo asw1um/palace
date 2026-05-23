@@ -30,6 +30,7 @@ export default function ImageCropModal({ src, shape, aspectRatio, onApply, onCan
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const dragging = useRef(false);
   const dragStart = useRef({ mx: 0, my: 0, ox: 0, oy: 0 });
+  const didDrag = useRef(false);
 
   const { cropW, cropH, canvasH } = getCropDims(shape, aspectRatio);
   const centerX = CANVAS_W / 2;
@@ -127,15 +128,19 @@ export default function ImageCropModal({ src, shape, aspectRatio, onApply, onCan
   // Drag handlers
   const onMouseDown = (e: React.MouseEvent) => {
     dragging.current = true;
+    didDrag.current = false;
     dragStart.current = { mx: e.clientX, my: e.clientY, ox: offset.x, oy: offset.y };
   };
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       if (!dragging.current) return;
+      const dx = e.clientX - dragStart.current.mx;
+      const dy = e.clientY - dragStart.current.my;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDrag.current = true;
       setOffset({
-        x: dragStart.current.ox + (e.clientX - dragStart.current.mx),
-        y: dragStart.current.oy + (e.clientY - dragStart.current.my),
+        x: dragStart.current.ox + dx,
+        y: dragStart.current.oy + dy,
       });
     };
     const onUp = () => { dragging.current = false; };
@@ -199,7 +204,7 @@ export default function ImageCropModal({ src, shape, aspectRatio, onApply, onCan
   return (
     <div
       style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(6px)' }}
-      onClick={onCancel}
+      onClick={() => { if (didDrag.current) { didDrag.current = false; return; } onCancel(); }}
     >
       <div
         className="modal-in"
