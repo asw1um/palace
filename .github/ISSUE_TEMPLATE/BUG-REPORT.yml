@@ -50,6 +50,7 @@ body:
     attributes:
       label: What platform did this bug occur on?
       multiple: true
+      options:
         - Windows 10
         - Windows 11
         - IOS
