@@ -35,6 +35,14 @@ export default function MyLists() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    const refresh = () => {
+      getListsWithMovies().then(data => setLists(data)).catch(() => {});
+    };
+    window.addEventListener('palace-lists-changed', refresh);
+    return () => window.removeEventListener('palace-lists-changed', refresh);
+  }, []);
+
   const handleCreateList = async () => {
     const name = newListName.trim();
     if (!name) return;
