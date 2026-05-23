@@ -69,6 +69,7 @@ body:
         - Microsoft Edge
         - Zen
         - Vivaldi
+        - Brave
   - type: upload
     id: screenshots
     attributes:
