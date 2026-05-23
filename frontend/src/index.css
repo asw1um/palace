@@ -255,6 +255,12 @@
   html { zoom: 0.7; }
 }
 
+/* Portrait mode — width-based zoom-out leaves empty vertical space.
+   Reset to 1 so the layout fills the full screen height. */
+@media screen and (orientation: portrait) {
+  html { zoom: 1; }
+}
+
 /*
   CSS zoom on a parent breaks overflow:hidden + border-radius clipping in
   many browsers, causing images inside circular containers to appear square.
