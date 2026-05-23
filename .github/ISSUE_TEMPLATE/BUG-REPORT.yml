@@ -19,7 +19,7 @@ body:
     id: expected-behaviour
     attributes:
       label: Expected Behaviour?
-      descripton: What did you expect to happen?
+      description: What did you expect to happen?
       placeholder: Tell us what was supposed to happen!
       value: "I expected..."
     validations:
