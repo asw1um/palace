@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Review, user
+from models import db, Review, user, ReviewReaction
 from activity import log_event
 
 reviews = Blueprint('reviews', __name__)
@@ -16,10 +16,24 @@ def _abs_url(path):
     return f"{host}{path}"
 
 
-def _enrich(review):
+def _enrich(review, current_user_id = None):
     d = review.to_dict(include_author=True)
     if d.get('author'):
         d['author']['profile_picture'] = _abs_url(d['author'].get('profile_picture'))
+    likes_count = ReviewReaction.query.filter_by(reviewID=review.id, isLike=True).count()
+    dislikes_count = ReviewReaction.query.filter_by(reviewID=review.id, isLike=False).count()
+    
+    my_reaction = None
+    if current_user_id:
+        user_react = ReviewReaction.query.filter_by(reviewID=review.id, userID=current_user_id).first()
+        if user_react:
+            my_reaction = 'like' if user_react.isLike else 'dislike'
+
+    d['reactions'] = {
+        'likes': likes_count,
+        'dislikes': dislikes_count,
+        'my_reaction': my_reaction
+    }
     return d
 
 
@@ -110,6 +124,41 @@ def get_my_review(tmdb_id, media_type):
 @reviews.route('/user/<int:target_user_id>', methods=['GET'])
 @jwt_required()
 def get_user_reviews(target_user_id):
+    user_id = int(get_jwt_identity())
     revs = Review.query.filter_by(user_id=target_user_id)\
         .order_by(Review.created_at.desc()).all()
-    return jsonify({'reviews': [_enrich(r) for r in revs]}), 200
+    return jsonify({'reviews': [_enrich(r, current_user_id=user_id) for r in revs]}), 200
+
+# like and dislike in review
+@reviews.route('/<int:review_id>/react', methods = ['POST'])
+@jwt_required()
+def react_to_review(review_id):
+    target_review = Review.query.get_or_404(review_id)
+    user_id = int(get_jwt_identity())
+    current_user = user.query.get(user_id)
+    
+    data = request.get_json() or {}
+    reaction_type = data.get('reaction')
+
+    if reaction_type not in ['like', 'dislike']:
+        return jsonify({'error': "reaction must be like or dislike"}), 400
+
+    target_is_like = (reaction_type == 'like')
+    existing = ReviewReaction.query.filter_by(userID=user_id, reviewID=review_id).first()
+
+
+    if existing:
+        if existing.isLike == target_is_like:   #like is removed clicking it twice
+            db.session.delete(existing)
+            db.session.commit()
+            return jsonify({'message': 'Reaction removed', 'current_reaction': None}), 200
+        else:
+            existing.isLike = target_is_like    #switched to dislike case 2
+            db.session.commit()
+            return jsonify({'message': f'Changed to {reaction_type}', 'current_reaction': reaction_type}), 200
+
+    new_react = ReviewReaction(userID=user_id, reviewID=review_id, isLike=target_is_like)
+    db.session.add(new_react)
+    db.session.commit()
+    log_event(event_type=f'user_{reaction_type}d_review', user_id=user_id, description=f"{current_user.display_name} {reaction_type}d a review for film ID {target_review.tmdb_id}")
+    return jsonify({'message': f'Added {reaction_type}', 'current_reaction': reaction_type}), 201

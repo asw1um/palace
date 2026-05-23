@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from .database import db
 
 
@@ -12,8 +12,8 @@ class Review(db.Model):
     poster_url = db.Column(db.String(300))
     rating = db.Column(db.Float, nullable=True)
     content = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
 
     author = db.relationship('user', backref='reviews')
 
@@ -38,3 +38,15 @@ class Review(db.Model):
                 'profile_picture': self.author.profile_picture,
             }
         return data
+
+
+class ReviewReaction(db.Model):
+    __tablename__ = 'review_reactions'  
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False) 
+    review_id = db.Column(db.Integer, db.ForeignKey('reviews.id'), nullable=False)  
+    is_like = db.Column(db.Boolean, nullable=False)  # True = Like, False = Dislike
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'review_id', name='uid_rid_unique_reaction'),)
