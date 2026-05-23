@@ -1,0 +1,44 @@
+name: Feature Request
+description: Request a feature.
+title: "[FEATURE]: "
+labels: ["enhancement"]
+assignees:
+  - uhhhuser
+type: feature
+body:
+  - type: checkboxes
+    attributes:
+      label: Related to a problem/bug?
+      description: Is your feature directly related to a problem/bug?
+      options:
+        - label: This problem IS related to a problem/bug.
+        required: false
+  - type: textarea
+    id: relationship
+    attributes:
+      label: If your feature is related to a problem/bug, what bug is it?
+      description: Please attach a link to the issue to which this feature is related to.
+      placeholder: The related issue is [here](URL).
+    validations:
+      required: false
+  - type: textarea
+    id: soln-description
+    attributes:
+      label: Please describe the solution you would like.
+      description: A clear and concise description of what you want to happen.
+      placeholder: I would like...
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Please describe any alternatives you have considered?
+      description: A clear and concise description of any alternative solutions or features you have considered.
+      placeholder: XYZ would also work.
+   - type: upload
+    id: screenshots
+    attributes:
+      label: Upload screenshots
+      description: If applicable, add screenshots to help mockup the feature
+    validations:
+      required: false
