@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Star, Trash2, MessageSquare } from 'lucide-react';
-import { upsertReview, deleteReview, getMyReview, getTitleReviews } from '@/api/reviews';
+import { Star, Trash2, MessageSquare, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { upsertReview, deleteReview, getMyReview, getTitleReviews, reactToReview } from '@/api/reviews';
 import type { Review } from '@/api/reviews';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -86,6 +86,25 @@ export default function ReviewPanel({ tmdbId, mediaType, title, posterUrl }: Pro
     } catch { /* handled */ }
   };
 
+  const handleReact = async (reviewId: number, reaction: 'like' | 'dislike') => {
+    const newReaction = await reactToReview(reviewId, reaction).catch(() => undefined);
+    if (newReaction === undefined) return;
+    setAllReviews(prev => prev.map(r => {
+      if (r.id !== reviewId) return r;
+      const old = r.reactions ?? { likes: 0, dislikes: 0, my_reaction: null };
+      const wasLike = old.my_reaction === 'like';
+      const wasDislike = old.my_reaction === 'dislike';
+      return {
+        ...r,
+        reactions: {
+          likes: old.likes + (newReaction === 'like' ? 1 : wasLike ? -1 : 0),
+          dislikes: old.dislikes + (newReaction === 'dislike' ? 1 : wasDislike ? -1 : 0),
+          my_reaction: newReaction,
+        },
+      };
+    }));
+  };
+
   const displayName = (u: Review['author']) => u?.nickname || u?.username || 'User';
 
   return (
@@ -155,7 +174,25 @@ export default function ReviewPanel({ tmdbId, mediaType, title, posterUrl }: Pro
                   {r.rating !== null && <StarRow value={r.rating} readonly />}
                 </div>
                 {r.content && <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, margin: 0 }}>{r.content}</p>}
-                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)', marginTop: '6px' }}>{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px' }}>
+                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)' }}>{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {(['like', 'dislike'] as const).map(type => {
+                      const active = r.reactions?.my_reaction === type;
+                      const count = type === 'like' ? (r.reactions?.likes ?? 0) : (r.reactions?.dislikes ?? 0);
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => handleReact(r.id, type)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '3px', background: active ? 'var(--t-primary-25)' : 'rgba(255,255,255,0.05)', border: `1px solid ${active ? 'var(--t-primary-40)' : 'rgba(255,255,255,0.08)'}`, borderRadius: '6px', padding: '3px 7px', cursor: 'pointer', color: active ? 'var(--t-primary)' : 'rgba(255,255,255,0.35)', fontSize: '11px', fontFamily: 'inherit', transition: 'all 0.15s' }}
+                        >
+                          {type === 'like' ? <ThumbsUp style={{ width: '11px' }} /> : <ThumbsDown style={{ width: '11px' }} />}
+                          {count > 0 && <span>{count}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             ))}
           </div>

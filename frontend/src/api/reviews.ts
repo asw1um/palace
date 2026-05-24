@@ -11,6 +11,7 @@ export interface Review {
   content: string;
   created_at: string;
   author?: { id: number; username: string; nickname: string | null; profile_picture: string | null };
+  reactions?: { likes: number; dislikes: number; my_reaction: 'like' | 'dislike' | null };
 }
 
 export async function upsertReview(data: {
@@ -42,4 +43,9 @@ export async function getMyReview(tmdbId: number, mediaType: string): Promise<Re
 export async function getUserReviews(userId: number): Promise<Review[]> {
   const res = await client.get(`/reviews/user/${userId}`);
   return res.data.reviews || [];
+}
+
+export async function reactToReview(reviewId: number, reaction: 'like' | 'dislike'): Promise<'like' | 'dislike' | null> {
+  const res = await client.post(`/reviews/${reviewId}/react`, { reaction });
+  return res.data.current_reaction ?? null;
 }
