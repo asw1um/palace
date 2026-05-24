@@ -125,7 +125,7 @@ export default function ListDetail() {
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>Loading...</div>;
   if (!list) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>List not found</div>;
 
-  const backPath = fromClub ? `/clubs/${fromClub}` : fromUser ? `/users/${fromUser}` : '/lists';
+  const backPath = fromClub ? `/clubs/${fromClub}` : fromUser ? `/profile/${fromUser}` : '/lists';
   const backLabel = fromClub ? 'Club' : fromUser ? 'User Profile' : 'My Lists';
 
   const movies = list.movies || [];

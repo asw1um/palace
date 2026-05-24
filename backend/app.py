@@ -1,12 +1,9 @@
 import os
 import sys
-
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'use'))
-
 from flask import Flask, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
-
 from models import db
 from auth import auth
 from users import users_bp
@@ -37,6 +34,22 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 jwt = JWTManager(app)
 CORS(app)
+
+
+@jwt.token_in_blocklist_loader
+def check_if_token_revoked(jwt_header, jwt_payload):
+    from models import user as User
+    try:
+        user_id = int(jwt_payload['sub'])
+    except (KeyError, ValueError):
+        return True
+    token_session_id = jwt_payload.get('st')
+    if not token_session_id:
+        return True
+    current_user = db.session.get(User,user_id)
+    if not current_user:
+        return True
+    return current_user.session_token != token_session_id
 
 app.register_blueprint(auth, url_prefix='/api/auth')
 app.register_blueprint(users_bp, url_prefix='/api/auth')

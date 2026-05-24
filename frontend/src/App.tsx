@@ -45,7 +45,7 @@ export default function App() {
                 <Route path="/clubs/:id" element={<ClubDetail />} />
                 <Route path="/discover" element={<Discover />} />
                 <Route path="/users" element={<Users />} />
-                <Route path="/users/:id" element={<UserProfile />} />
+                <Route path="/profile/:username" element={<UserProfile />} />
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/activity" element={<ActivityPage />} />

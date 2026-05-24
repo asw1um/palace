@@ -83,7 +83,7 @@ export default function Users() {
             return (
               <div
                 key={u.id}
-                onClick={() => navigate(`/users/${u.id}`)}
+                onClick={() => navigate(`/profile/${u.username}`)}
                 style={{ cursor: 'pointer', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--t-primary-25)', background: 'linear-gradient(180deg, var(--t-primary-18) 0%, var(--t-primary-10) 100%)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: '0 4px 16px rgba(0,0,0,0.3)', transition: 'transform 0.15s, box-shadow 0.15s' }}
                 onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 28px rgba(0,0,0,0.45)'; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.3)'; }}
@@ -125,7 +125,7 @@ export default function Users() {
           {filtered.map(u => {
             const displayName = u.nickname || u.username || 'User';
             return (
-              <GlassCard key={u.id} onClick={() => navigate(`/users/${u.id}`)}>
+              <GlassCard key={u.id} onClick={() => navigate(`/profile/${u.username}`)}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   {u.profile_picture ? (
                     <img src={u.profile_picture} alt="avatar" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.15)' }} />

@@ -517,7 +517,7 @@ export default function ClubDetail() {
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button
-                onClick={() => { setSelectedMember(null); navigate(`/users/${m.id}`); }}
+                onClick={() => { setSelectedMember(null); navigate(`/profile/${m.username}`); }}
                 style={{ width: '100%', padding: '11px', borderRadius: '10px', background: 'var(--t-primary-25)', border: '1px solid var(--t-primary-40)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '0.5px' }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--t-primary-38)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'var(--t-primary-25)'; }}

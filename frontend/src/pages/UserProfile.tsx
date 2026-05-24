@@ -31,9 +31,8 @@ function clubGradient(name: string) {
 }
 
 export default function UserProfile() {
-  const { id } = useParams();
+  const { username } = useParams();
   const navigate = useNavigate();
-  const userId = parseInt(id || '0');
   const [profile, setProfile] = useState<{ user: User; lists: List[]; clubs: Club[] } | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -43,8 +42,13 @@ export default function UserProfile() {
     let cancelled = false;
     async function load() {
       try {
-        const [profileData, activityData, reviewData] = await Promise.all([
-          getUser(userId).catch(() => null as any),
+        const profileData = await getUser(username!).catch(() => null as any);
+        if (!profileData) {
+          if (!cancelled) { setProfile(null); setLoading(false); }
+          return;
+        }
+        const userId = profileData.user.id;
+        const [activityData, reviewData] = await Promise.all([
           getUserActivityById(userId, 20).catch(() => []),
           getUserReviews(userId).catch(() => []),
         ]);
@@ -59,9 +63,9 @@ export default function UserProfile() {
         if (!cancelled) setLoading(false);
       }
     }
-    if (userId) load();
+    if (username) load();
     return () => { cancelled = true; };
-  }, [userId]);
+  }, [username]);
 
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>Loading...</div>;
   if (!profile) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>User not found</div>;
@@ -247,7 +251,7 @@ export default function UserProfile() {
                   }
                 >
                   {allItems.length > 0 ? (
-                    <div onClick={() => navigate(`/lists/${list.id}`, { state: { fromUser: userId } })} style={{ cursor: 'pointer' }}>
+                    <div onClick={() => navigate(`/lists/${list.id}`, { state: { fromUser: username } })} style={{ cursor: 'pointer' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '6px' }}>
                         {allItems.map(item => (
                           <div key={item.id} style={{ minWidth: 0 }}>

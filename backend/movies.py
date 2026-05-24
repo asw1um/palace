@@ -10,7 +10,7 @@ movies = Blueprint('movies', __name__)
 @jwt_required()
 def add_movie():
     user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
 
     data = request.get_json()
     movie_title = data.get('title')
@@ -31,7 +31,7 @@ def add_movie():
 
     added_to = []
     for list_id in list_ids:
-        list_obj = movielist.query.get(list_id)
+        list_obj = db.session.get(movielist,list_id)
         if list_obj and list_obj.can_edit(current_user):
             if new_movie not in list_obj.movies:
                 list_obj.movies.append(new_movie)
@@ -59,7 +59,7 @@ def add_movie():
                     description=f"Added '{movie_title}' to list '{list_obj.name}'",
                     extra_data={'movie_title': movie_title, 'list_name': list_obj.name}
                 )
-        return jsonify({'message': f'Added {movie_title} to {", ".join([l.name for l in added_to])}'}), 200
+        return jsonify({'message': f'Added {movie_title} to {", ".join([added_list.name for added_list in added_to])}'}), 200
     else:
         return jsonify({'message': f'{movie_title} is already in those lists'}), 200
 
@@ -68,7 +68,7 @@ def add_movie():
 @jwt_required()
 def remove_movie(movie_id):
     user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
 
     data = request.get_json()
     list_id = data.get('list_id')
