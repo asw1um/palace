@@ -6,7 +6,7 @@ export async function getUsers(): Promise<User[]> {
   return res.data.users || [];
 }
 
-export async function getUser(id: number): Promise<User> {
-  const res = await client.get(`/auth/users/${id}`);
+export async function getUser(username: string): Promise<User> {
+  const res = await client.get(`/auth/users/${username}`);
   return res.data;
 }

@@ -10,7 +10,7 @@ settings = Blueprint('settings', __name__)
 @jwt_required()
 def get_settings():
     user_id = int(get_jwt_identity())
-    user_obj = user.query.get(user_id)
+    user_obj = db.session.get(user,user_id)
     if not user_obj:
         return jsonify({'error': 'User not found'}), 404
 
@@ -26,7 +26,7 @@ def get_settings():
 @jwt_required()
 def save_settings():
     user_id = int(get_jwt_identity())
-    user_obj = user.query.get(user_id)
+    user_obj = db.session.get(user,user_id)
     if not user_obj:
         return jsonify({'error': 'User not found'}), 404
 

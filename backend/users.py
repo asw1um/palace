@@ -35,7 +35,7 @@ def allowed_file(filename):
 @jwt_required()
 def update_profile():
     user_id = int(get_jwt_identity())
-    current_user = User.query.get(user_id)
+    current_user = db.session.get(User,user_id)
     if not current_user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -64,7 +64,7 @@ def update_profile():
 @jwt_required()
 def upload_profile_picture():
     user_id = int(get_jwt_identity())
-    current_user = User.query.get(user_id)
+    current_user = db.session.get(User,user_id)
     if not current_user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -105,7 +105,7 @@ def upload_profile_picture():
 @jwt_required()
 def upload_banner():
     user_id = int(get_jwt_identity())
-    current_user = User.query.get(user_id)
+    current_user = db.session.get(User,user_id)
     if not current_user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -149,27 +149,27 @@ def get_users():
     return jsonify({
         'users': [
             {
-                'id': u.id,
-                'username': u.username,
-                'nickname': u.nickname,
-                'bio': u.bio or '',
-                'profile_picture': _abs_url(u.profile_picture),
-                'banner': _abs_url(u.banner),
-                'created_at': u.created_at.isoformat() if u.created_at else None,
+                'id': found_user.id,
+                'username': found_user.username,
+                'nickname': found_user.nickname,
+                'bio': found_user.bio or '',
+                'profile_picture': _abs_url(found_user.profile_picture),
+                'banner': _abs_url(found_user.banner),
+                'created_at': found_user.created_at.isoformat() if found_user.created_at else None,
             }
-            for u in users
+            for found_user in users
         ]
     }), 200
 
 
-@users_bp.route('/users/<int:user_id>', methods=['GET'])
+@users_bp.route('/users/<string:username>', methods=['GET'])
 @jwt_required()
-def get_user_profile(user_id):
-    target_user = User.query.get(user_id)
+def get_user_profile(username):
+    target_user = User.query.filter_by(username=username).first()
     if not target_user:
         return jsonify({'error': 'User not found'}), 404
 
-    user_lists = movielist.query.filter_by(userID=user_id).all()
+    user_lists = movielist.query.filter_by(userID=target_user.id).all()
     user_clubs = target_user.clubs
 
     return jsonify({
@@ -188,14 +188,14 @@ def get_user_profile(user_id):
             'pfp_pos_y': target_user.pfp_pos_y,
             'created_at': target_user.created_at.isoformat() if target_user.created_at else None,
         },
-        'lists': [l.to_dict(include_movies=True, include_shows=True) for l in user_lists],
+        'lists': [user_list.to_dict(include_movies=True, include_shows=True) for user_list in user_lists],
         'clubs': [
             {
-                'id': c.id,
-                'name': c.name,
-                'description': c.description,
-                'member_count': len(c.members),
+                'id': user_club.id,
+                'name': user_club.name,
+                'description': user_club.description,
+                'member_count': len(user_club.members),
             }
-            for c in user_clubs
+            for user_club in user_clubs
         ],
     }), 200

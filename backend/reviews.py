@@ -17,24 +17,24 @@ def _abs_url(path):
 
 
 def _enrich(review, current_user_id = None):
-    d = review.to_dict(include_author=True)
-    if d.get('author'):
-        d['author']['profile_picture'] = _abs_url(d['author'].get('profile_picture'))
+    review_data = review.to_dict(include_author=True)
+    if review_data.get('author'):
+        review_data['author']['profile_picture'] = _abs_url(review_data['author'].get('profile_picture'))
     likes_count = ReviewReaction.query.filter_by(reviewID=review.id, isLike=True).count()
     dislikes_count = ReviewReaction.query.filter_by(reviewID=review.id, isLike=False).count()
-    
+
     my_reaction = None
     if current_user_id:
         user_react = ReviewReaction.query.filter_by(reviewID=review.id, userID=current_user_id).first()
         if user_react:
             my_reaction = 'like' if user_react.isLike else 'dislike'
 
-    d['reactions'] = {
+    review_data['reactions'] = {
         'likes': likes_count,
         'dislikes': dislikes_count,
         'my_reaction': my_reaction
     }
-    return d
+    return review_data
 
 
 # upsert a review (create or update)
@@ -59,7 +59,7 @@ def upsert_review():
         if 'poster_url' in data:
             existing.poster_url = data['poster_url']
         db.session.commit()
-        current_user = user.query.get(user_id)
+        current_user = db.session.get(user,user_id)
         log_event(
             event_type='user_updated_review',
             user_id=user_id,
@@ -78,7 +78,7 @@ def upsert_review():
         )
         db.session.add(review)
         db.session.commit()
-        current_user = user.query.get(user_id)
+        current_user = db.session.get(user,user_id)
         log_event(
             event_type='user_reviewed',
             user_id=user_id,
@@ -135,7 +135,7 @@ def get_user_reviews(target_user_id):
 def react_to_review(review_id):
     target_review = Review.query.get_or_404(review_id)
     user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
     
     data = request.get_json() or {}
     reaction_type = data.get('reaction')

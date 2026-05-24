@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from .database import db, club_members
 
@@ -9,6 +10,7 @@ class user(db.Model):
     username = db.Column(db.String(32), nullable=False, unique=True)
     nickname = db.Column(db.String(16), nullable=True)
     password_hash = db.Column(db.String(256), nullable=False)
+    session_token = db.Column(db.String(36), nullable=False, default=lambda: str(uuid.uuid4()))
     bio = db.Column(db.String(500), nullable=True, default='')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     profile_picture = db.Column(db.String(300), nullable=True)
