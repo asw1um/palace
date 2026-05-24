@@ -20,15 +20,23 @@ from reviews import reviews
 from search import tmdb
 import cache  # registers tmdb_cache model
 
-app = Flask(__name__, static_folder=None, static_url_path=None)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+INSTANCE_DIR = os.path.join(BASE_DIR, 'instance')
+
+app = Flask(
+    __name__, 
+    static_folder=None, 
+    static_url_path=None,
+    instance_path=INSTANCE_DIR,
+)
 app.url_map.strict_slashes = False
 
-FRONTEND_DIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'frontend', 'dist')
+FRONTEND_DIST = os.path.join(BASE_DIR, '..', 'frontend', 'dist')
 ASSETS_DIR = os.path.join(FRONTEND_DIST, 'assets')
 
 app.config['JWT_SECRET_KEY'] = 'dev-secret-key-change-in-production'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(INSTANCE_DIR, "users.db")}'   # ← absolute
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
