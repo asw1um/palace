@@ -12,7 +12,6 @@ body:
       label: What happened?
       description: Give a precise description of what the bug is.
       placeholder: Tell us what you see!
-      value: "A bug happened!"
     validations:
       required: true
   - type: textarea
@@ -21,7 +20,6 @@ body:
       label: Expected Behaviour?
       description: What did you expect to happen?
       placeholder: Tell us what was supposed to happen!
-      value: "I expected..."
     validations:
       required: true
   - type: textarea
@@ -30,7 +28,6 @@ body:
       label: Actual Behaviour?
       description: If necessary, expand on what actually happend.
       placeholder: What really happened? 
-      value: "What happened was..."
     validations:
       required: false
   - type: textarea
@@ -49,6 +46,18 @@ body:
     validations:
       required: true
   - type: dropdown
+    id: platform
+    attributes:
+      label: What platform did this bug occur on?
+      multiple: true
+      options:
+        - Windows 10
+        - Windows 11
+        - IOS
+        - Android
+        - MacOS
+        - Linux
+  - type: dropdown
     id: browsers
     attributes:
       label: What browsers are you seeing the problem on?
@@ -60,6 +69,7 @@ body:
         - Microsoft Edge
         - Zen
         - Vivaldi
+        - Brave
   - type: upload
     id: screenshots
     attributes:
