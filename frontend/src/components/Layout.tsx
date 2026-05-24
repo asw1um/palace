@@ -14,16 +14,6 @@ const TZ_ABBR = new Date()
   .split(' ')
   .pop() ?? 'UTC';
 
-const navItems = [
-  { path: '/', label: 'Dashboard' },
-  { path: '/lists', label: 'My Lists' },
-  { path: '/clubs', label: 'Clubs' },
-  { path: '/discover', label: 'Discover' },
-  { path: '/users', label: 'Users' },
-  { path: '/notifications', label: 'Notifications' },
-  { path: '/settings', label: 'Settings' },
-];
-
 function SidebarBox({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{
@@ -59,6 +49,18 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+
+  const navItems = [
+  { path: '/', label: 'Dashboard' },
+  { path: user?.id ? `/profile/${user.username}` : '/login', label: 'My Profile' },
+  { path: '/lists', label: 'My Lists' },
+  { path: '/clubs', label: 'Clubs' },
+  { path: '/discover', label: 'Discover' },
+  { path: '/users', label: 'Users' },
+  { path: '/notifications', label: 'Notifications' },
+  { path: '/settings', label: 'Settings' },
+];
+
   const { theme } = useTheme();
   const [clock, setClock] = useState('');
   const [timeFormat, setTimeFormat] = useState<'12' | '24'>(
@@ -193,10 +195,11 @@ export default function Layout() {
           <SidebarBox title="Navigate">
             <nav style={{ display: 'flex', flexDirection: 'column', padding: '6px', gap: '2px' }}>
               {navItems.map(item => {
+                const myProfilePath = user?.id ? `/profile/${user.username}` : '';
                 const isActive = location.pathname === item.path
                   || (item.path === '/clubs' && location.pathname.startsWith('/clubs'))
                   || (item.path === '/lists' && location.pathname.startsWith('/lists'))
-                  || (item.path === '/users' && location.pathname.startsWith('/users'));
+                  || (item.path === '/users' && location.pathname.startsWith('/users') && location.pathname !== myProfilePath);
                 return (
                   <button
                     key={item.path}
@@ -267,11 +270,12 @@ export default function Layout() {
 
             {/* TAB BAR */}
             <div style={{ display: 'flex', gap: '4px', flexShrink: 0, padding: '12px 16px 0', position: 'relative', zIndex: 1, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-              {navItems.slice(0, 6).map(item => {
+              {navItems.slice(0, 7).map(item => {
+                const myProfilePath = user?.username ? `/profile/${user.username}` : '';
                 const isActive = location.pathname === item.path
                   || (item.path === '/clubs' && location.pathname.startsWith('/clubs'))
                   || (item.path === '/lists' && location.pathname.startsWith('/lists'))
-                  || (item.path === '/users' && location.pathname.startsWith('/users'));
+                  || (item.path === '/users' && location.pathname.startsWith('/users') && location.pathname !== myProfilePath);
                 return (
                   <button
                     key={item.path}
