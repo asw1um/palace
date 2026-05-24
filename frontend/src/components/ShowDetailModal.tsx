@@ -535,7 +535,7 @@ export default function ShowDetailModal({ item, onClose }: Props) {
                   })}
                   <button onClick={() => markSeason(selectedSeason, !episodes.every(ep => ep.watched))}
                     style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--t-primary)', fontSize: '11px', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap', padding: '5px 2px', flexShrink: 0 }}>
-                    {episodes.every(ep => ep.watched) ? 'Mark all unwatched' : 'Mark all watched'}
+                    {episodes.every(ep => ep.watched) ? 'Mark season as unwatched' : 'Mark season as watched'}
                   </button>
                 </div>
               </div>
