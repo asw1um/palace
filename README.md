@@ -71,8 +71,16 @@ Create a `.env` file in the project root:
 TMDB_API_KEY=your_tmdb_api_key_here
 JWT_SECRET_KEY=your_secret_key_here
 ```
+### 5. Install front end Node Packages and Run Build
+Navigate into the frontend directory, install the required dependencies using npm, and compile the static assets to generate the `dist` folder required by the backend.
 
-### 5. Run the Application
+```bash
+cd frontend
+npm install
+npm run build
+cd ..
+```
+### 6. Run the Application
 
 ```bash
 python backend/app.py
