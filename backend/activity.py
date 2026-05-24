@@ -76,7 +76,7 @@ def get_user_activity_by_id(target_id):
 @jwt_required()
 def get_club_activity(club_id):
     current_user_id = int(get_jwt_identity())
-    current_user_obj = user.query.get(current_user_id)
+    current_user_obj = db.session.get(user,current_user_id)
     club_obj = club.query.get_or_404(club_id)
 
     if not club_obj.is_member(current_user_obj):

@@ -13,7 +13,7 @@ shows = Blueprint('shows', __name__)
 @jwt_required()
 def add_show():
     user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
 
     data = request.get_json()
     show_title = data.get('title')
@@ -35,18 +35,18 @@ def add_show():
         show_details = fetchShowDetails(show_tmdb_id)
         if show_details:
             new_show.total_seasons = show_details.get('number_of_seasons') or 0
-            for s in show_details.get('seasons', []):
+            for season in show_details.get('seasons', []):
                 db.session.add(show_season(
                     show_id=new_show.id,
-                    season_number=s['season_number'],
-                    episode_count=s['episode_count']
+                    season_number=season['season_number'],
+                    episode_count=season['episode_count']
                 ))
 
         db.session.commit()
 
     added_to = []
     for list_id in list_ids:
-        list_obj = movielist.query.get(list_id)
+        list_obj = db.session.get(movielist,list_id)
         if list_obj and list_obj.can_edit(current_user):
             if new_show not in list_obj.shows:
                 list_obj.shows.append(new_show)
@@ -74,7 +74,7 @@ def add_show():
                     description=f"Added '{show_title}' to list '{list_obj.name}'",
                     extra_data={'show_title': show_title, 'list_name': list_obj.name}
                 )
-        return jsonify({'message': f'Added {show_title} to {", ".join([l.name for l in added_to])}'}), 200
+        return jsonify({'message': f'Added {show_title} to {", ".join([added_list.name for added_list in added_to])}'}), 200
     else:
         return jsonify({'message': f'{show_title} is already in those lists'}), 200
 
@@ -83,7 +83,7 @@ def add_show():
 @jwt_required()
 def remove_show(show_id):
     user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
 
     data = request.get_json()
     list_id = data.get('list_id')
@@ -145,7 +145,7 @@ def update_show_progress(show_id):
 def get_my_shows():
     user_id = int(get_jwt_identity())
     user_shows = show.query.filter_by(userID=user_id).all()
-    return jsonify({'shows': [s.to_dict(include_seasons=True) for s in user_shows]}), 200
+    return jsonify({'shows': [user_show.to_dict(include_seasons=True) for user_show in user_shows]}), 200
 
 
 @shows.route('/shows/<int:show_id>', methods=['GET'])
@@ -163,13 +163,13 @@ def get_watching():
     user_shows = show.query.filter_by(userID=user_id).filter(show.current_season != None).all()
 
     watching = []
-    for s in user_shows:
-        if s.current_season > s.total_seasons:
+    for current_show in user_shows:
+        if current_show.current_season > current_show.total_seasons:
             continue
-        last_season = show_season.query.filter_by(show_id=s.id, season_number=s.total_seasons).first()
+        last_season = show_season.query.filter_by(show_id=current_show.id, season_number=current_show.total_seasons).first()
         last_ep = last_season.episode_count if last_season else 0
-        if s.current_season == s.total_seasons and s.current_episode > last_ep:
+        if current_show.current_season == current_show.total_seasons and current_show.current_episode > last_ep:
             continue
-        watching.append(s)
+        watching.append(current_show)
 
-    return jsonify({'shows': [s.to_dict(include_seasons=True) for s in watching]}), 200
+    return jsonify({'shows': [current_show.to_dict(include_seasons=True) for current_show in watching]}), 200
