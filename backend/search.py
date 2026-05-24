@@ -3,12 +3,11 @@ import requests
 from flask import Blueprint, request, jsonify
 from dotenv import load_dotenv
 from cache import cache_get, cache_set, cache_flush, cache_flush_expired
+from gamble import get_api_key
 
 tmdb = Blueprint('tmdb', __name__)
 
 load_dotenv()
-
-apiKey = os.getenv('TMDB_API_KEY')
 baseURL = "https://api.themoviedb.org/3"
 imageBaseURL = "https://image.tmdb.org/t/p"
 posterSize = "w500"
@@ -61,7 +60,7 @@ def _cached_tmdb_request(url, params=None, ttl_hours=_TTL_DETAILS):
 
 
 def _tmdb_request(url, params=None):
-    p = {"api_key": apiKey, "language": "en-US"}
+    params = {"api_key": get_api_key(), "language": "en-US"}
     if params:
         p.update(params)
     response = requests.get(url, params=p, timeout=10)
