@@ -52,7 +52,7 @@ export default function Layout() {
 
   const navItems = [
   { path: '/', label: 'Dashboard' },
-  { path: user?.id ? `/users/${user.id}` : '/login', label: 'My Profile' },
+  { path: user?.id ? `/profile/${user.username}` : '/login', label: 'My Profile' },
   { path: '/lists', label: 'My Lists' },
   { path: '/clubs', label: 'Clubs' },
   { path: '/discover', label: 'Discover' },
@@ -195,7 +195,7 @@ export default function Layout() {
           <SidebarBox title="Navigate">
             <nav style={{ display: 'flex', flexDirection: 'column', padding: '6px', gap: '2px' }}>
               {navItems.map(item => {
-                const myProfilePath = user?.id ? `/users/${user.id}` : '';
+                const myProfilePath = user?.id ? `/profile/${user.username}` : '';
                 const isActive = location.pathname === item.path
                   || (item.path === '/clubs' && location.pathname.startsWith('/clubs'))
                   || (item.path === '/lists' && location.pathname.startsWith('/lists'))
@@ -271,7 +271,7 @@ export default function Layout() {
             {/* TAB BAR */}
             <div style={{ display: 'flex', gap: '4px', flexShrink: 0, padding: '12px 16px 0', position: 'relative', zIndex: 1, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
               {navItems.slice(0, 7).map(item => {
-                const myProfilePath = user?.id ? `/users/${user.id}` : '';
+                const myProfilePath = user?.username ? `/profile/${user.username}` : '';
                 const isActive = location.pathname === item.path
                   || (item.path === '/clubs' && location.pathname.startsWith('/clubs'))
                   || (item.path === '/lists' && location.pathname.startsWith('/lists'))
