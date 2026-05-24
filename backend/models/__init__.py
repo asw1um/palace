@@ -4,7 +4,7 @@ from .media import movie, show, show_season
 from .club import club, club_name_history
 from .movie_list import movielist
 from .watch_progress import ShowProgress, MovieProgress
-from .review import Review
+from .review import Review, ReviewReaction
 from .user_settings import UserSettings
 from .activity_log import activity_log
 from .notification import (

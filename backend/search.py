@@ -59,11 +59,11 @@ def _cached_tmdb_request(url, params=None, ttl_hours=_TTL_DETAILS):
     return data
 
 
-def _tmdb_request(url, params=None):
+def _tmdb_request(url, extra_params=None):
     params = {"api_key": get_api_key(), "language": "en-US"}
-    if params:
-        p.update(params)
-    response = requests.get(url, params=p, timeout=10)
+    if extra_params:
+        params.update(extra_params)
+    response = requests.get(url, params=params, timeout=10)
     if response.status_code == 200:
         try:
             return response.json()
