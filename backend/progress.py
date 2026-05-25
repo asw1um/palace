@@ -76,6 +76,39 @@ def get_movie_progress(movie_id):
     return jsonify(show_prog.to_dict() if show_prog else {'watched_minutes': 0, 'total_minutes': 0}), 200
 
 
+@progress_bp.route('/bulk-show-progress', methods=['POST'])
+@jwt_required()
+def bulk_update_show_progress():
+    user_id = int(get_jwt_identity())
+    data = request.get_json()
+    show_id = data.get('show_id')
+    watched = data.get('watched', True)
+    seasons = data.get('seasons', [])
+
+    if show_id is None:
+        return jsonify({'error': 'show_id is required'}), 400
+
+    for season in seasons:
+        season_number = season.get('season_number')
+        episode_count = season.get('episode_count', 0)
+        for ep_num in range(1, episode_count + 1):
+            existing = ShowProgress.query.filter_by(
+                user_id=user_id, show_id=show_id,
+                season_number=season_number, episode_number=ep_num
+            ).first()
+            if existing:
+                existing.watched = bool(watched)
+            else:
+                db.session.add(ShowProgress(
+                    user_id=user_id, show_id=show_id,
+                    season_number=season_number, episode_number=ep_num,
+                    watched=bool(watched)
+                ))
+
+    db.session.commit()
+    return jsonify({'message': 'Progress updated'}), 200
+
+
 @progress_bp.route('/movie-progress', methods=['POST'])
 @jwt_required()
 def update_movie_progress():
