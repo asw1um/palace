@@ -216,8 +216,20 @@ def add_movie_to_list(list_id):
         if existing:
             show_obj = existing
         else:
+            from search import getShow as fetch_show_details
+            from models import show_season
             show_obj = ShowModel(title=title, poster_url=poster_url, tmdb_id=tmdb_id, user_id=user_id)
             db.session.add(show_obj)
+            db.session.flush()
+            show_details = fetch_show_details(tmdb_id)
+            if show_details:
+                show_obj.total_seasons = show_details.get('number_of_seasons') or 0
+                for season in show_details.get('seasons', []):
+                    db.session.add(show_season(
+                        show_id=show_obj.id,
+                        season_number=season['season_number'],
+                        episode_count=season['episode_count']
+                    ))
             db.session.commit()
         if show_obj not in list_obj.shows:
             list_obj.shows.append(show_obj)
