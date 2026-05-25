@@ -60,3 +60,6 @@ dist/
 # No commit marker
 NOGITCOMMIT
 **/NOGITCOMMIT
+
+# CPP 
+./daemon/build/

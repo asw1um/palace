@@ -20,6 +20,13 @@ from reviews import reviews
 from search import tmdb
 import cache  # registers tmdb_cache model
 
+# Writes PID for monitoring
+pid = os.getpid()
+if os.path.exists("pid.txt"):
+    os.remove("pid.txt")
+with open("pid.txt", "w") as f:
+    f.write(str(pid))
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 INSTANCE_DIR = os.path.join(BASE_DIR, 'instance')
 
