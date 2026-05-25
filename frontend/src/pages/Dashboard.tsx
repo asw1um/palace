@@ -8,10 +8,10 @@ import ShowDetailModal from '@/components/ShowDetailModal';
 import QuickAddButton from '@/components/QuickAddButton';
 import Poster from '@/components/Poster';
 import GlassBox from '@/components/GlassBox';
-import { getPinnedLists, getListsWithMovies } from '@/api/lists';
+import { get_pinned_lists, get_lists_with_movies } from '@/api/lists';
 import { getPinnedClubs, getMyClubsWithLists } from '@/api/clubs';
 import { getActivity } from '@/api/activity';
-import { getTrending, getMovieDetails } from '@/api/search';
+import { getTrending, get_movie_details } from '@/api/search';
 
 import { getSettings } from '@/api/settings';
 import { getAllProgress } from '@/api/progress';
@@ -27,7 +27,7 @@ export default function Dashboard() {
       setSelectedItem(item);
       return;
     }
-    const details = await getMovieDetails(item.id);
+    const details = await get_movie_details(item.id);
     if (details) {
       setSelectedItem({ ...item, ...details });
     } else {
@@ -52,11 +52,11 @@ export default function Dashboard() {
       try {
         const [settingsRes, listsRes, clubsRes, activityRes, trendingRes, allListsRes, progressRes, myClubsRes] = await Promise.all([
           getSettings().catch(() => null),
-          getPinnedLists().catch(() => []),
+          get_pinned_lists().catch(() => []),
           getPinnedClubs().catch(() => []),
           getActivity(50).catch(() => []),
           getTrending().catch(() => []),
-          getListsWithMovies().catch(() => []),
+          get_lists_with_movies().catch(() => []),
           getAllProgress().catch(() => ({ shows: {}, movies: {} })),
           getMyClubsWithLists().catch(() => []),
         ]);
@@ -116,8 +116,8 @@ export default function Dashboard() {
       try {
         const [settingsRes, listsRes, allListsRes, progressRes] = await Promise.all([
           getSettings().catch(() => null),
-          getPinnedLists().catch(() => []),
-          getListsWithMovies().catch(() => []),
+          get_pinned_lists().catch(() => []),
+          get_lists_with_movies().catch(() => []),
           getAllProgress().catch(() => ({ shows: {}, movies: {} })),
         ]);
         if (!cancelled) {
@@ -140,8 +140,8 @@ export default function Dashboard() {
         try {
           const [settingsRes, listsRes, allListsRes] = await Promise.all([
             getSettings().catch(() => null),
-            getPinnedLists().catch(() => []),
-            getListsWithMovies().catch(() => []),
+            get_pinned_lists().catch(() => []),
+            get_lists_with_movies().catch(() => []),
           ]);
           if (!cancelled) {
             setLists(listsRes);
@@ -210,14 +210,14 @@ export default function Dashboard() {
               <GlassBox title={displayedList.name} style={{ maxHeight: '450px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px', alignItems: 'start' }}>
                   {displayedItems.map((item) => {
-                    function getMovieProgress(movieId: number) {
-                      const backend = allProgress.movies[movieId];
+                    function get_movie_progress(movie_id: number) {
+                      const backend = allProgress.movies[movie_id];
                       if (backend) {
                         const watched = backend.watched_minutes || 0;
                         const runtime = backend.total_minutes || 1;
                         return { watched, runtime, pct: runtime > 0 ? Math.round((watched / runtime) * 100) : 0 };
                       }
-                      const raw = localStorage.getItem(`palace_movie_progress_${movieId}`);
+                      const raw = localStorage.getItem(`palace_movie_progress_${movie_id}`);
                       if (!raw) return null;
                       try {
                         const parsed = JSON.parse(raw);
@@ -237,8 +237,8 @@ export default function Dashboard() {
                     const showData = isShow ? displayedList?.shows?.find(s => (s.tmdb_id || s.id) === item.id) : null;
                     const movieData = !isShow ? displayedList?.movies?.find(m => (m.tmdb_id || m.id) === item.id) : null;
 
-                    function getShowProgress(showId: number, seasons: { season_number: number; episode_count: number }[]) {
-                      const map = allProgress.shows[showId] || {};
+                    function get_show_progress(show_id: number, seasons: { season_number: number; episode_count: number }[]) {
+                      const map = allProgress.shows[show_id] || {};
                       const watched = Object.values(map).filter(Boolean).length;
                       const total = seasons.reduce((a, s) => a + (s.episode_count || 0), 0);
                       const pct = total > 0 ? Math.round((watched / total) * 100) : 0;
@@ -248,10 +248,10 @@ export default function Dashboard() {
                     let progress: { pct: number; label: string };
                     if (isShow && showData) {
                       const progressId = showData.tmdb_id ?? item.id;
-                      const sp = getShowProgress(progressId, showData.seasons || []);
+                      const sp = get_show_progress(progressId, showData.seasons || []);
                       progress = { pct: sp.pct, label: `${sp.watched}/${sp.total}` };
                     } else if (!isShow) {
-                      const mp = getMovieProgress(item.id) || (movieData ? getMovieProgress(movieData.id) : null);
+                      const mp = get_movie_progress(item.id) || (movieData ? get_movie_progress(movieData.id) : null);
                       const watched = mp?.watched || 0;
                       const label = watched > 0
                         ? `${Math.floor(watched / 60) > 0 ? `${Math.floor(watched / 60)}h ` : ''}${Math.floor(watched % 60)}m`
@@ -264,7 +264,7 @@ export default function Dashboard() {
                     return (
                       <div key={`${item.id}-${progressTick}`} style={{ cursor: 'pointer', transition: 'transform 0.15s', minHeight: 0 }} onClick={() => handleItemClick(item)} onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-4px)')} onMouseLeave={e => (e.currentTarget.style.transform = 'none')}>
                         <div className="poster-wrap" style={{ position: 'relative', width: '100%' }}>
-                          <Poster posterUrl={item.poster_url} progress={progress.pct} style={{ borderRadius: '10px' }} />
+                          <Poster poster_url={item.poster_url} progress={progress.pct} style={{ borderRadius: '10px' }} />
                           <QuickAddButton item={item} />
                         </div>
                         <div style={{ marginTop: '10px' }}>
@@ -416,7 +416,7 @@ export default function Dashboard() {
               {trending.map((item) => (
                 <div key={item.id} style={{ cursor: 'pointer', transition: 'transform 0.15s', minWidth: 0 }} onClick={() => handleItemClick(item)} onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-4px)')} onMouseLeave={e => (e.currentTarget.style.transform = 'none')}>
                   <div className="poster-wrap" style={{ position: 'relative', width: '100%' }}>
-                    <Poster posterUrl={item.poster_url} style={{ borderRadius: '10px' }} />
+                    <Poster poster_url={item.poster_url} style={{ borderRadius: '10px' }} />
                     <div style={{ position: 'absolute', bottom: '6px', right: '6px', background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: '6px', fontSize: '11px', fontWeight: 700, color: '#ffd700', display: 'flex', alignItems: 'center', gap: '3px', border: '1px solid rgba(255,255,255,0.1)', zIndex: 2 }}>
                       <Star style={{ width: '10px' }} /> {item.rating?.toFixed(1) || '—'}
                     </div>

@@ -17,17 +17,25 @@ def _abs_url(path):
 
 
 def _enrich(review, current_user_id = None):
+<<<<<<< Updated upstream
     review_data = review.to_dict(include_author=True)
     if review_data.get('author'):
         review_data['author']['profile_picture'] = _abs_url(review_data['author'].get('profile_picture'))
     likes_count = ReviewReaction.query.filter_by(reviewID=review.id, isLike=True).count()
     dislikes_count = ReviewReaction.query.filter_by(reviewID=review.id, isLike=False).count()
+=======
+    d = review.to_dict(include_author=True)
+    if d.get('author'):
+        d['author']['profile_picture'] = _abs_url(d['author'].get('profile_picture'))
+    likes_count = ReviewReaction.query.filter_by(review_id=review.id, is_like=True).count()
+    dislikes_count = ReviewReaction.query.filter_by(review_id=review.id, is_like=False).count()
+>>>>>>> Stashed changes
 
     my_reaction = None
     if current_user_id:
-        user_react = ReviewReaction.query.filter_by(reviewID=review.id, userID=current_user_id).first()
+        user_react = ReviewReaction.query.filter_by(review_id=review.id, user_id=current_user_id).first()
         if user_react:
-            my_reaction = 'like' if user_react.isLike else 'dislike'
+            my_reaction = 'like' if user_react.is_like else 'dislike'
 
     review_data['reactions'] = {
         'likes': likes_count,
@@ -144,20 +152,19 @@ def react_to_review(review_id):
         return jsonify({'error': "reaction must be like or dislike"}), 400
 
     target_is_like = (reaction_type == 'like')
-    existing = ReviewReaction.query.filter_by(userID=user_id, reviewID=review_id).first()
-
+    existing = ReviewReaction.query.filter_by(user_id=user_id, review_id=review_id).first()
 
     if existing:
-        if existing.isLike == target_is_like:   #like is removed clicking it twice
+        if existing.is_like == target_is_like:
             db.session.delete(existing)
             db.session.commit()
             return jsonify({'message': 'Reaction removed', 'current_reaction': None}), 200
         else:
-            existing.isLike = target_is_like    #switched to dislike case 2
+            existing.is_like = target_is_like
             db.session.commit()
             return jsonify({'message': f'Changed to {reaction_type}', 'current_reaction': reaction_type}), 200
 
-    new_react = ReviewReaction(userID=user_id, reviewID=review_id, isLike=target_is_like)
+    new_react = ReviewReaction(user_id=user_id, review_id=review_id, is_like=target_is_like)
     db.session.add(new_react)
     db.session.commit()
     log_event(event_type=f'user_{reaction_type}d_review', user_id=user_id, description=f"{current_user.display_name} {reaction_type}d a review for film ID {target_review.tmdb_id}")

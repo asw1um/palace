@@ -1,17 +1,17 @@
 import client from './client';
 import type { Club } from '@/types/api';
 
-export async function getClubs(): Promise<{ my_clubs: Club[]; all_clubs: Club[] }> {
+export async function get_clubs(): Promise<{ my_clubs: Club[]; all_clubs: Club[] }> {
   const res = await client.get('/clubs');
   return res.data;
 }
 
-export async function getClub(id: number): Promise<Club> {
+export async function get_club(id: number): Promise<Club> {
   const res = await client.get(`/clubs/${id}`);
   return res.data.club || res.data;
 }
 
-export async function createClub(name: string, description?: string): Promise<Club> {
+export async function create_club(name: string, description?: string): Promise<Club> {
   const res = await client.post('/clubs', { name, description });
   return res.data.club || res.data;
 }
@@ -29,12 +29,12 @@ export async function getPinnedClubs(): Promise<Club[]> {
   return res.data.clubs || [];
 }
 
-export async function pinClub(clubId: number): Promise<void> {
-  await client.post(`/clubs/${clubId}/pin`);
+export async function pin_club(club_id: number): Promise<void> {
+  await client.post(`/clubs/${club_id}/pin`);
 }
 
-export async function unpinClub(clubId: number): Promise<void> {
-  await client.post(`/clubs/${clubId}/unpin`);
+export async function unpin_club(club_id: number): Promise<void> {
+  await client.post(`/clubs/${club_id}/unpin`);
 }
 
 export async function updateClub(id: number, data: { name?: string; description?: string }): Promise<Club> {
@@ -42,21 +42,21 @@ export async function updateClub(id: number, data: { name?: string; description?
   return res.data.club || res.data;
 }
 
-export async function createClubList(clubId: number, name: string): Promise<import('@/types/api').List> {
-  const res = await client.post(`/clubs/${clubId}/lists`, { name });
+export async function create_club_list(club_id: number, name: string): Promise<import('@/types/api').List> {
+  const res = await client.post(`/clubs/${club_id}/lists`, { name });
   return res.data.list || res.data;
 }
 
-export async function deleteClubList(clubId: number, listId: number): Promise<void> {
-  await client.delete(`/clubs/${clubId}/lists/${listId}`);
+export async function delete_club_list(club_id: number, list_id: number): Promise<void> {
+  await client.delete(`/clubs/${club_id}/lists/${list_id}`);
 }
 
-export async function renameClubList(clubId: number, listId: number, name: string): Promise<void> {
-  await client.post(`/clubs/${clubId}/lists/${listId}/rename`, { name });
+export async function rename_club_list(club_id: number, list_id: number, name: string): Promise<void> {
+  await client.post(`/clubs/${club_id}/lists/${list_id}/rename`, { name });
 }
 
-export async function getClubActivity(clubId: number, limit = 20): Promise<import('@/types/api').Activity[]> {
-  const res = await client.get(`/activity/club/${clubId}`, { params: { limit } });
+export async function get_club_activity(club_id: number, limit = 20): Promise<import('@/types/api').Activity[]> {
+  const res = await client.get(`/activity/club/${club_id}`, { params: { limit } });
   return res.data.activities || [];
 }
 
@@ -65,12 +65,12 @@ export async function getMyClubsWithLists(): Promise<Club[]> {
   return res.data.clubs || [];
 }
 
-export async function grantMod(clubId: number, userId: number): Promise<void> {
-  await client.post(`/clubs/${clubId}/mods/${userId}`);
+export async function grant_mod(club_id: number, user_id: number): Promise<void> {
+  await client.post(`/clubs/${club_id}/mods/${user_id}`);
 }
 
-export async function revokeMod(clubId: number, userId: number): Promise<void> {
-  await client.delete(`/clubs/${clubId}/mods/${userId}`);
+export async function revoke_mod(club_id: number, user_id: number): Promise<void> {
+  await client.delete(`/clubs/${club_id}/mods/${user_id}`);
 }
 
 export async function uploadClubImage(id: number, file: File): Promise<{ url: string }> {

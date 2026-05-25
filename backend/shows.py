@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from models import db, user, show, show_season, movielist
-from search import getShow as fetchShowDetails
+from search import getShow as fetch_show_details
 from activity import log_event
 from cache import lists_cache_invalidate
 
@@ -24,15 +24,15 @@ def add_show():
     if not list_ids:
         return jsonify({'error': 'Select at least one list'}), 400
 
-    existing = show.query.filter_by(userID=user_id, tmdbID=show_tmdb_id).first()
+    existing = show.query.filter_by(user_id=user_id, tmdb_id=show_tmdb_id).first()
     if existing:
         new_show = existing
     else:
-        new_show = show(title=show_title, posterURL=show_poster, tmdbID=show_tmdb_id, userID=user_id)
+        new_show = show(title=show_title, poster_url=show_poster, tmdb_id=show_tmdb_id, user_id=user_id)
         db.session.add(new_show)
         db.session.flush()
 
-        show_details = fetchShowDetails(show_tmdb_id)
+        show_details = fetch_show_details(show_tmdb_id)
         if show_details:
             new_show.total_seasons = show_details.get('number_of_seasons') or 0
             for season in show_details.get('seasons', []):
@@ -132,7 +132,7 @@ def remove_show(show_id):
 def update_show_progress(show_id):
     user_id = int(get_jwt_identity())
     data = request.get_json()
-    show_obj = show.query.filter_by(id=show_id, userID=user_id).first_or_404()
+    show_obj = show.query.filter_by(id=show_id, user_id=user_id).first_or_404()
     show_obj.current_season = data.get('season')
     show_obj.current_episode = data.get('episode')
     db.session.commit()
@@ -144,15 +144,20 @@ def update_show_progress(show_id):
 @jwt_required()
 def get_my_shows():
     user_id = int(get_jwt_identity())
+<<<<<<< Updated upstream
     user_shows = show.query.filter_by(userID=user_id).all()
     return jsonify({'shows': [user_show.to_dict(include_seasons=True) for user_show in user_shows]}), 200
+=======
+    user_shows = show.query.filter_by(user_id=user_id).all()
+    return jsonify({'shows': [s.to_dict(include_seasons=True) for s in user_shows]}), 200
+>>>>>>> Stashed changes
 
 
 @shows.route('/shows/<int:show_id>', methods=['GET'])
 @jwt_required()
 def get_show(show_id):
     user_id = int(get_jwt_identity())
-    show_obj = show.query.filter_by(id=show_id, userID=user_id).first_or_404()
+    show_obj = show.query.filter_by(id=show_id, user_id=user_id).first_or_404()
     return jsonify(show_obj.to_dict(include_seasons=True)), 200
 
 
@@ -160,7 +165,7 @@ def get_show(show_id):
 @jwt_required()
 def get_watching():
     user_id = int(get_jwt_identity())
-    user_shows = show.query.filter_by(userID=user_id).filter(show.current_season != None).all()
+    user_shows = show.query.filter_by(user_id=user_id).filter(show.current_season != None).all()
 
     watching = []
     for current_show in user_shows:

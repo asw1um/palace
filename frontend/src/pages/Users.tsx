@@ -79,7 +79,7 @@ export default function Users() {
       ) : viewMode === 'grid' ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
           {filtered.map(u => {
-            const displayName = u.nickname || u.username || 'User';
+            const display_name = u.nickname || u.username || 'User';
             return (
               <div
                 key={u.id}
@@ -89,7 +89,7 @@ export default function Users() {
                 onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.3)'; }}
               >
                 {/* Banner */}
-                <div style={{ aspectRatio: '3/1', background: u.banner ? `url(${u.banner}) center/cover` : userBannerGradient(displayName), position: 'relative', flexShrink: 0 }}>
+                <div style={{ aspectRatio: '3/1', background: u.banner ? `url(${u.banner}) center/cover` : userBannerGradient(display_name), position: 'relative', flexShrink: 0 }}>
                   <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.3) 100%)', pointerEvents: 'none' }} />
                 </div>
 
@@ -98,15 +98,15 @@ export default function Users() {
                   {u.profile_picture ? (
                     <img src={u.profile_picture} alt="avatar" style={{ width: '84px', height: '84px', borderRadius: '50%', objectFit: 'cover', border: '4px solid var(--t-primary-40)', boxShadow: '0 4px 14px rgba(0,0,0,0.5)', display: 'block' }} />
                   ) : (
-                    <div style={{ width: '84px', height: '84px', borderRadius: '50%', background: userGradient(displayName), border: '4px solid var(--t-primary-40)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', fontWeight: 700, color: '#fff', boxShadow: '0 4px 14px rgba(0,0,0,0.5)' }}>
-                      {displayName.slice(0, 2).toUpperCase()}
+                    <div style={{ width: '84px', height: '84px', borderRadius: '50%', background: userGradient(display_name), border: '4px solid var(--t-primary-40)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', fontWeight: 700, color: '#fff', boxShadow: '0 4px 14px rgba(0,0,0,0.5)' }}>
+                      {display_name.slice(0, 2).toUpperCase()}
                     </div>
                   )}
                 </div>
 
                 {/* Info */}
                 <div style={{ padding: '0 14px 14px' }}>
-                  <div style={{ fontSize: '15px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
+                  <div style={{ fontSize: '15px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{display_name}</div>
                   <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{u.username || u.nickname || 'user'}</div>
                   {u.bio ? (
                     <div style={{ marginTop: '10px', fontSize: '12px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>
@@ -123,19 +123,19 @@ export default function Users() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {filtered.map(u => {
-            const displayName = u.nickname || u.username || 'User';
+            const display_name = u.nickname || u.username || 'User';
             return (
               <GlassCard key={u.id} onClick={() => navigate(`/profile/${u.username}`)}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   {u.profile_picture ? (
                     <img src={u.profile_picture} alt="avatar" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.15)' }} />
                   ) : (
-                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: userGradient(displayName), border: '2px solid rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-                      {displayName.slice(0, 2).toUpperCase()}
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: userGradient(display_name), border: '2px solid rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                      {display_name.slice(0, 2).toUpperCase()}
                     </div>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>{displayName}</div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>{display_name}</div>
                     <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>@{u.username || u.nickname || 'user'}</div>
                   </div>
                 </div>

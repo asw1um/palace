@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getUser } from '@/api/users';
-import { getUserActivityById } from '@/api/activity';
-import { getUserReviews } from '@/api/reviews';
+import { get_user } from '@/api/users';
+import { get_user_activity_by_id } from '@/api/activity';
+import { get_user_reviews } from '@/api/reviews';
 import type { Review } from '@/api/reviews';
 import { Users, Calendar, Star } from 'lucide-react';
 import GlassBox from '@/components/GlassBox';
@@ -33,6 +33,10 @@ function clubGradient(name: string) {
 export default function UserProfile() {
   const { username } = useParams();
   const navigate = useNavigate();
+<<<<<<< Updated upstream
+=======
+  const user_id = parseInt(id || '0');
+>>>>>>> Stashed changes
   const [profile, setProfile] = useState<{ user: User; lists: List[]; clubs: Club[] } | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -42,6 +46,7 @@ export default function UserProfile() {
     let cancelled = false;
     async function load() {
       try {
+<<<<<<< Updated upstream
         const profileData = await getUser(username!).catch(() => null as any);
         if (!profileData) {
           if (!cancelled) { setProfile(null); setLoading(false); }
@@ -51,6 +56,12 @@ export default function UserProfile() {
         const [activityData, reviewData] = await Promise.all([
           getUserActivityById(userId, 20).catch(() => []),
           getUserReviews(userId).catch(() => []),
+=======
+        const [profileData, activityData, reviewData] = await Promise.all([
+          get_user(user_id).catch(() => null as any),
+          get_user_activity_by_id(user_id, 20).catch(() => []),
+          get_user_reviews(user_id).catch(() => []),
+>>>>>>> Stashed changes
         ]);
         if (!cancelled) {
           setProfile(profileData);
@@ -63,17 +74,23 @@ export default function UserProfile() {
         if (!cancelled) setLoading(false);
       }
     }
+<<<<<<< Updated upstream
     if (username) load();
     return () => { cancelled = true; };
   }, [username]);
+=======
+    if (user_id) load();
+    return () => { cancelled = true; };
+  }, [user_id]);
+>>>>>>> Stashed changes
 
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>Loading...</div>;
   if (!profile) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>User not found</div>;
 
   const user = profile.user;
-  const userLists = profile.lists;
-  const userClubs = profile.clubs;
-  const displayName = user.nickname || user.username || 'User';
+  const user_lists = profile.lists;
+  const user_clubs = profile.clubs;
+  const display_name = user.nickname || user.username || 'User';
 
   return (
     <div style={{ height: '100%', overflowY: 'auto', paddingRight: '4px' }}>
@@ -93,7 +110,7 @@ export default function UserProfile() {
             {/* Banner */}
             <div style={{
               width: '100%', height: '130px',
-              background: user.banner ? `url(${user.banner}) center/cover no-repeat` : userBannerGradient(displayName),
+              background: user.banner ? `url(${user.banner}) center/cover no-repeat` : userBannerGradient(display_name),
               position: 'relative', flexShrink: 0,
             }}>
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.35) 100%)', pointerEvents: 'none' }} />
@@ -106,14 +123,14 @@ export default function UserProfile() {
                   <img src={user.profile_picture} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                 </div>
               ) : (
-                <div className="avatar-circle" style={{ width: '108px', height: '108px', background: userGradient(displayName), border: '5px solid var(--t-primary-40)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', fontWeight: 700, color: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
-                  {displayName.slice(0, 2).toUpperCase()}
+                <div className="avatar-circle" style={{ width: '108px', height: '108px', background: userGradient(display_name), border: '5px solid var(--t-primary-40)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', fontWeight: 700, color: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                  {display_name.slice(0, 2).toUpperCase()}
                 </div>
               )}
             </div>
 
             <div style={{ padding: '10px 18px 0' }}>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: '#fff' }}>{displayName}</div>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: '#fff' }}>{display_name}</div>
               <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>@{user.username || user.nickname || 'user'}</div>
             </div>
 
@@ -136,7 +153,7 @@ export default function UserProfile() {
 
             {/* Stats */}
             <div style={{ display: 'flex', borderTop: '1px solid var(--t-primary-15)' }}>
-              {[{ label: 'Lists', value: userLists.length }, { label: 'Clubs', value: userClubs.length }].map((s, i) => (
+              {[{ label: 'Lists', value: user_lists.length }, { label: 'Clubs', value: user_clubs.length }].map((s, i) => (
                 <div key={s.label} style={{ flex: 1, textAlign: 'center', padding: '12px 0', borderRight: i === 0 ? '1px solid var(--t-primary-15)' : 'none' }}>
                   <div style={{ fontSize: '20px', fontWeight: 800, color: '#fff' }}>{s.value}</div>
                   <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '2px' }}>{s.label}</div>
@@ -155,8 +172,8 @@ export default function UserProfile() {
                   <div key={act.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: '7px', border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.03)', transition: 'background 0.1s' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}>
-                    <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: userGradient(displayName), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-                      {displayName.slice(0, 2).toUpperCase()}
+                    <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: userGradient(display_name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                      {display_name.slice(0, 2).toUpperCase()}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{act.description}</div>
@@ -169,12 +186,12 @@ export default function UserProfile() {
           </GlassBox>
 
           {/* Clubs box */}
-          <GlassBox title="Clubs" collapsible defaultCollapsed={false} rightAction={<span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', letterSpacing: 0, textTransform: 'none' }}>{userClubs.length}</span>}>
-            {userClubs.length === 0 ? (
+          <GlassBox title="Clubs" collapsible defaultCollapsed={false} rightAction={<span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', letterSpacing: 0, textTransform: 'none' }}>{user_clubs.length}</span>}>
+            {user_clubs.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '20px', color: 'rgba(255,255,255,0.35)', fontSize: '13px' }}>No clubs yet</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '168px', overflowY: 'auto' }}>
-                {userClubs.map(club => (
+                {user_clubs.map(club => (
                   <div key={club.id} onClick={() => navigate(`/clubs/${club.id}`)}
                     style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'all 0.15s' }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.borderColor = 'var(--t-primary-30)'; }}
@@ -229,12 +246,12 @@ export default function UserProfile() {
             )}
           </GlassBox>
 
-          <h2 style={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '2px', textTransform: 'uppercase', margin: 0 }}>Lists · {userLists.length}</h2>
+          <h2 style={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '2px', textTransform: 'uppercase', margin: 0 }}>Lists · {user_lists.length}</h2>
 
-          {userLists.length === 0 ? (
+          {user_lists.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '48px 24px', color: 'rgba(255,255,255,0.3)', fontSize: '13px', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '12px' }}>No lists yet</div>
           ) : (
-            userLists.map(list => {
+            user_lists.map(list => {
               const allItems = [...(list.movies || []), ...(list.shows || [])];
               return (
                 <GlassBox
@@ -251,11 +268,15 @@ export default function UserProfile() {
                   }
                 >
                   {allItems.length > 0 ? (
+<<<<<<< Updated upstream
                     <div onClick={() => navigate(`/lists/${list.id}`, { state: { fromUser: username } })} style={{ cursor: 'pointer' }}>
+=======
+                    <div onClick={() => navigate(`/lists/${list.id}`, { state: { fromUser: user_id } })} style={{ cursor: 'pointer' }}>
+>>>>>>> Stashed changes
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '6px' }}>
                         {allItems.map(item => (
                           <div key={item.id} style={{ minWidth: 0 }}>
-                            <Poster posterUrl={item.poster_url} style={{ borderRadius: '6px' }} />
+                            <Poster poster_url={item.poster_url} style={{ borderRadius: '6px' }} />
                           </div>
                         ))}
                       </div>

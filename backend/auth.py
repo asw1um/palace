@@ -42,9 +42,9 @@ def signup():
     db.session.add(new_user)
     db.session.commit()
 
-    default1 = movielist(name="want to watch", userID=new_user.id)
-    default2 = movielist(name="watched", userID=new_user.id)
-    default3 = movielist(name="currently watching", userID=new_user.id)
+    default1 = movielist(name="want to watch", user_id=new_user.id)
+    default2 = movielist(name="watched", user_id=new_user.id)
+    default3 = movielist(name="currently watching", user_id=new_user.id)
     db.session.add(default1)
     db.session.add(default2)
     db.session.add(default3)

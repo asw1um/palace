@@ -169,7 +169,11 @@ def get_user_profile(username):
     if not target_user:
         return jsonify({'error': 'User not found'}), 404
 
+<<<<<<< Updated upstream
     user_lists = movielist.query.filter_by(userID=target_user.id).all()
+=======
+    user_lists = movielist.query.filter_by(user_id=user_id).all()
+>>>>>>> Stashed changes
     user_clubs = target_user.clubs
 
     return jsonify({

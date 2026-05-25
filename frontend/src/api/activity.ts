@@ -6,13 +6,13 @@ export async function getActivity(limit = 50): Promise<Activity[]> {
   return res.data.activities || [];
 }
 
-export async function getUserActivity(limit = 50): Promise<Activity[]> {
+export async function get_user_activity(limit = 50): Promise<Activity[]> {
   const res = await client.get('/activity/user', { params: { limit } });
   return res.data.activities || [];
 }
 
-export async function getUserActivityById(userId: number, limit = 50): Promise<Activity[]> {
-  const res = await client.get(`/activity/user/${userId}`, { params: { limit } });
+export async function get_user_activity_by_id(user_id: number, limit = 50): Promise<Activity[]> {
+  const res = await client.get(`/activity/user/${user_id}`, { params: { limit } });
   return res.data.activities || [];
 }
 

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users, Check, Settings, X, Image, Plus, Pencil, Trash2, LayoutGrid, List as ListIcon, Tv, Star } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConfirm } from '@/components/ConfirmDialog';
-import { getClub, joinClub, leaveClub, updateClub, uploadClubImage, createClubList, deleteClubList, renameClubList, grantMod, revokeMod } from '@/api/clubs';
+import { get_club, joinClub, leaveClub, updateClub, uploadClubImage, create_club_list, delete_club_list, rename_club_list, grant_mod, revoke_mod } from '@/api/clubs';
 import ImageCropModal from '@/components/ImageCropModal';
 import MediaDetailModal from '@/components/MediaDetailModal';
 import ShowDetailModal from '@/components/ShowDetailModal';
@@ -35,8 +35,8 @@ function clubGradient(name: string) {
 export default function ClubDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user: currentUser } = useAuth();
-  const clubId = parseInt(id || '0');
+  const { user: current_user } = useAuth();
+  const club_id = parseInt(id || '0');
   const [club, setClub] = useState<Club | null>(null);
   const [joined, setJoined] = useState(false);
   const [selectedItem, setSelectedItem] = useState<TMDBResult | null>(null);
@@ -81,11 +81,11 @@ export default function ClubDetail() {
     let cancelled = false;
     async function load() {
       try {
-        const data = await getClub(clubId);
+        const data = await get_club(club_id);
         if (!cancelled) {
           setClub(data);
           const members = data.members || [];
-          setJoined(members.some(m => m.id === currentUser?.id));
+          setJoined(members.some(m => m.id === current_user?.id));
         }
       } catch {
         if (!cancelled) setClub(null);
@@ -93,9 +93,9 @@ export default function ClubDetail() {
         if (!cancelled) setLoading(false);
       }
     }
-    if (clubId) load();
+    if (club_id) load();
     return () => { cancelled = true; };
-  }, [clubId, currentUser?.id]);
+  }, [club_id, current_user?.id]);
 
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>Loading...</div>;
   if (!club) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>Club not found</div>;
@@ -103,7 +103,7 @@ export default function ClubDetail() {
   const members = club.members || [];
   const admin = members.find(m => m.id === club.admin_id);
   const clubLists = club.lists || [];
-  const isAdmin = currentUser?.id === club.admin_id;
+  const isAdmin = current_user?.id === club.admin_id;
 
   const handleJoinLeave = async () => {
     if (joined) {
@@ -115,7 +115,7 @@ export default function ClubDetail() {
           setClub(c => c ? {
             ...c,
             member_count: (c.member_count || 1) - 1,
-            members: (c.members || []).filter(m => m.id !== currentUser?.id),
+            members: (c.members || []).filter(m => m.id !== current_user?.id),
           } : c);
         } catch {}
       }
@@ -126,7 +126,7 @@ export default function ClubDetail() {
         setClub(c => c ? {
           ...c,
           member_count: (c.member_count || 0) + 1,
-          members: currentUser ? [...(c.members || []), currentUser as User] : c.members,
+          members: current_user ? [...(c.members || []), current_user as User] : c.members,
         } : c);
       } catch {}
     }
@@ -168,27 +168,27 @@ export default function ClubDetail() {
     if (!newListName.trim()) return;
     setCreatingList(true);
     try {
-      const newList = await createClubList(clubId, newListName.trim());
+      const newList = await create_club_list(club_id, newListName.trim());
       setClub(prev => prev ? { ...prev, lists: [...(prev.lists || []), { ...newList, movies: [], movie_count: 0, show_count: 0 }] } : prev);
       setNewListName('');
       setShowCreateList(false);
     } catch {} finally { setCreatingList(false); }
   };
 
-  const handleDeleteList = async (listId: number, listName: string) => {
-    const ok = await confirm({ title: 'Delete List', message: `Delete "${listName}"? This cannot be undone.`, confirmLabel: 'Delete', cancelLabel: 'Cancel', danger: true });
+  const handleDeleteList = async (list_id: number, list_name: string) => {
+    const ok = await confirm({ title: 'Delete List', message: `Delete "${list_name}"? This cannot be undone.`, confirmLabel: 'Delete', cancelLabel: 'Cancel', danger: true });
     if (!ok) return;
     try {
-      await deleteClubList(clubId, listId);
-      setClub(prev => prev ? { ...prev, lists: (prev.lists || []).filter(l => l.id !== listId) } : prev);
+      await delete_club_list(club_id, list_id);
+      setClub(prev => prev ? { ...prev, lists: (prev.lists || []).filter(l => l.id !== list_id) } : prev);
     } catch {}
   };
 
-  const handleRenameList = async (listId: number) => {
+  const handleRenameList = async (list_id: number) => {
     if (!renameValue.trim()) return;
     try {
-      await renameClubList(clubId, listId, renameValue.trim());
-      setClub(prev => prev ? { ...prev, lists: (prev.lists || []).map(l => l.id === listId ? { ...l, name: renameValue.trim() } : l) } : prev);
+      await rename_club_list(club_id, list_id, renameValue.trim());
+      setClub(prev => prev ? { ...prev, lists: (prev.lists || []).map(l => l.id === list_id ? { ...l, name: renameValue.trim() } : l) } : prev);
       setRenamingListId(null);
     } catch {}
   };
@@ -239,7 +239,7 @@ export default function ClubDetail() {
             {members.length > 0 ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px' }}>
                 {members.map(m => {
-                  const displayName = (m.nickname ?? m.username) || 'User';
+                  const display_name = (m.nickname ?? m.username) || 'User';
                   const isSelected = selectedMember?.id === m.id;
                   return (
                     <div
@@ -267,11 +267,11 @@ export default function ClubDetail() {
                           <img src={m.profile_picture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         </div>
                       ) : (
-                        <div className="avatar-circle" style={{ width: '52px', height: '52px', background: userGradient(displayName), border: `2px solid ${isSelected ? 'var(--t-primary)' : 'rgba(255,255,255,0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#fff', boxShadow: isSelected ? '0 0 0 3px var(--t-primary-30)' : 'none', transition: 'all 0.15s' }}>
-                          {displayName.slice(0, 2).toUpperCase()}
+                        <div className="avatar-circle" style={{ width: '52px', height: '52px', background: userGradient(display_name), border: `2px solid ${isSelected ? 'var(--t-primary)' : 'rgba(255,255,255,0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#fff', boxShadow: isSelected ? '0 0 0 3px var(--t-primary-30)' : 'none', transition: 'all 0.15s' }}>
+                          {display_name.slice(0, 2).toUpperCase()}
                         </div>
                       )}
-                      <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', maxWidth: '64px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center' }}>{displayName}</div>
+                      <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', maxWidth: '64px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center' }}>{display_name}</div>
                       {m.id === club.admin_id
                         ? <div style={{ fontSize: '8px', color: 'var(--t-primary)', fontWeight: 700, letterSpacing: '0.5px', marginTop: '-2px' }}>ADMIN</div>
                         : (club.mod_ids || []).includes(m.id)
@@ -360,7 +360,7 @@ export default function ClubDetail() {
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '6px' }}>
                           {allItems.map(item => (
                             <div key={item.id} style={{ minWidth: 0 }}>
-                              <Poster posterUrl={item.poster_url} style={{ borderRadius: '6px' }} />
+                              <Poster poster_url={item.poster_url} style={{ borderRadius: '6px' }} />
                             </div>
                           ))}
                         </div>
@@ -474,14 +474,14 @@ export default function ClubDetail() {
     <style>{`@keyframes popIn{from{opacity:0;transform:scale(0.88) translateY(6px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
     {selectedMember && (() => {
       const m = selectedMember;
-      const displayName = (m.nickname ?? m.username) || 'User';
+      const display_name = (m.nickname ?? m.username) || 'User';
       return (
         <div
           ref={popupRef}
           style={{ position: 'fixed', left: popupPos.x, top: popupPos.y, zIndex: 500, width: '340px', borderRadius: '18px', overflow: 'hidden', background: 'linear-gradient(180deg, var(--t-primary-22) 0%, var(--t-primary-12) 100%)', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', border: '1px solid var(--t-primary-40)', boxShadow: '0 24px 64px rgba(0,0,0,0.7)', animation: 'popIn 0.18s cubic-bezier(0.34,1.56,0.64,1)' }}
         >
           {/* Banner */}
-          <div style={{ height: '110px', background: m.banner ? `url(${m.banner}) center/cover` : userBannerGradient(displayName), position: 'relative', flexShrink: 0 }}>
+          <div style={{ height: '110px', background: m.banner ? `url(${m.banner}) center/cover` : userBannerGradient(display_name), position: 'relative', flexShrink: 0 }}>
             <button onClick={() => setSelectedMember(null)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
               <X style={{ width: '13px' }} />
             </button>
@@ -494,15 +494,15 @@ export default function ClubDetail() {
                 <img src={m.profile_picture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               </div>
             ) : (
-              <div className="avatar-circle" style={{ width: '80px', height: '80px', background: userGradient(displayName), border: '5px solid var(--t-primary-18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 700, color: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,0.5)' }}>
-                {displayName.slice(0, 2).toUpperCase()}
+              <div className="avatar-circle" style={{ width: '80px', height: '80px', background: userGradient(display_name), border: '5px solid var(--t-primary-18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 700, color: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,0.5)' }}>
+                {display_name.slice(0, 2).toUpperCase()}
               </div>
             )}
           </div>
 
           <div style={{ padding: '10px 18px 18px' }}>
             <div style={{ marginBottom: '12px' }}>
-              <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff' }}>{displayName}</div>
+              <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff' }}>{display_name}</div>
               {m.username && <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', marginTop: '1px' }}>@{m.username}</div>}
               <div style={{ marginTop: '6px' }}>
                 {m.id === club!.admin_id
@@ -524,14 +524,14 @@ export default function ClubDetail() {
               >
                 View Profile
               </button>
-              {currentUser?.id === club!.admin_id && m.id !== club!.admin_id && (() => {
+              {current_user?.id === club!.admin_id && m.id !== club!.admin_id && (() => {
                 const isMod = (club!.mod_ids || []).includes(m.id);
                 return (
                   <button
                     onClick={async () => {
                       try {
-                        if (isMod) { await revokeMod(club!.id, m.id); } else { await grantMod(club!.id, m.id); }
-                        const updated = await getClub(club!.id);
+                        if (isMod) { await revoke_mod(club!.id, m.id); } else { await grant_mod(club!.id, m.id); }
+                        const updated = await get_club(club!.id);
                         setClub(updated);
                       } catch { /* ignored */ }
                     }}
