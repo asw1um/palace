@@ -33,10 +33,6 @@ function clubGradient(name: string) {
 export default function UserProfile() {
   const { username } = useParams();
   const navigate = useNavigate();
-<<<<<<< Updated upstream
-=======
-  const user_id = parseInt(id || '0');
->>>>>>> Stashed changes
   const [profile, setProfile] = useState<{ user: User; lists: List[]; clubs: Club[] } | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -46,22 +42,15 @@ export default function UserProfile() {
     let cancelled = false;
     async function load() {
       try {
-<<<<<<< Updated upstream
-        const profileData = await getUser(username!).catch(() => null as any);
+        const profileData = await get_user(username!).catch(() => null as any);
         if (!profileData) {
           if (!cancelled) { setProfile(null); setLoading(false); }
           return;
         }
-        const userId = profileData.user.id;
+        const user_id = profileData.user.id;
         const [activityData, reviewData] = await Promise.all([
-          getUserActivityById(userId, 20).catch(() => []),
-          getUserReviews(userId).catch(() => []),
-=======
-        const [profileData, activityData, reviewData] = await Promise.all([
-          get_user(user_id).catch(() => null as any),
           get_user_activity_by_id(user_id, 20).catch(() => []),
           get_user_reviews(user_id).catch(() => []),
->>>>>>> Stashed changes
         ]);
         if (!cancelled) {
           setProfile(profileData);
@@ -74,15 +63,9 @@ export default function UserProfile() {
         if (!cancelled) setLoading(false);
       }
     }
-<<<<<<< Updated upstream
     if (username) load();
     return () => { cancelled = true; };
   }, [username]);
-=======
-    if (user_id) load();
-    return () => { cancelled = true; };
-  }, [user_id]);
->>>>>>> Stashed changes
 
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>Loading...</div>;
   if (!profile) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>User not found</div>;
@@ -268,11 +251,7 @@ export default function UserProfile() {
                   }
                 >
                   {allItems.length > 0 ? (
-<<<<<<< Updated upstream
                     <div onClick={() => navigate(`/lists/${list.id}`, { state: { fromUser: username } })} style={{ cursor: 'pointer' }}>
-=======
-                    <div onClick={() => navigate(`/lists/${list.id}`, { state: { fromUser: user_id } })} style={{ cursor: 'pointer' }}>
->>>>>>> Stashed changes
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '6px' }}>
                         {allItems.map(item => (
                           <div key={item.id} style={{ minWidth: 0 }}>
