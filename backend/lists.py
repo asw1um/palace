@@ -46,13 +46,8 @@ def create_list():
     if not list_name:
         return jsonify({'error': 'List name cannot be empty'}), 400
     
-<<<<<<< Updated upstream
-    current_user = db.session.get(user,user_id)
-    new_list = movielist(name=list_name, userID=user_id)
-=======
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user, user_id)
     new_list = movielist(name=list_name, user_id=user_id)
->>>>>>> Stashed changes
     db.session.add(new_list)
     db.session.commit()
     lists_cache_invalidate(user_id)

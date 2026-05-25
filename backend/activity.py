@@ -41,7 +41,7 @@ def get_all_activity():
 
     logs = query.order_by(activity_log.created_at.desc()).limit(limit).all()
     return jsonify({
-        'activities': [_log_to_dict(l) for l in logs]
+        'activities': [_log_to_dict(log) for log in logs]
     }), 200
 
 
@@ -56,7 +56,7 @@ def get_user_activity():
     ).order_by(activity_log.created_at.desc()).limit(limit).all()
 
     return jsonify({
-        'activities': [_log_to_dict(l) for l in logs]
+        'activities': [_log_to_dict(log) for log in logs]
     }), 200
 
 
@@ -68,7 +68,7 @@ def get_user_activity_by_id(target_id):
         (activity_log.user_id == target_id) | (activity_log.target_user_id == target_id)
     ).order_by(activity_log.created_at.desc()).limit(limit).all()
     return jsonify({
-        'activities': [_log_to_dict(l) for l in logs]
+        'activities': [_log_to_dict(log) for log in logs]
     }), 200
 
 
@@ -87,7 +87,7 @@ def get_club_activity(club_id):
         .order_by(activity_log.created_at.desc()).limit(limit).all()
 
     return jsonify({
-        'activities': [_log_to_dict(l) for l in logs]
+        'activities': [_log_to_dict(log) for log in logs]
     }), 200
 
 
@@ -111,7 +111,7 @@ def get_global_activity():
     ).order_by(activity_log.created_at.desc()).limit(limit).all()
 
     return jsonify({
-        'activities': [_log_to_dict(l) for l in logs]
+        'activities': [_log_to_dict(log) for log in logs]
     }), 200
 
 

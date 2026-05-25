@@ -17,19 +17,11 @@ def _abs_url(path):
 
 
 def _enrich(review, current_user_id = None):
-<<<<<<< Updated upstream
     review_data = review.to_dict(include_author=True)
     if review_data.get('author'):
         review_data['author']['profile_picture'] = _abs_url(review_data['author'].get('profile_picture'))
-    likes_count = ReviewReaction.query.filter_by(reviewID=review.id, isLike=True).count()
-    dislikes_count = ReviewReaction.query.filter_by(reviewID=review.id, isLike=False).count()
-=======
-    d = review.to_dict(include_author=True)
-    if d.get('author'):
-        d['author']['profile_picture'] = _abs_url(d['author'].get('profile_picture'))
     likes_count = ReviewReaction.query.filter_by(review_id=review.id, is_like=True).count()
     dislikes_count = ReviewReaction.query.filter_by(review_id=review.id, is_like=False).count()
->>>>>>> Stashed changes
 
     my_reaction = None
     if current_user_id:
@@ -114,7 +106,7 @@ def delete_review(review_id):
 def get_title_reviews(tmdb_id, media_type):
     revs = Review.query.filter_by(tmdb_id=tmdb_id, media_type=media_type)\
         .order_by(Review.created_at.desc()).all()
-    return jsonify({'reviews': [_enrich(r) for r in revs]}), 200
+    return jsonify({'reviews': [_enrich(rev) for rev in revs]}), 200
 
 
 # get current user's review for a specific title
@@ -135,7 +127,7 @@ def get_user_reviews(target_user_id):
     user_id = int(get_jwt_identity())
     revs = Review.query.filter_by(user_id=target_user_id)\
         .order_by(Review.created_at.desc()).all()
-    return jsonify({'reviews': [_enrich(r, current_user_id=user_id) for r in revs]}), 200
+    return jsonify({'reviews': [_enrich(rev, current_user_id=user_id) for rev in revs]}), 200
 
 # like and dislike in review
 @reviews.route('/<int:review_id>/react', methods = ['POST'])

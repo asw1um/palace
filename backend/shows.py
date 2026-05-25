@@ -144,13 +144,8 @@ def update_show_progress(show_id):
 @jwt_required()
 def get_my_shows():
     user_id = int(get_jwt_identity())
-<<<<<<< Updated upstream
-    user_shows = show.query.filter_by(userID=user_id).all()
-    return jsonify({'shows': [user_show.to_dict(include_seasons=True) for user_show in user_shows]}), 200
-=======
     user_shows = show.query.filter_by(user_id=user_id).all()
     return jsonify({'shows': [s.to_dict(include_seasons=True) for s in user_shows]}), 200
->>>>>>> Stashed changes
 
 
 @shows.route('/shows/<int:show_id>', methods=['GET'])

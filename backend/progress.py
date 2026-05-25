@@ -3,20 +3,20 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from models import db, ShowProgress, MovieProgress
 
-progress_bp = Blueprint('watchlist', __name__)
+show_progress_bp = Blueprint('watchlist', __name__)
 
 
-@progress_bp.route('/progress/<int:show_id>', methods=['GET'])
+@show_progress_bp.route('/show_progress/<int:show_id>', methods=['GET'])
 @jwt_required()
-def get_progress(show_id):
+def get_show_progress(show_id):
     user_id = int(get_jwt_identity())
-    progress = ShowProgress.query.filter_by(user_id=user_id, show_id=show_id).all()
-    return jsonify({'progress': [p.to_dict() for p in progress]}), 200
+    show_progress = ShowProgress.query.filter_by(user_id=user_id, show_id=show_id).all()
+    return jsonify({'show_progress': [entry.to_dict() for entry in show_progress]}), 200
 
 
-@progress_bp.route('/progress', methods=['POST'])
+@show_progress_bp.route('/show_progress', methods=['POST'])
 @jwt_required()
-def update_progress():
+def update_show_progress():
     user_id = int(get_jwt_identity())
     data = request.get_json()
     show_id = data.get('show_id')
@@ -27,58 +27,58 @@ def update_progress():
     if show_id is None or season_number is None or episode_number is None:
         return jsonify({'error': 'show_id, season_number, and episode_number are required'}), 400
 
-    prog = ShowProgress.query.filter_by(
+    show_prog = ShowProgress.query.filter_by(
         user_id=user_id,
         show_id=show_id,
         season_number=season_number,
         episode_number=episode_number
     ).first()
 
-    if prog:
-        prog.watched = bool(watched)
+    if show_prog:
+        show_prog.watched = bool(watched)
     else:
-        prog = ShowProgress(
+        show_prog = ShowProgress(
             user_id=user_id,
             show_id=show_id,
             season_number=season_number,
             episode_number=episode_number,
             watched=bool(watched)
         )
-        db.session.add(prog)
+        db.session.add(show_prog)
 
     db.session.commit()
-    return jsonify(prog.to_dict()), 200
+    return jsonify(show_prog.to_dict()), 200
 
 
-@progress_bp.route('/all-progress', methods=['GET'])
+@show_progress_bp.route('/all-show_progress', methods=['GET'])
 @jwt_required()
-def get_all_progress():
+def get_all_show_progress():
     user_id = int(get_jwt_identity())
 
-    show_progress = ShowProgress.query.filter_by(user_id=user_id).all()
+    show_show_progress = ShowProgress.query.filter_by(user_id=user_id).all()
     shows_map: dict[int, dict[str, bool]] = {}
-    for p in show_progress:
-        if p.show_id not in shows_map:
-            shows_map[p.show_id] = {}
-        shows_map[p.show_id][f"{p.season_number}-{p.episode_number}"] = p.watched
+    for entry in show_show_progress:
+        if entry.show_id not in shows_map:
+            shows_map[entry.show_id] = {}
+        shows_map[entry.show_id][f"{entry.season_number}-{entry.episode_number}"] = entry.watched
 
-    movie_progress = MovieProgress.query.filter_by(user_id=user_id).all()
-    movies_map = {p.movie_id: p.to_dict() for p in movie_progress}
+    movie_show_progress = MovieProgress.query.filter_by(user_id=user_id).all()
+    movies_map = {entry.movie_id: entry.to_dict() for entry in movie_show_progress}
 
     return jsonify({'shows': shows_map, 'movies': movies_map}), 200
 
 
-@progress_bp.route('/movie-progress/<int:movie_id>', methods=['GET'])
+@show_progress_bp.route('/movie-show_progress/<int:movie_id>', methods=['GET'])
 @jwt_required()
-def get_movie_progress(movie_id):
+def get_movie_show_progress(movie_id):
     user_id = int(get_jwt_identity())
-    prog = MovieProgress.query.filter_by(user_id=user_id, movie_id=movie_id).first()
-    return jsonify(prog.to_dict() if prog else {'watched_minutes': 0, 'total_minutes': 0}), 200
+    show_prog = MovieProgress.query.filter_by(user_id=user_id, movie_id=movie_id).first()
+    return jsonify(show_prog.to_dict() if show_prog else {'watched_minutes': 0, 'total_minutes': 0}), 200
 
 
-@progress_bp.route('/movie-progress', methods=['POST'])
+@show_progress_bp.route('/movie-show_progress', methods=['POST'])
 @jwt_required()
-def update_movie_progress():
+def update_movie_show_progress():
     user_id = int(get_jwt_identity())
     data = request.get_json()
     movie_id = data.get('movie_id')
@@ -88,18 +88,18 @@ def update_movie_progress():
     if movie_id is None:
         return jsonify({'error': 'movie_id is required'}), 400
 
-    prog = MovieProgress.query.filter_by(user_id=user_id, movie_id=movie_id).first()
-    if prog:
-        prog.watched_minutes = int(watched_minutes)
-        prog.total_minutes = int(total_minutes)
+    show_prog = MovieProgress.query.filter_by(user_id=user_id, movie_id=movie_id).first()
+    if show_prog:
+        show_prog.watched_minutes = int(watched_minutes)
+        show_prog.total_minutes = int(total_minutes)
     else:
-        prog = MovieProgress(
+        show_prog = MovieProgress(
             user_id=user_id,
             movie_id=int(movie_id),
             watched_minutes=int(watched_minutes),
             total_minutes=int(total_minutes)
         )
-        db.session.add(prog)
+        db.session.add(show_prog)
 
     db.session.commit()
-    return jsonify(prog.to_dict()), 200
+    return jsonify(show_prog.to_dict()), 200
