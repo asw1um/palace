@@ -43,8 +43,8 @@ export default function LoginSignup() {
           setIsSubmitting(false);
           return;
         }
-        const ok = await signup(username.trim(), password, nickname.trim());
-        if (!ok) setError('Username already taken.');
+        const err = await signup(username.trim(), password, nickname.trim());
+        if (err) setError(err);
       }
     } finally {
       setIsSubmitting(false);
