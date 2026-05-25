@@ -6,7 +6,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (username: string, password: string) => Promise<boolean>;
-  signup: (username: string, password: string, nickname: string) => Promise<boolean>;
+  signup: (username: string, password: string, nickname: string) => Promise<string | null>;
   logout: () => void;
   updateProfile: (data: { nickname?: string; bio?: string }) => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -18,7 +18,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   token: null,
   login: async () => false,
-  signup: async () => false,
+  signup: async () => 'Not initialized',
   logout: () => {},
   updateProfile: async () => {},
   refreshUser: async () => {},
@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const signup = useCallback(async (username: string, password: string, nickname: string): Promise<boolean> => {
+  const signup = useCallback(async (username: string, password: string, nickname: string): Promise<string | null> => {
     try {
       const res = await api.register(username, password, nickname);
       localStorage.removeItem('palace_profile_picture');
@@ -72,9 +72,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(TOKEN_KEY, res.access_token);
       setToken(res.access_token);
       setUser(res.user);
-      return true;
-    } catch {
-      return false;
+      return null;
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      return msg || 'Something went wrong. Please try again.';
     }
   }, []);
 
