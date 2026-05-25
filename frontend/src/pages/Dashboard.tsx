@@ -240,7 +240,7 @@ export default function Dashboard() {
                     function get_show_progress(show_id: number, seasons: { season_number: number; episode_count: number }[]) {
                       const map = allProgress.shows[show_id] || {};
                       const watched = Object.values(map).filter(Boolean).length;
-                      const total = seasons.reduce((a, s) => a + (s.episode_count || 0), 0);
+                      const total = seasons.filter(s => s.season_number > 0).reduce((a, s) => a + (s.episode_count || 0), 0);
                       const pct = total > 0 ? Math.round((watched / total) * 100) : 0;
                       return { watched, total, pct };
                     }
@@ -262,22 +262,34 @@ export default function Dashboard() {
                     }
 
                     return (
-                      <div key={`${item.id}-${progressTick}`} style={{ cursor: 'pointer', transition: 'transform 0.15s', minHeight: 0 }} onClick={() => handleItemClick(item)} onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-4px)')} onMouseLeave={e => (e.currentTarget.style.transform = 'none')}>
+                      <div key={`${item.id}-${progressTick}`} style={{ cursor: 'pointer', transition: 'transform 0.15s', minHeight: 0 }} onClick={() => handleItemClick(item)}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.transform = 'translateY(-4px)';
+                          const overlay = e.currentTarget.querySelector('.pct-overlay') as HTMLElement | null;
+                          if (overlay) overlay.style.opacity = '1';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.transform = 'none';
+                          const overlay = e.currentTarget.querySelector('.pct-overlay') as HTMLElement | null;
+                          if (overlay) overlay.style.opacity = '0';
+                        }}
+                      >
                         <div className="poster-wrap" style={{ position: 'relative', width: '100%' }}>
                           <Poster poster_url={item.poster_url} progress={progress.pct} style={{ borderRadius: '10px' }} />
                           <QuickAddButton item={item} />
-                        </div>
-                        <div style={{ marginTop: '10px' }}>
-                          <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>{item.title}</div>
-                          <div style={{ marginTop: '8px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: '4px' }}>
-                              <span>{progress.label}</span>
-                              <span style={{ color: 'var(--t-primary)' }}>{progress.pct}%</span>
+                          {/* Bottom-right: label (time or episode count) */}
+                          {progress.label && (
+                            <div style={{ position: 'absolute', bottom: '8px', right: '8px', background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)', borderRadius: '5px', padding: '2px 6px', fontSize: '10px', fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>
+                              {progress.label}
                             </div>
-                            <div style={{ height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden', boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.4)' }}>
-                              <div style={{ width: `${Math.max(3, progress.pct)}%`, height: '100%', background: 'var(--t-primary)', borderRadius: '3px', boxShadow: '0 0 10px var(--t-primary-55)' }} />
-                            </div>
+                          )}
+                          {/* Center: percentage on hover */}
+                          <div className="pct-overlay" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', borderRadius: '10px', opacity: 0, transition: 'opacity 0.15s', pointerEvents: 'none' }}>
+                            <span style={{ fontSize: '22px', fontWeight: 800, color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>{progress.pct}%</span>
                           </div>
+                        </div>
+                        <div style={{ marginTop: '8px' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>{item.title}</div>
                         </div>
                       </div>
                     );

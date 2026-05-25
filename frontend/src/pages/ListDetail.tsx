@@ -294,7 +294,12 @@ export default function ListDetail() {
                   {isShowItem ? <Tv style={{ width: '12px', color: 'var(--t-primary)', flexShrink: 0 }} /> : <Star style={{ width: '12px', color: 'rgba(255,255,255,0.45)', flexShrink: 0 }} />}
                   <div style={{ fontSize: '14px', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
                 </div>
-                {!isShowItem && <CompactProgress movie_id={(item as Movie).tmdb_id || item.id} tick={progressTick} />}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', fontWeight: 500, flexShrink: 0 }}>
+                    {isShowItem ? `TV · ${(item as Show).total_seasons ?? '?'} season${(item as Show).total_seasons !== 1 ? 's' : ''}` : 'Movie'}
+                  </span>
+                  {!isShowItem && <CompactProgress movie_id={(item as Movie).tmdb_id || item.id} tick={progressTick} />}
+                </div>
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); isShowItem ? handleDeleteShow(item.id) : handleDelete(item.id); }}
