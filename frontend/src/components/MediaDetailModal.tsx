@@ -6,6 +6,7 @@ import { X, Star, Play, Film, Tv, Plus, Clock, MessageSquare, ChevronRight } fro
 import AddToListMenu from './AddToListMenu';
 import { get_movie_details, get_tv_details } from '@/api/search';
 import { get_movie_progress, update_movie_progress } from '@/api/progress';
+import { get_custom_media, set_movie_runtime } from '@/api/custom_media';
 import { upsert_review, delete_review, get_my_review, get_title_reviews } from '@/api/reviews';
 import type { Review } from '@/api/reviews';
 import { toast } from 'sonner';
@@ -74,9 +75,28 @@ export default function MediaDetailModal({ item, onClose }: Props) {
   const sliderRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef(movieProgress);
   useEffect(() => { progressRef.current = movieProgress; }, [movieProgress]);
+  const [customRuntime, setCustomRuntime] = useState(0);
+  const [runtimeInput, setRuntimeInput] = useState('');
 
   useEffect(() => {
-    if (!item || !isMovie || !displayItem.runtime) return;
+    if (!item || !isMovie) return;
+    // Seed from localStorage cache immediately, then verify/update from backend
+    try {
+      const cached = localStorage.getItem(`palace_movie_runtime_${item.id}`);
+      if (cached) setCustomRuntime(Number(cached));
+    } catch {}
+    get_custom_media(item.id, 'movie').then(meta => {
+      if (meta?.runtime && meta.runtime > 0) {
+        setCustomRuntime(meta.runtime);
+        localStorage.setItem(`palace_movie_runtime_${item.id}`, String(meta.runtime));
+      }
+    }).catch(() => {});
+  }, [item?.id, isMovie]);
+
+  const effectiveRuntime = customRuntime > 0 ? customRuntime : (displayItem.runtime || 0);
+
+  useEffect(() => {
+    if (!item || !isMovie || !effectiveRuntime) return;
     const movie_id = item.id;
     let cancelled = false;
     async function load() {
@@ -95,14 +115,14 @@ export default function MediaDetailModal({ item, onClose }: Props) {
     }
     load();
     return () => { cancelled = true; };
-  }, [item?.id, isMovie, displayItem.runtime]);
+  }, [item?.id, isMovie, effectiveRuntime]);
 
   const updateProgressFromMouse = useCallback((clientX: number) => {
-    if (!sliderRef.current || !displayItem.runtime) return;
+    if (!sliderRef.current || !effectiveRuntime) return;
     const rect = sliderRef.current.getBoundingClientRect();
     const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    setMovieProgress(Math.round(pct * displayItem.runtime));
-  }, [displayItem.runtime]);
+    setMovieProgress(Math.round(pct * effectiveRuntime));
+  }, [effectiveRuntime]);
 
   const handleSliderMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
@@ -113,9 +133,8 @@ export default function MediaDetailModal({ item, onClose }: Props) {
     const onMove = (e: MouseEvent) => { if (isDragging) updateProgressFromMouse(e.clientX); };
     const onUp = () => {
       if (isDragging) {
-        const runtime = displayItem.runtime || 0;
-        localStorage.setItem(`palace_movie_progress_${displayItem.id}`, JSON.stringify({ watched: progressRef.current, runtime }));
-        update_movie_progress(displayItem.id, progressRef.current, runtime)
+        localStorage.setItem(`palace_movie_progress_${displayItem.id}`, JSON.stringify({ watched: progressRef.current, runtime: effectiveRuntime }));
+        update_movie_progress(displayItem.id, progressRef.current, effectiveRuntime)
           .then(() => window.dispatchEvent(new Event('palace-movie-progress')))
           .catch(() => {});
       }
@@ -123,7 +142,7 @@ export default function MediaDetailModal({ item, onClose }: Props) {
     };
     if (isDragging) { window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp); }
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-  }, [isDragging, displayItem.id, displayItem.runtime, updateProgressFromMouse]);
+  }, [isDragging, displayItem.id, effectiveRuntime, updateProgressFromMouse]);
 
   function formatTime(minutes: number) {
     const h = Math.floor(minutes / 60);
@@ -167,7 +186,7 @@ export default function MediaDetailModal({ item, onClose }: Props) {
     } catch { /* handled */ }
   }
 
-  const progressPct = isMovie && displayItem.runtime ? (movieProgress / displayItem.runtime) * 100 : 0;
+  const progressPct = isMovie && effectiveRuntime ? (movieProgress / effectiveRuntime) * 100 : 0;
   const addMenuData = { tmdb_id: displayItem.id, title: displayItem.title, poster_url: displayItem.poster_url, media_type: displayItem.media_type };
 
   return createPortal(
@@ -256,14 +275,14 @@ export default function MediaDetailModal({ item, onClose }: Props) {
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
 
             {/* Movie progress */}
-            {isMovie && displayItem.runtime && displayItem.runtime > 0 && (
+            {isMovie && effectiveRuntime > 0 ? (
               <div style={{ padding: '12px 24px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '1px', textTransform: 'uppercase' }}>
                     <Clock style={{ width: '10px' }} /> Your Progress
                   </span>
                   <span style={{ fontSize: '11px', fontWeight: 600, color: '#fff' }}>
-                    {formatTime(movieProgress)} <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>/ {formatTime(displayItem.runtime)}</span>
+                    {formatTime(movieProgress)} <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>/ {formatTime(effectiveRuntime)}</span>
                   </span>
                 </div>
                 <div ref={sliderRef} onMouseDown={handleSliderMouseDown}
@@ -273,8 +292,62 @@ export default function MediaDetailModal({ item, onClose }: Props) {
                   </div>
                   <div style={{ position: 'absolute', left: `${progressPct}%`, top: '50%', transform: 'translate(-50%, -50%)', width: '14px', height: '14px', borderRadius: '50%', background: 'var(--t-primary)', border: '2px solid #fff', boxShadow: '0 0 8px var(--t-primary-55)', pointerEvents: 'none', zIndex: 1, transition: isDragging ? 'none' : 'left 0.2s' }} />
                 </div>
+                {customRuntime > 0 && !displayItem.runtime && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                    <button onClick={() => { setCustomRuntime(0); setRuntimeInput(''); localStorage.removeItem(`palace_movie_runtime_${item.id}`); }}
+                      style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      Custom runtime ({effectiveRuntime}m) · Reset
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+            ) : isMovie ? (
+              <div style={{ padding: '12px 24px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Clock style={{ width: '10px' }} /> Set Runtime to Track Progress
+                </div>
+                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', marginBottom: '10px' }}>
+                  No runtime data available. Enter the duration to enable progress tracking.
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    value={runtimeInput}
+                    onChange={e => setRuntimeInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        const mins = parseInt(runtimeInput);
+                        if (mins > 0) {
+                          localStorage.setItem(`palace_movie_runtime_${item.id}`, String(mins));
+                          setCustomRuntime(mins);
+                          set_movie_runtime(item.id, mins).catch(() => {});
+                        }
+                      }
+                    }}
+                    placeholder="Duration in minutes"
+                    min="1"
+                    style={{ width: '170px', padding: '7px 10px', borderRadius: '7px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.25)', color: '#fff', fontSize: '13px', fontFamily: 'inherit', outline: 'none' }}
+                    onFocus={e => { e.currentTarget.style.borderColor = 'var(--t-primary)'; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
+                  />
+                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>min</span>
+                  <button
+                    onClick={() => {
+                      const mins = parseInt(runtimeInput);
+                      if (mins > 0) {
+                        localStorage.setItem(`palace_movie_runtime_${item.id}`, String(mins));
+                        setCustomRuntime(mins);
+                        set_movie_runtime(item.id, mins).catch(() => {});
+                      }
+                    }}
+                    style={{ padding: '7px 16px', borderRadius: '7px', background: 'var(--t-primary-60)', border: '1px solid var(--t-primary-80)', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--t-primary)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'var(--t-primary-60)'; }}>
+                    Set
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             {/* Cast */}
             {displayItem.cast && displayItem.cast.length > 0 && (

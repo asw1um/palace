@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users, Check, Settings, X, Image, Plus, Pencil, Trash2, LayoutGrid, List as ListIcon, Tv, Star } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConfirm } from '@/components/ConfirmDialog';
-import { get_club, joinClub, leaveClub, updateClub, uploadClubImage, create_club_list, delete_club_list, rename_club_list, grant_mod, revoke_mod } from '@/api/clubs';
+import { get_club, joinClub, leaveClub, updateClub, uploadClubImage, create_club_list, delete_club_list, rename_club_list, grant_mod, revoke_mod, grant_helper, revoke_helper, kick_member } from '@/api/clubs';
 import ImageCropModal from '@/components/ImageCropModal';
 import MediaDetailModal from '@/components/MediaDetailModal';
 import ShowDetailModal from '@/components/ShowDetailModal';
@@ -104,6 +105,9 @@ export default function ClubDetail() {
   const admin = members.find(m => m.id === club.admin_id);
   const clubLists = club.lists || [];
   const isAdmin = current_user?.id === club.admin_id;
+  const isMod = !isAdmin && (club.mod_ids || []).includes(current_user?.id ?? -1);
+  const isHelper = !isAdmin && !isMod && (club.helper_ids || []).includes(current_user?.id ?? -1);
+  const canManage = isAdmin || isMod;
 
   const handleJoinLeave = async () => {
     if (joined) {
@@ -190,7 +194,9 @@ export default function ClubDetail() {
       await rename_club_list(club_id, list_id, renameValue.trim());
       setClub(prev => prev ? { ...prev, lists: (prev.lists || []).map(l => l.id === list_id ? { ...l, name: renameValue.trim() } : l) } : prev);
       setRenamingListId(null);
-    } catch {}
+    } catch {
+      setRenamingListId(null);
+    }
   };
 
   return (
@@ -211,7 +217,7 @@ export default function ClubDetail() {
             {/* Banner/Thumbnail */}
             <div style={{ aspectRatio: '16/9', background: club.image_url ? `url(${club.image_url}) center/cover no-repeat` : clubGradient(club.name), position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {!club.image_url && <Users style={{ width: '32px', color: 'rgba(255,255,255,0.18)' }} />}
-              {isAdmin && (
+              {canManage && (
                 <button onClick={openEdit} style={{ position: 'absolute', top: '8px', right: '8px', display: 'flex', alignItems: 'center', gap: '4px', padding: '5px 10px', borderRadius: '6px', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                   <Settings style={{ width: '11px' }} /> Edit
                 </button>
@@ -248,13 +254,14 @@ export default function ClubDetail() {
                         if (isSelected) { setSelectedMember(null); return; }
                         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                         const popupW = 340, popupH = 320;
-                        const MARGIN = 12;
+                        const MARGIN = 16;
+                        // Position to the right of the card, top-aligned with the card
                         let x = rect.right + MARGIN;
-                        let y = rect.top;
                         if (x + popupW > window.innerWidth - MARGIN) x = rect.left - popupW - MARGIN;
                         if (x < MARGIN) x = MARGIN;
-                        if (y + popupH > window.innerHeight - MARGIN) y = window.innerHeight - popupH - MARGIN;
+                        let y = rect.top;
                         if (y < MARGIN) y = MARGIN;
+                        if (y + popupH > window.innerHeight - MARGIN) y = window.innerHeight - popupH - MARGIN;
                         setPopupPos({ x, y });
                         setSelectedMember(m);
                       }}
@@ -276,7 +283,9 @@ export default function ClubDetail() {
                         ? <div style={{ fontSize: '8px', color: 'var(--t-primary)', fontWeight: 700, letterSpacing: '0.5px', marginTop: '-2px' }}>ADMIN</div>
                         : (club.mod_ids || []).includes(m.id)
                           ? <div style={{ fontSize: '8px', color: '#f0a500', fontWeight: 700, letterSpacing: '0.5px', marginTop: '-2px' }}>MOD</div>
-                          : null}
+                          : (club.helper_ids || []).includes(m.id)
+                            ? <div style={{ fontSize: '8px', color: '#63b3ed', fontWeight: 700, letterSpacing: '0.5px', marginTop: '-2px' }}>HELPER</div>
+                            : null}
                     </div>
                   );
                 })}
@@ -292,7 +301,7 @@ export default function ClubDetail() {
           {/* Lists header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h2 style={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '2px', textTransform: 'uppercase', margin: 0 }}>Lists · {clubLists.length}</h2>
-            {(joined || isAdmin) && (
+            {(canManage || isHelper) && (
               <button
                 onClick={e => { e.stopPropagation(); setShowCreateList(true); setNewListName(''); }}
                 style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', borderRadius: '7px', background: 'var(--t-primary-20)', border: '1px solid var(--t-primary-35)', color: 'var(--t-primary)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
@@ -306,7 +315,7 @@ export default function ClubDetail() {
 
           {clubLists.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '48px 24px', color: 'rgba(255,255,255,0.3)', fontSize: '13px', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '12px' }}>
-              {(joined || isAdmin) ? 'No lists yet — create one!' : 'No lists yet'}
+              {(canManage || isHelper) ? 'No lists yet — create one!' : 'No lists yet'}
             </div>
           ) : (
             clubLists.map(list => {
@@ -340,7 +349,7 @@ export default function ClubDetail() {
                             </button>
                           </div>
                         )}
-                        {isAdmin && renamingListId !== list.id && (
+                        {canManage && renamingListId !== list.id && (
                           <>
                             <button onClick={e => { e.stopPropagation(); setRenamingListId(list.id); setRenameValue(list.name); }} title="Rename" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '3px', display: 'flex', alignItems: 'center' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}>
                               <Pencil style={{ width: '12px' }} />
@@ -472,13 +481,13 @@ export default function ClubDetail() {
 
     {/* ── Member popup — positioned near click ── */}
     <style>{`@keyframes popIn{from{opacity:0;transform:scale(0.88) translateY(6px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
-    {selectedMember && (() => {
+    {selectedMember && createPortal((() => {
       const m = selectedMember;
       const display_name = (m.nickname ?? m.username) || 'User';
       return (
         <div
           ref={popupRef}
-          style={{ position: 'fixed', left: popupPos.x, top: popupPos.y, zIndex: 500, width: '340px', borderRadius: '18px', overflow: 'hidden', background: 'linear-gradient(180deg, var(--t-primary-22) 0%, var(--t-primary-12) 100%)', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', border: '1px solid var(--t-primary-40)', boxShadow: '0 24px 64px rgba(0,0,0,0.7)', animation: 'popIn 0.18s cubic-bezier(0.34,1.56,0.64,1)' }}
+          style={{ position: 'fixed', left: popupPos.x, top: popupPos.y, zIndex: 500, width: '340px', borderRadius: '18px', overflow: 'hidden', background: 'linear-gradient(180deg, var(--t-primary-20) 0%, var(--t-primary-14) 100%), rgba(6, 4, 14, 0.96)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)', border: '1px solid var(--t-primary-40)', boxShadow: '0 24px 64px rgba(0,0,0,0.9)', animation: 'popIn 0.18s cubic-bezier(0.34,1.56,0.64,1)', maxHeight: '90vh', overflowY: 'auto' }}
         >
           {/* Banner */}
           <div style={{ height: '110px', background: m.banner ? `url(${m.banner}) center/cover` : userBannerGradient(display_name), position: 'relative', flexShrink: 0 }}>
@@ -490,11 +499,11 @@ export default function ClubDetail() {
           {/* Avatar overlapping banner — Discord style */}
           <div style={{ position: 'relative', marginTop: '-44px', padding: '0 18px 0' }}>
             {m.profile_picture ? (
-              <div className="avatar-circle" style={{ width: '80px', height: '80px', border: '5px solid var(--t-primary-18)', boxShadow: '0 4px 16px rgba(0,0,0,0.5)' }}>
+              <div className="avatar-circle" style={{ width: '80px', height: '80px', boxShadow: '0 0 0 5px rgba(255,255,255,0.12), 0 4px 16px rgba(0,0,0,0.5)' }}>
                 <img src={m.profile_picture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               </div>
             ) : (
-              <div className="avatar-circle" style={{ width: '80px', height: '80px', background: userGradient(display_name), border: '5px solid var(--t-primary-18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 700, color: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,0.5)' }}>
+              <div className="avatar-circle" style={{ width: '80px', height: '80px', background: userGradient(display_name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 700, color: '#fff', boxShadow: '0 0 0 5px rgba(255,255,255,0.12), 0 4px 16px rgba(0,0,0,0.5)' }}>
                 {display_name.slice(0, 2).toUpperCase()}
               </div>
             )}
@@ -509,7 +518,9 @@ export default function ClubDetail() {
                   ? <div style={{ display: 'inline-block', fontSize: '9px', color: 'var(--t-primary)', fontWeight: 700, letterSpacing: '1px', background: 'var(--t-primary-15)', border: '1px solid var(--t-primary-30)', padding: '2px 8px', borderRadius: '4px' }}>ADMIN</div>
                   : (club!.mod_ids || []).includes(m.id)
                     ? <div style={{ display: 'inline-block', fontSize: '9px', color: '#f0a500', fontWeight: 700, letterSpacing: '1px', background: 'rgba(240,165,0,0.12)', border: '1px solid rgba(240,165,0,0.3)', padding: '2px 8px', borderRadius: '4px' }}>MOD</div>
-                    : null}
+                    : (club!.helper_ids || []).includes(m.id)
+                      ? <div style={{ display: 'inline-block', fontSize: '9px', color: '#63b3ed', fontWeight: 700, letterSpacing: '1px', background: 'rgba(99,179,237,0.12)', border: '1px solid rgba(99,179,237,0.3)', padding: '2px 8px', borderRadius: '4px' }}>HELPER</div>
+                      : null}
               </div>
             </div>
             {(m as User & { bio?: string }).bio && (
@@ -518,34 +529,72 @@ export default function ClubDetail() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button
                 onClick={() => { setSelectedMember(null); navigate(`/profile/${m.username}`); }}
-                style={{ width: '100%', padding: '11px', borderRadius: '10px', background: 'var(--t-primary-25)', border: '1px solid var(--t-primary-40)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '0.5px' }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'var(--t-primary-38)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'var(--t-primary-25)'; }}
+                style={{ width: '100%', padding: '11px', borderRadius: '10px', background: 'var(--t-primary-60)', border: '1px solid var(--t-primary-80)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '0.5px' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--t-primary-75)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--t-primary-60)'; }}
               >
                 View Profile
               </button>
-              {current_user?.id === club!.admin_id && m.id !== club!.admin_id && (() => {
-                const isMod = (club!.mod_ids || []).includes(m.id);
+              {isAdmin && m.id !== club!.admin_id && (() => {
+                const memberIsMod = (club!.mod_ids || []).includes(m.id);
+                const memberIsHelper = (club!.helper_ids || []).includes(m.id);
+                const hasRole = memberIsMod || memberIsHelper;
                 return (
-                  <button
-                    onClick={async () => {
-                      try {
-                        if (isMod) { await revoke_mod(club!.id, m.id); } else { await grant_mod(club!.id, m.id); }
-                        const updated = await get_club(club!.id);
-                        setClub(updated);
-                      } catch { /* ignored */ }
-                    }}
-                    style={{ width: '100%', padding: '9px', borderRadius: '10px', background: isMod ? 'rgba(220,60,60,0.15)' : 'rgba(240,165,0,0.12)', border: isMod ? '1px solid rgba(220,60,60,0.3)' : '1px solid rgba(240,165,0,0.3)', color: isMod ? '#f56565' : '#f0a500', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    {isMod ? 'Revoke Mod' : 'Grant Mod'}
-                  </button>
+                  <>
+                    {!memberIsMod && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            await grant_mod(club!.id, m.id);
+                            setClub(await get_club(club!.id));
+                          } catch { /* ignored */ }
+                        }}
+                        style={{ width: '100%', padding: '9px', borderRadius: '10px', background: 'rgba(240,165,0,0.12)', border: '1px solid rgba(240,165,0,0.3)', color: '#f0a500', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                      >Grant Mod</button>
+                    )}
+                    {!memberIsHelper && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            await grant_helper(club!.id, m.id);
+                            setClub(await get_club(club!.id));
+                          } catch { /* ignored */ }
+                        }}
+                        style={{ width: '100%', padding: '9px', borderRadius: '10px', background: 'rgba(99,179,237,0.12)', border: '1px solid rgba(99,179,237,0.3)', color: '#63b3ed', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                      >Grant Helper</button>
+                    )}
+                    {hasRole && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            if (memberIsMod) await revoke_mod(club!.id, m.id);
+                            if (memberIsHelper) await revoke_helper(club!.id, m.id);
+                            setClub(await get_club(club!.id));
+                          } catch { /* ignored */ }
+                        }}
+                        style={{ width: '100%', padding: '9px', borderRadius: '10px', background: 'rgba(220,60,60,0.1)', border: '1px solid rgba(220,60,60,0.25)', color: '#f56565', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                      >Revoke Role</button>
+                    )}
+                    <button
+                      onClick={async () => {
+                        const ok = await confirm({ title: 'Kick Member', message: `Kick ${(m.nickname || m.username)} from the club?`, confirmLabel: 'Kick', cancelLabel: 'Cancel', danger: true });
+                        if (!ok) return;
+                        try {
+                          await kick_member(club!.id, m.id);
+                          setClub(await get_club(club!.id));
+                          setSelectedMember(null);
+                        } catch { /* ignored */ }
+                      }}
+                      style={{ width: '100%', padding: '9px', borderRadius: '10px', background: 'rgba(220,60,60,0.15)', border: '1px solid rgba(220,60,60,0.35)', color: '#f56565', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                    >Kick from Club</button>
+                  </>
                 );
               })()}
             </div>
           </div>
         </div>
       );
-    })()}
+    })(), document.body)}
     </>
   );
 }
