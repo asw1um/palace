@@ -55,10 +55,10 @@ class ClubInviteNotification(Notification):
         from models.club import club
         from models.user import user
 
-        club_obj = club.query.get(self.data['club_id'])
+        club_obj = db.session.get(club, self.data['club_id'])
         if not club_obj:
             raise ValueError("Club no longer exists")
-        invited_user = user.query.get(self.user_id)
+        invited_user = db.session.get(user, self.user_id)
         if not invited_user:
             raise ValueError("User not found")
         club_obj.add_member(invited_user)
@@ -89,7 +89,7 @@ class ClubBroadcastNotification(Notification):
     @classmethod
     def broadcast_to_club(cls, club_id, exclude_user_id=None, **kwargs):
         from models.club import club
-        club_obj = club.query.get(club_id)
+        club_obj = db.session.get(club, club_id)
         if not club_obj:
             return []
         notifications = []

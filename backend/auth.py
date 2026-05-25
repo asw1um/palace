@@ -1,3 +1,4 @@
+import uuid
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -55,7 +56,10 @@ def signup():
         description=f"{new_user.display_name} joined the forum"
     )
 
-    access_token = create_access_token(identity=str(new_user.id))
+    access_token = create_access_token(
+        identity=str(new_user.id),
+        additional_claims={'st': new_user.session_token}
+    )
     user_data = new_user.to_dict()
     user_data['profile_picture'] = _abs_url(user_data.get('profile_picture'))
     user_data['banner'] = _abs_url(user_data.get('banner'))
@@ -78,7 +82,10 @@ def login():
     if not log_user or not check_password_hash(log_user.password_hash, password):
         return jsonify({'error': 'Invalid username or password'}), 401
 
-    access_token = create_access_token(identity=str(log_user.id))
+    access_token = create_access_token(
+        identity=str(log_user.id),
+        additional_claims={'st': log_user.session_token}
+    )
     user_data = log_user.to_dict()
     user_data['profile_picture'] = _abs_url(user_data.get('profile_picture'))
     user_data['banner'] = _abs_url(user_data.get('banner'))
@@ -90,7 +97,7 @@ def login():
 @jwt_required()
 def get_current_user():
     user_id = int(get_jwt_identity())
-    current_user = User.query.get(user_id)
+    current_user = db.session.get(User,user_id)
     if not current_user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -103,4 +110,9 @@ def get_current_user():
 @auth.route('/logout', methods=['POST'])
 @jwt_required()
 def logout():
+    user_id = int(get_jwt_identity())
+    current_user = db.session.get(User,user_id)
+    if current_user:
+        current_user.session_token = str(uuid.uuid4())
+        db.session.commit()
     return jsonify({'message': 'Logout successful'}), 200

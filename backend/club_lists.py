@@ -11,7 +11,7 @@ club_lists = Blueprint('club_lists', __name__)
 @jwt_required()
 def create_club_list(club_id):
     user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
     club_obj = club.query.get_or_404(club_id)
 
     if not club_obj.is_member(current_user):
@@ -42,7 +42,7 @@ def create_club_list(club_id):
 @jwt_required()
 def delete_club_list(club_id, list_id):
     user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
     club_obj = club.query.get_or_404(club_id)
     list_obj = movielist.query.get_or_404(list_id)
 
@@ -70,7 +70,7 @@ def delete_club_list(club_id, list_id):
 @jwt_required()
 def rename_club_list(club_id, list_id):
     user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
     club_obj = club.query.get_or_404(club_id)
     list_obj = movielist.query.get_or_404(list_id)
 

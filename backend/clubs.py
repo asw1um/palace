@@ -32,16 +32,16 @@ clubs = Blueprint('clubs', __name__)
 @jwt_required()
 def get_clubs():
     user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
 
-    def _club_dict(c):
-        d = c.to_dict()
-        d['image_url'] = _abs_url(d.get('image_url'))
-        return d
+    def _club_dict(club_item):
+        club_data = club_item.to_dict()
+        club_data['image_url'] = _abs_url(club_data.get('image_url'))
+        return club_data
 
     return jsonify({
-        'my_clubs': [_club_dict(c) for c in current_user.clubs],
-        'all_clubs': [_club_dict(c) for c in club.query.all()]
+        'my_clubs': [_club_dict(club_item) for club_item in current_user.clubs],
+        'all_clubs': [_club_dict(club_item) for club_item in club.query.all()]
     }), 200
 
 
@@ -56,7 +56,7 @@ def create_club():
     if not club_name:
         return jsonify({'error': 'Club name cannot be empty'}), 400
 
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
     new_club = club(name=club_name, description=description, admin_id=user_id)
     new_club.members.append(current_user)
     db.session.add(new_club)
@@ -79,9 +79,9 @@ def get_club(club_id):
     club_obj = club.query.get_or_404(club_id)
     data = club_obj.to_dict(include_members=True, include_lists=True)
     data['image_url'] = _abs_url(data.get('image_url'))
-    for m in data.get('members', []):
-        m['profile_picture'] = _abs_url(m.get('profile_picture'))
-        m['banner'] = _abs_url(m.get('banner'))
+    for member in data.get('members', []):
+        member['profile_picture'] = _abs_url(member.get('profile_picture'))
+        member['banner'] = _abs_url(member.get('banner'))
     return jsonify({'club': data}), 200
 
 
@@ -89,7 +89,7 @@ def get_club(club_id):
 @jwt_required()
 def update_club(club_id):
     user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
     club_obj = club.query.get_or_404(club_id)
     if not club_obj.can_manage(current_user):
         return jsonify({'error': 'Only the club admin or a mod can edit this club'}), 403
@@ -129,7 +129,7 @@ def delete_club(club_id):
 @jwt_required()
 def rename_club(club_id):
     user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
     club_obj = club.query.get_or_404(club_id)
     if not club_obj.can_manage(current_user):
         return jsonify({'error': 'Only admin or mod can rename'}), 403
@@ -158,7 +158,7 @@ def rename_club(club_id):
 @jwt_required()
 def upload_club_image(club_id):
     user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
     club_obj = club.query.get_or_404(club_id)
     if not club_obj.can_manage(current_user):
         return jsonify({'error': 'Only the club admin or a mod can change the club image'}), 403
@@ -181,7 +181,7 @@ def upload_club_image(club_id):
 @jwt_required()
 def join_club(club_id):
     user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
     club_obj = club.query.get_or_404(club_id)
 
     if club_obj.is_member(current_user):
@@ -205,7 +205,7 @@ def join_club(club_id):
 @jwt_required()
 def leave_club(club_id):
     user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
     club_obj = club.query.get_or_404(club_id)
 
     if not club_obj.is_member(current_user):
@@ -252,7 +252,7 @@ def revoke_mod(club_id, target_user_id):
     club_obj = club.query.get_or_404(club_id)
     if club_obj.admin_id != user_id:
         return jsonify({'error': 'Only the admin can revoke mod status'}), 403
-    mods = [m for m in (club_obj.mod_ids or []) if m != target_user_id]
+    mods = [mod_id for mod_id in (club_obj.mod_ids or []) if mod_id != target_user_id]
     club_obj.mod_ids = mods
     db.session.commit()
     return jsonify({'mod_ids': club_obj.mod_ids}), 200
@@ -262,7 +262,7 @@ def revoke_mod(club_id, target_user_id):
 @jwt_required()
 def pin_club(club_id):
     user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
     club.query.get_or_404(club_id)
 
     pinned = list(current_user.pinned_club_ids or [])
@@ -279,11 +279,11 @@ def pin_club(club_id):
 @jwt_required()
 def unpin_club(club_id):
     user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
 
     pinned = list(current_user.pinned_club_ids or [])
     if club_id in pinned:
-        current_user.pinned_club_ids = [x for x in pinned if x != club_id]
+        current_user.pinned_club_ids = [pinned_id for pinned_id in pinned if pinned_id != club_id]
         db.session.commit()
 
     return jsonify({'message': 'Club unpinned'}), 200
@@ -293,22 +293,22 @@ def unpin_club(club_id):
 @jwt_required()
 def get_pinned_clubs():
     user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
     pinned_ids = current_user.pinned_club_ids or []
     pinned = club.query.filter(club.id.in_(pinned_ids)).all()
-    return jsonify({'clubs': [c.to_dict() for c in pinned]}), 200
+    return jsonify({'clubs': [pinned_club.to_dict() for pinned_club in pinned]}), 200
 
 
 @clubs.route('/my-clubs-with-lists', methods=['GET'])
 @jwt_required()
 def get_my_clubs_with_lists():
     user_id = int(get_jwt_identity())
-    current_user = user.query.get(user_id)
+    current_user = db.session.get(user,user_id)
 
     clubs_data = []
-    for c in current_user.clubs:
-        club_data = c.to_dict()
-        club_data['lists'] = [lst.to_dict(include_movies=True, include_shows=True) for lst in c.lists]
+    for club_item in current_user.clubs:
+        club_data = club_item.to_dict()
+        club_data['lists'] = [lst.to_dict(include_movies=True, include_shows=True) for lst in club_item.lists]
         clubs_data.append(club_data)
 
     return jsonify({'clubs': clubs_data}), 200

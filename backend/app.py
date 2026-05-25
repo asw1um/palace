@@ -1,12 +1,9 @@
 import os
 import sys
-
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'use'))
-
 from flask import Flask, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
-
 from models import db
 from auth import auth
 from users import users_bp
@@ -23,20 +20,44 @@ from reviews import reviews
 from search import tmdb
 import cache  # registers tmdb_cache model
 
-app = Flask(__name__, static_folder=None, static_url_path=None)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+INSTANCE_DIR = os.path.join(BASE_DIR, 'instance')
+
+app = Flask(
+    __name__, 
+    static_folder=None, 
+    static_url_path=None,
+    instance_path=INSTANCE_DIR,
+)
 app.url_map.strict_slashes = False
 
-FRONTEND_DIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'frontend', 'dist')
+FRONTEND_DIST = os.path.join(BASE_DIR, '..', 'frontend', 'dist')
 ASSETS_DIR = os.path.join(FRONTEND_DIST, 'assets')
 
 app.config['JWT_SECRET_KEY'] = 'dev-secret-key-change-in-production'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(INSTANCE_DIR, "users.db")}'   # ← absolute
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 jwt = JWTManager(app)
 CORS(app)
+
+
+@jwt.token_in_blocklist_loader
+def check_if_token_revoked(jwt_header, jwt_payload):
+    from models import user as User
+    try:
+        user_id = int(jwt_payload['sub'])
+    except (KeyError, ValueError):
+        return True
+    token_session_id = jwt_payload.get('st')
+    if not token_session_id:
+        return True
+    current_user = db.session.get(User,user_id)
+    if not current_user:
+        return True
+    return current_user.session_token != token_session_id
 
 app.register_blueprint(auth, url_prefix='/api/auth')
 app.register_blueprint(users_bp, url_prefix='/api/auth')
