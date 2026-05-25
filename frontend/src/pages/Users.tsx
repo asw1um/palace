@@ -5,6 +5,14 @@ import { getUsers } from '@/api/users';
 import { GlassCard } from '@/components/GlassBox';
 import type { User } from '@/types/api';
 
+function userBannerGradient(nickname: string) {
+  const hash = nickname.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  const hues = [210, 230, 200, 250, 190, 240, 220, 180];
+  const hue1 = hues[hash % hues.length];
+  const hue2 = (hue1 + 40) % 360;
+  return `linear-gradient(135deg, hsl(${hue1}, 50%, 35%), hsl(${hue2}, 45%, 25%))`;
+}
+
 function userGradient(nickname: string) {
   const hash = nickname.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
   const hues = [200, 220, 240, 180, 260, 210, 230, 190];
@@ -13,13 +21,6 @@ function userGradient(nickname: string) {
   return `radial-gradient(circle at 30% 30%, hsl(${hue1}, 65%, 58%), hsl(${hue2}, 50%, 28%))`;
 }
 
-function userBannerGradient(nickname: string) {
-  const hash = nickname.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  const hues = [210, 230, 200, 250, 190, 240, 220, 180];
-  const hue1 = hues[hash % hues.length];
-  const hue2 = (hue1 + 40) % 360;
-  return `linear-gradient(135deg, hsl(${hue1}, 50%, 35%), hsl(${hue2}, 45%, 25%))`;
-}
 
 export default function Users() {
   const navigate = useNavigate();
@@ -93,12 +94,12 @@ export default function Users() {
                   <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.3) 100%)', pointerEvents: 'none' }} />
                 </div>
 
-                {/* Avatar */}
+                {/* Avatar — no border, box-shadow only so no semi-transparent ring straddles the banner boundary */}
                 <div style={{ padding: '0 14px', marginTop: '-42px', marginBottom: '8px', position: 'relative', zIndex: 1 }}>
                   {u.profile_picture ? (
-                    <img src={u.profile_picture} alt="avatar" style={{ width: '84px', height: '84px', borderRadius: '50%', objectFit: 'cover', border: '4px solid var(--t-primary-40)', boxShadow: '0 4px 14px rgba(0,0,0,0.5)', display: 'block' }} />
+                    <img src={u.profile_picture} alt="avatar" style={{ width: '84px', height: '84px', borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 4px rgba(255,255,255,0.12), 0 4px 14px rgba(0,0,0,0.6)', display: 'block' }} />
                   ) : (
-                    <div style={{ width: '84px', height: '84px', borderRadius: '50%', background: userGradient(display_name), border: '4px solid var(--t-primary-40)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', fontWeight: 700, color: '#fff', boxShadow: '0 4px 14px rgba(0,0,0,0.5)' }}>
+                    <div style={{ width: '84px', height: '84px', borderRadius: '50%', background: userGradient(display_name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', fontWeight: 700, color: '#fff', boxShadow: '0 0 0 4px rgba(255,255,255,0.12), 0 4px 14px rgba(0,0,0,0.6)' }}>
                       {display_name.slice(0, 2).toUpperCase()}
                     </div>
                   )}
