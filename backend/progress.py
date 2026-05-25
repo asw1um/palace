@@ -6,15 +6,15 @@ from models import db, ShowProgress, MovieProgress
 progress_bp = Blueprint('watchlist', __name__)
 
 
-@progress_bp.route('/show_progress/<int:show_id>', methods=['GET'])
+@progress_bp.route('/progress/<int:show_id>', methods=['GET'])
 @jwt_required()
 def get_show_progress(show_id):
     user_id = int(get_jwt_identity())
     show_progress = ShowProgress.query.filter_by(user_id=user_id, show_id=show_id).all()
-    return jsonify({'show_progress': [entry.to_dict() for entry in show_progress]}), 200
+    return jsonify({'progress': [entry.to_dict() for entry in show_progress]}), 200
 
 
-@progress_bp.route('/show_progress', methods=['POST'])
+@progress_bp.route('/progress', methods=['POST'])
 @jwt_required()
 def update_show_progress():
     user_id = int(get_jwt_identity())
@@ -50,9 +50,9 @@ def update_show_progress():
     return jsonify(show_prog.to_dict()), 200
 
 
-@progress_bp.route('/all-show_progress', methods=['GET'])
+@progress_bp.route('/all-progress', methods=['GET'])
 @jwt_required()
-def get_all_show_progress():
+def get_all_progress():
     user_id = int(get_jwt_identity())
 
     show_progress_entries = ShowProgress.query.filter_by(user_id=user_id).all()
@@ -68,17 +68,17 @@ def get_all_show_progress():
     return jsonify({'shows': shows_map, 'movies': movies_map}), 200
 
 
-@progress_bp.route('/movie-show_progress/<int:movie_id>', methods=['GET'])
+@progress_bp.route('/movie-progress/<int:movie_id>', methods=['GET'])
 @jwt_required()
-def get_movie_show_progress(movie_id):
+def get_movie_progress(movie_id):
     user_id = int(get_jwt_identity())
     show_prog = MovieProgress.query.filter_by(user_id=user_id, movie_id=movie_id).first()
     return jsonify(show_prog.to_dict() if show_prog else {'watched_minutes': 0, 'total_minutes': 0}), 200
 
 
-@progress_bp.route('/movie-show_progress', methods=['POST'])
+@progress_bp.route('/movie-progress', methods=['POST'])
 @jwt_required()
-def update_movie_show_progress():
+def update_movie_progress():
     user_id = int(get_jwt_identity())
     data = request.get_json()
     movie_id = data.get('movie_id')
