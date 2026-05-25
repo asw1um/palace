@@ -5,9 +5,9 @@ class movie(db.Model):
     __tablename__ = 'movies'
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
-    posterURL = db.Column(db.String(200))
-    tmdbID = db.Column(db.Integer)
-    userID = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    poster_url = db.Column(db.String(200))
+    tmdb_id = db.Column(db.Integer)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
     def __repr__(self):
         return f"Movie('{self.title}')"
@@ -16,9 +16,9 @@ class movie(db.Model):
         return {
             'id': self.id,
             'title': self.title,
-            'poster_url': self.posterURL,
-            'tmdb_id': self.tmdbID,
-            'user_id': self.userID
+            'poster_url': self.poster_url,
+            'tmdb_id': self.tmdb_id,
+            'user_id': self.user_id
         }
 
 
@@ -26,9 +26,9 @@ class show(db.Model):
     __tablename__ = 'shows'
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
-    posterURL = db.Column(db.String(200))
-    tmdbID = db.Column(db.Integer)
-    userID = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    poster_url = db.Column(db.String(200))
+    tmdb_id = db.Column(db.Integer)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     total_seasons = db.Column(db.Integer, default=0)
     current_season = db.Column(db.Integer, nullable=True)
     current_episode = db.Column(db.Integer, nullable=True)
@@ -42,9 +42,9 @@ class show(db.Model):
         data = {
             'id': self.id,
             'title': self.title,
-            'poster_url': self.posterURL,
-            'tmdb_id': self.tmdbID,
-            'user_id': self.userID,
+            'poster_url': self.poster_url,
+            'tmdb_id': self.tmdb_id,
+            'user_id': self.user_id,
             'total_seasons': self.total_seasons,
             'current_season': self.current_season,
             'current_episode': self.current_episode,

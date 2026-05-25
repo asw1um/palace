@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Star, Tv, Check, ChevronRight, ChevronLeft, Play, Calendar, Plus, MessageSquare, Clock } from 'lucide-react';
 
 import AddToListMenu from './AddToListMenu';
-import { getShowDetails, getMovieDetails, getSeasonDetails } from '@/api/search';
-import { getShowProgress, updateShowProgress } from '@/api/progress';
-import { upsertReview, deleteReview, getMyReview, getTitleReviews } from '@/api/reviews';
+import { get_tv_details, get_movie_details, get_season_details } from '@/api/search';
+import { get_show_progress, update_show_progress } from '@/api/progress';
+import { upsert_review, delete_review, get_my_review, get_title_reviews } from '@/api/reviews';
 import type { Review } from '@/api/reviews';
 import { exampleStore } from '@/data/exampleStore';
 import { toast } from 'sonner';
@@ -33,11 +33,11 @@ interface Props {
   onClose: () => void;
 }
 
-function saveShowMeta(showId: number, seasons: { season_number: number; episode_count: number }[]) {
+function save_show_meta(show_id: number, seasons: { season_number: number; episode_count: number }[]) {
   try {
     const raw = localStorage.getItem('palace_show_meta');
     const all = raw ? JSON.parse(raw) : {};
-    all[showId] = {
+    all[show_id] = {
       totalEpisodes: seasons.reduce((a, s) => a + (s.episode_count || 0), 0),
       seasons: seasons.map(s => ({ season_number: s.season_number, episode_count: s.episode_count })),
     };
@@ -45,8 +45,8 @@ function saveShowMeta(showId: number, seasons: { season_number: number; episode_
   } catch { /* noop */ }
 }
 
-function emitProgressUpdate(showId: number) {
-  window.dispatchEvent(new CustomEvent('palace-show-progress', { detail: { showId } }));
+function emit_progress_update(show_id: number) {
+  window.dispatchEvent(new CustomEvent('palace-show-progress', { detail: { show_id } }));
 }
 
 function placeholderEpisodes(seasonNum: number, episodeCount: number): Episode[] {
@@ -182,9 +182,9 @@ export default function ShowDetailModal({ item, onClose }: Props) {
     async function load() {
       try {
         const itemTitle = item.title;
-        let data = await getShowDetails(id);
+        let data = await get_tv_details(id);
         if (!data || (itemTitle && data.title !== itemTitle)) {
-          const movieData = await getMovieDetails(id);
+          const movieData = await get_movie_details(id);
           if (movieData && (!itemTitle || movieData.title === itemTitle)) data = movieData;
         }
         if (!cancelled && data) {
@@ -192,12 +192,12 @@ export default function ShowDetailModal({ item, onClose }: Props) {
           const validSeasons = (data.seasons || []).filter((s: { season_number: number }) => s.season_number > 0);
           if (validSeasons.length > 0) {
             setSelectedSeason(validSeasons[0].season_number);
-            saveShowMeta(item.id, validSeasons);
+            save_show_meta(item.id, validSeasons);
           }
         }
       } catch { /* ignore */ }
       try {
-        const progress = await getShowProgress(id);
+        const progress = await get_show_progress(id);
         if (!cancelled) setWatchedMap(progress);
       } catch { /* ignore */ }
     }
@@ -209,7 +209,7 @@ export default function ShowDetailModal({ item, onClose }: Props) {
   useEffect(() => {
     if (!selectedSeason || seasonCache[selectedSeason]) return;
     let cancelled = false;
-    getSeasonDetails(item.id, selectedSeason).then(data => {
+    get_season_details(item.id, selectedSeason).then(data => {
       if (cancelled || !data) return;
       setSeasonCache(prev => ({
         ...prev,
@@ -257,8 +257,8 @@ export default function ShowDetailModal({ item, onClose }: Props) {
     const key = `${seasonNum}-${epNum}`;
     const nextValue = !watchedMap[key];
     setWatchedMap(prev => ({ ...prev, [key]: nextValue }));
-    updateShowProgress(item.id, seasonNum, epNum, nextValue)
-      .then(() => emitProgressUpdate(item.id))
+    update_show_progress(item.id, seasonNum, epNum, nextValue)
+      .then(() => emit_progress_update(item.id))
       .catch(() => {});
     exampleStore.dismiss();
   }, [item.id, watchedMap]);
@@ -275,8 +275,8 @@ export default function ShowDetailModal({ item, onClose }: Props) {
       season.episodes.forEach(ep => { next[`${seasonNum}-${ep.episode_number}`] = watched; });
       return next;
     });
-    Promise.all(season.episodes.map(ep => updateShowProgress(item.id, seasonNum, ep.episode_number, watched)))
-      .then(() => emitProgressUpdate(item.id)).catch(() => {});
+    Promise.all(season.episodes.map(ep => update_show_progress(item.id, seasonNum, ep.episode_number, watched)))
+      .then(() => emit_progress_update(item.id)).catch(() => {});
     exampleStore.dismiss();
   }, [item.id, seasons]);
 
@@ -298,7 +298,7 @@ export default function ShowDetailModal({ item, onClose }: Props) {
   useEffect(() => {
     if (!reviewsOpen || reviewsLoaded) return;
     let cancelled = false;
-    Promise.all([getMyReview(displayItem.id, 'tv'), getTitleReviews(displayItem.id, 'tv')])
+    Promise.all([get_my_review(displayItem.id, 'tv'), get_title_reviews(displayItem.id, 'tv')])
       .then(([my, all]) => {
         if (cancelled) return;
         setMyReview(my);
@@ -313,11 +313,11 @@ export default function ShowDetailModal({ item, onClose }: Props) {
     if (!reviewRating && !reviewContent.trim()) return;
     setReviewSaving(true);
     try {
-      const saved = await upsertReview({ tmdb_id: displayItem.id, media_type: 'tv', title: displayItem.title, poster_url: displayItem.poster_url ?? undefined, rating: reviewRating, content: reviewContent });
+      const saved = await upsert_review({ tmdb_id: displayItem.id, media_type: 'tv', title: displayItem.title, poster_url: displayItem.poster_url ?? undefined, rating: reviewRating, content: reviewContent });
       setMyReview(saved);
       toast.success('Review saved');
       // refresh all reviews
-      getTitleReviews(displayItem.id, 'tv').then(setAllReviews).catch(() => {});
+      get_title_reviews(displayItem.id, 'tv').then(setAllReviews).catch(() => {});
     } catch { /* handled by interceptor */ }
     finally { setReviewSaving(false); }
   }
@@ -325,10 +325,10 @@ export default function ShowDetailModal({ item, onClose }: Props) {
   async function handleDeleteReview() {
     if (!myReview) return;
     try {
-      await deleteReview(myReview.id);
+      await delete_review(myReview.id);
       setMyReview(null); setReviewRating(null); setReviewContent('');
       toast.success('Review deleted');
-      getTitleReviews(displayItem.id, 'tv').then(setAllReviews).catch(() => {});
+      get_title_reviews(displayItem.id, 'tv').then(setAllReviews).catch(() => {});
     } catch { /* handled */ }
   }
 

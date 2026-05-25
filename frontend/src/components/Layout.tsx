@@ -2,8 +2,8 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/data/ThemeContext';
-import { getListsWithMovies } from '@/api/lists';
-import { getClubs } from '@/api/clubs';
+import { get_lists_with_movies } from '@/api/lists';
+import { get_clubs } from '@/api/clubs';
 import type { List as ListType, Club } from '@/types/api';
 import OceanBackground from './OceanBackground';
 
@@ -103,8 +103,8 @@ export default function Layout() {
     async function load() {
       try {
         const [listsData, clubsData] = await Promise.all([
-          getListsWithMovies().catch(() => []),
-          getClubs().catch(() => ({ my_clubs: [] })),
+          get_lists_with_movies().catch(() => []),
+          get_clubs().catch(() => ({ my_clubs: [] })),
         ]);
         if (!cancelled) {
           setMyLists(listsData);
@@ -119,7 +119,7 @@ export default function Layout() {
   // Separate effect so the listener survives StrictMode double-mount
   useEffect(() => {
     const refresh = () => {
-      getListsWithMovies().then(data => setMyLists(data)).catch(() => {});
+      get_lists_with_movies().then(data => setMyLists(data)).catch(() => {});
     };
     window.addEventListener('palace-lists-changed', refresh);
     // Poll every 60s as a fallback in case events are missed

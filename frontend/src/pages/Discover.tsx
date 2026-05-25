@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search as SearchIcon, Star, Tv, LayoutGrid, List as ListIcon, Check, User, ArrowLeft, Film } from 'lucide-react';
-import { getTrending, searchMedia, searchPeople, getPersonCredits } from '@/api/search';
+import { getTrending, searchMedia, searchPeople, get_person_credits } from '@/api/search';
 import type { PersonResult, PersonCredits } from '@/api/search';
-import { getListsWithMovies } from '@/api/lists';
+import { get_lists_with_movies } from '@/api/lists';
 import MediaDetailModal from '@/components/MediaDetailModal';
 import ShowDetailModal from '@/components/ShowDetailModal';
 import QuickAddButton from '@/components/QuickAddButton';
@@ -31,7 +31,7 @@ export default function Discover() {
   const [userLists, setUserLists] = useState<ListType[]>([]);
 
   useEffect(() => {
-    getListsWithMovies().then(data => setUserLists(data)).catch(() => {});
+    get_lists_with_movies().then(data => setUserLists(data)).catch(() => {});
   }, []);
 
   const inListIds = new Set<number>();
@@ -87,7 +87,7 @@ export default function Discover() {
 
   const handlePersonClick = async (person: PersonResult) => {
     setLoadingPerson(true);
-    const credits = await getPersonCredits(person.id);
+    const credits = await get_person_credits(person.id);
     setLoadingPerson(false);
     if (credits) { setSelectedPerson(credits); setBioExpanded(false); }
   };
@@ -201,7 +201,7 @@ export default function Discover() {
                 return (
                   <div key={`${item.id}-${item.media_type}`} style={{ cursor: 'pointer', transition: 'transform 0.15s', minHeight: 0, minWidth: 0 }} onClick={() => setSelectedItem(asResult)} onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-4px)')} onMouseLeave={e => (e.currentTarget.style.transform = 'none')}>
                     <div className="poster-wrap" style={{ position: 'relative', width: '100%' }}>
-                      <Poster posterUrl={item.poster_url} style={{ borderRadius: '10px', border: isInList ? '2px solid var(--t-primary)' : '1px solid rgba(255,255,255,0.15)' }} />
+                      <Poster poster_url={item.poster_url} style={{ borderRadius: '10px', border: isInList ? '2px solid var(--t-primary)' : '1px solid rgba(255,255,255,0.15)' }} />
                       {isInList && <div style={{ position: 'absolute', top: '6px', right: '6px', width: '20px', height: '20px', borderRadius: '50%', background: 'var(--t-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}><Check style={{ width: '12px', color: '#fff' }} /></div>}
                       <div style={{ position: 'absolute', bottom: '8px', right: '8px', background: 'rgba(0,0,0,0.72)', padding: '4px 8px', borderRadius: '7px', fontSize: '13px', fontWeight: 700, color: item.media_type === 'tv' ? 'var(--t-primary)' : '#ffd700', display: 'flex', alignItems: 'center', gap: '5px', border: '1px solid rgba(255,255,255,0.15)', zIndex: 2 }}>
                         {item.media_type === 'tv' ? <Tv style={{ width: '13px', height: '13px' }} /> : <Star style={{ width: '13px', height: '13px' }} />}
@@ -292,7 +292,7 @@ export default function Discover() {
               return (
                 <div key={item.id} style={{ cursor: 'pointer', transition: 'transform 0.15s', minHeight: 0, minWidth: 0 }} onClick={() => setSelectedItem(item)} onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-4px)')} onMouseLeave={e => (e.currentTarget.style.transform = 'none')}>
                   <div className="poster-wrap" style={{ position: 'relative', width: '100%' }}>
-                    <Poster posterUrl={item.poster_url} style={{ borderRadius: '10px', border: isInList ? '2px solid var(--t-primary)' : '1px solid rgba(255,255,255,0.15)', boxShadow: isInList ? '0 0 12px var(--t-primary-40)' : undefined, transition: 'box-shadow 0.2s' }} />
+                    <Poster poster_url={item.poster_url} style={{ borderRadius: '10px', border: isInList ? '2px solid var(--t-primary)' : '1px solid rgba(255,255,255,0.15)', boxShadow: isInList ? '0 0 12px var(--t-primary-40)' : undefined, transition: 'box-shadow 0.2s' }} />
                     {isInList && <div style={{ position: 'absolute', top: '6px', right: '6px', width: '20px', height: '20px', borderRadius: '50%', background: 'var(--t-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', zIndex: 2 }}><Check style={{ width: '12px', color: '#fff' }} /></div>}
                     <div style={{ position: 'absolute', bottom: '8px', right: '8px', background: 'rgba(0,0,0,0.72)', padding: '4px 8px', borderRadius: '7px', fontSize: '13px', fontWeight: 700, color: item.media_type === 'tv' ? 'var(--t-primary)' : '#ffd700', display: 'flex', alignItems: 'center', gap: '5px', border: '1px solid rgba(255,255,255,0.15)', zIndex: 2, lineHeight: 1 }}>
                       {item.media_type === 'tv' ? <Tv style={{ width: '13px', height: '13px', display: 'block' }} /> : <Star style={{ width: '13px', height: '13px', display: 'block' }} />}

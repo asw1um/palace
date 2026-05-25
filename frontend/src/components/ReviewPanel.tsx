@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Star, Trash2, MessageSquare, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { upsertReview, deleteReview, getMyReview, getTitleReviews, reactToReview } from '@/api/reviews';
+import { upsert_review, delete_review, get_my_review, get_title_reviews, react_to_review } from '@/api/reviews';
 import type { Review } from '@/api/reviews';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 interface Props {
-  tmdbId: number;
-  mediaType: string;
+  tmdb_id: number;
+  media_type: string;
   title: string;
-  posterUrl?: string | null;
+  poster_url?: string | null;
 }
 
 function StarRow({ value, onChange, readonly }: { value: number | null; onChange?: (v: number) => void; readonly?: boolean }) {
@@ -43,7 +43,7 @@ function StarRow({ value, onChange, readonly }: { value: number | null; onChange
   );
 }
 
-export default function ReviewPanel({ tmdbId, mediaType, title, posterUrl }: Props) {
+export default function ReviewPanel({ tmdb_id, media_type, title, poster_url }: Props) {
   const { user } = useAuth();
   const [myReview, setMyReview] = useState<Review | null>(null);
   const [allReviews, setAllReviews] = useState<Review[]>([]);
@@ -54,23 +54,23 @@ export default function ReviewPanel({ tmdbId, mediaType, title, posterUrl }: Pro
   const [loadingAll, setLoadingAll] = useState(false);
 
   useEffect(() => {
-    getMyReview(tmdbId, mediaType).then(r => {
+    get_my_review(tmdb_id, media_type).then(r => {
       if (r) { setMyReview(r); setRating(r.rating); setContent(r.content); }
     }).catch(() => {});
-  }, [tmdbId, mediaType]);
+  }, [tmdb_id, media_type]);
 
   useEffect(() => {
     if (tab === 'all') {
       setLoadingAll(true);
-      getTitleReviews(tmdbId, mediaType).then(r => setAllReviews(r)).catch(() => {}).finally(() => setLoadingAll(false));
+      get_title_reviews(tmdb_id, media_type).then(r => setAllReviews(r)).catch(() => {}).finally(() => setLoadingAll(false));
     }
-  }, [tab, tmdbId, mediaType]);
+  }, [tab, tmdb_id, media_type]);
 
   const handleSave = async () => {
     if (!rating && !content.trim()) return;
     setSaving(true);
     try {
-      const saved = await upsertReview({ tmdb_id: tmdbId, media_type: mediaType, title, poster_url: posterUrl || '', rating, content });
+      const saved = await upsert_review({ tmdb_id: tmdb_id, media_type: media_type, title, poster_url: poster_url || '', rating, content });
       setMyReview(saved);
       toast.success('Review saved');
     } catch { /* handled by interceptor */ }
@@ -80,17 +80,17 @@ export default function ReviewPanel({ tmdbId, mediaType, title, posterUrl }: Pro
   const handleDelete = async () => {
     if (!myReview) return;
     try {
-      await deleteReview(myReview.id);
+      await delete_review(myReview.id);
       setMyReview(null); setRating(null); setContent('');
       toast.success('Review deleted');
     } catch { /* handled */ }
   };
 
-  const handleReact = async (reviewId: number, reaction: 'like' | 'dislike') => {
-    const newReaction = await reactToReview(reviewId, reaction).catch(() => undefined);
+  const handleReact = async (review_id: number, reaction: 'like' | 'dislike') => {
+    const newReaction = await react_to_review(review_id, reaction).catch(() => undefined);
     if (newReaction === undefined) return;
     setAllReviews(prev => prev.map(r => {
-      if (r.id !== reviewId) return r;
+      if (r.id !== review_id) return r;
       const old = r.reactions ?? { likes: 0, dislikes: 0, my_reaction: null };
       const wasLike = old.my_reaction === 'like';
       const wasDislike = old.my_reaction === 'dislike';
@@ -105,7 +105,7 @@ export default function ReviewPanel({ tmdbId, mediaType, title, posterUrl }: Pro
     }));
   };
 
-  const displayName = (u: Review['author']) => u?.nickname || u?.username || 'User';
+  const get_display_name = (u: Review['author']) => u?.nickname || u?.username || 'User';
 
   return (
     <div style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', overflow: 'hidden', marginTop: '8px' }}>
@@ -165,10 +165,10 @@ export default function ReviewPanel({ tmdbId, mediaType, title, posterUrl }: Pro
                       <img src={r.author.profile_picture} alt="" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />
                     ) : (
                       <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--t-primary-25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 700, color: '#fff' }}>
-                        {displayName(r.author).slice(0, 2).toUpperCase()}
+                        {get_display_name(r.author).slice(0, 2).toUpperCase()}
                       </div>
                     )}
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#fff' }}>{displayName(r.author)}</span>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#fff' }}>{get_display_name(r.author)}</span>
                     {r.user_id === user?.id && <span style={{ fontSize: '10px', color: 'var(--t-primary)', fontWeight: 600 }}>You</span>}
                   </div>
                   {r.rating !== null && <StarRow value={r.rating} readonly />}

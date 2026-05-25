@@ -11,12 +11,12 @@ export async function getTrending(): Promise<TMDBResult[]> {
   return res.data.results || [];
 }
 
-export async function getMovieDetails(id: number): Promise<TMDBResult> {
+export async function get_movie_details(id: number): Promise<TMDBResult> {
   const res = await client.get(`/movie/${id}`);
   return res.data;
 }
 
-export async function getShowDetails(id: number): Promise<TMDBResult> {
+export async function get_tv_details(id: number): Promise<TMDBResult> {
   const res = await client.get(`/tv/${id}`);
   return res.data;
 }
@@ -30,9 +30,9 @@ export interface EpisodeDetail {
   still_url: string | null;
 }
 
-export async function getSeasonDetails(showId: number, seasonNumber: number): Promise<{ season_number: number; name: string; episodes: EpisodeDetail[] } | null> {
+export async function get_season_details(show_id: number, season_number: number): Promise<{ season_number: number; name: string; episodes: EpisodeDetail[] } | null> {
   try {
-    const res = await client.get(`/tv/${showId}/season/${seasonNumber}`);
+    const res = await client.get(`/tv/${show_id}/season/${season_number}`);
     return res.data;
   } catch {
     return null;
@@ -71,7 +71,7 @@ export async function searchPeople(query: string): Promise<PersonResult[]> {
   return res.data.results || [];
 }
 
-export async function getPersonCredits(personId: number): Promise<PersonCredits | null> {
+export async function get_person_credits(personId: number): Promise<PersonCredits | null> {
   try {
     const res = await client.get(`/person/${personId}/credits`);
     return res.data;
@@ -82,13 +82,13 @@ export async function getPersonCredits(personId: number): Promise<PersonCredits 
 
 export async function getMediaDetails(id: number): Promise<TMDBResult | null> {
   try {
-    const showData = await getShowDetails(id);
+    const showData = await get_tv_details(id);
     if (showData && showData.seasons && showData.seasons.length > 0) {
       return { ...showData, media_type: 'tv' };
     }
   } catch { /* not a show */ }
   try {
-    const movieData = await getMovieDetails(id);
+    const movieData = await get_movie_details(id);
     if (movieData) {
       return { ...movieData, media_type: 'movie' };
     }

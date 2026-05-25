@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { getListsWithMovies, addMovieToList, removeMovieFromList } from '@/api/lists';
+import { get_lists_with_movies, add_movie_to_list, remove_movie_from_list } from '@/api/lists';
 import { getMyClubsWithLists } from '@/api/clubs';
 import { toast } from 'sonner';
 import type { List as ListType, Club, Movie } from '@/types/api';
@@ -14,10 +14,10 @@ interface Props {
   placement?: 'above' | 'below';
 }
 
-function findItemInList(list: ListType, tmdbId?: number, title?: string): { id: number } | undefined {
-  if (tmdbId !== undefined) {
-    return list.movies?.find((m: Movie) => m.tmdb_id === tmdbId || m.id === tmdbId)
-      ?? (list.shows as Array<{ id: number; tmdb_id?: number; title: string }> | undefined)?.find(s => s.tmdb_id === tmdbId || s.id === tmdbId);
+function find_item_in_list(list: ListType, tmdb_id?: number, title?: string): { id: number } | undefined {
+  if (tmdb_id !== undefined) {
+    return list.movies?.find((m: Movie) => m.tmdb_id === tmdb_id || m.id === tmdb_id)
+      ?? (list.shows as Array<{ id: number; tmdb_id?: number; title: string }> | undefined)?.find(s => s.tmdb_id === tmdb_id || s.id === tmdb_id);
   }
   if (!title) return undefined;
   const inMovies = list.movies?.find((m: Movie) => m.title === title);
@@ -39,7 +39,7 @@ export default function AddToListMenu({ onClose, triggerRef, movieTitle, movieDa
     async function load() {
       try {
         const [listsData, clubsData] = await Promise.all([
-          getListsWithMovies().catch(() => []),
+          get_lists_with_movies().catch(() => []),
           getMyClubsWithLists().catch(() => []),
         ]);
         setMyLists(listsData.filter((l: ListType) => !l.club_id));
@@ -93,14 +93,14 @@ export default function AddToListMenu({ onClose, triggerRef, movieTitle, movieDa
       toast.info('Open the detail page to add this item to a list.');
       return;
     }
-    const existing = findItemInList(list, movieData.tmdb_id, movieData.title);
+    const existing = find_item_in_list(list, movieData.tmdb_id, movieData.title);
     try {
       if (existing) {
-        await removeMovieFromList(list.id, existing.id);
+        await remove_movie_from_list(list.id, existing.id);
         setFeedback({ name: list.name, action: 'removed' });
         toast.success(`Removed from "${list.name}"`);
       } else {
-        await addMovieToList(list.id, {
+        await add_movie_to_list(list.id, {
           tmdb_id: movieData.tmdb_id,
           title: movieData.title,
           poster_url: movieData.poster_url || null,
@@ -111,7 +111,7 @@ export default function AddToListMenu({ onClose, triggerRef, movieTitle, movieDa
       }
       // Refresh lists so checkmarks update
       const [refreshed, refreshedClubs] = await Promise.all([
-        getListsWithMovies().catch(() => []),
+        get_lists_with_movies().catch(() => []),
         getMyClubsWithLists().catch(() => []),
       ]);
       setMyLists(refreshed.filter((l: ListType) => !l.club_id));
@@ -133,7 +133,7 @@ export default function AddToListMenu({ onClose, triggerRef, movieTitle, movieDa
   const BTN_IN_LIST_HOVER = 'rgba(80,200,120,0.35)';
 
   const getListStyle = (list: ListType) => {
-    const inList = !!findItemInList(list, movieData?.tmdb_id, movieTitle);
+    const inList = !!find_item_in_list(list, movieData?.tmdb_id, movieTitle);
     if (feedback?.name === list.name && feedback.action === 'added') {
       return { bg: 'rgba(80,200,120,0.4)', hover: 'rgba(80,200,120,0.4)', color: '#fff', inList: true };
     }

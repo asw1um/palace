@@ -21,11 +21,11 @@ def add_movie():
     if not list_ids:
         return jsonify({'error': 'Select at least one list'}), 400
 
-    existing = movie.query.filter_by(userID=user_id, tmdbID=movie_tmdb_id).first()
+    existing = movie.query.filter_by(user_id=user_id, tmdb_id=movie_tmdb_id).first()
     if existing:
         new_movie = existing
     else:
-        new_movie = movie(title=movie_title, posterURL=movie_poster, tmdbID=movie_tmdb_id, userID=user_id)
+        new_movie = movie(title=movie_title, poster_url=movie_poster, tmdb_id=movie_tmdb_id, user_id=user_id)
         db.session.add(new_movie)
         db.session.commit()
 
@@ -116,5 +116,5 @@ def remove_movie(movie_id):
 @jwt_required()
 def get_my_movies():
     user_id = int(get_jwt_identity())
-    user_lists = movielist.query.filter_by(userID=user_id).all()
+    user_lists = movielist.query.filter_by(user_id=user_id).all()
     return jsonify({'lists': [lst.to_dict(include_movies=True, include_shows=True) for lst in user_lists]}), 200

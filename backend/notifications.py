@@ -9,7 +9,7 @@ notifications = Blueprint('notifications', __name__)
 def get_user_notifications():
     user_id = int(get_jwt_identity())
     notifs = Notification.query.filter_by(user_id=user_id).order_by(Notification.created_at.desc()).all()
-    return jsonify({'notifications': [n.to_dict() for n in notifs]}), 200
+    return jsonify({'notifications': [notif.to_dict() for notif in notifs]}), 200
 
 
 @notifications.route('/user/<int:notification_id>/read', methods=['POST'])

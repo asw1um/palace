@@ -17,6 +17,8 @@ instance/
 
 # Frontend — entire directory excluded
 
+.claude/
+
 # Misc folders
 random/
 

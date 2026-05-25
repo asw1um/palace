@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, Search, LayoutGrid, List, Plus, X, Image } from 'lucide-react';
-import { getClubs, createClub, uploadClubImage } from '@/api/clubs';
+import { get_clubs, create_club, uploadClubImage } from '@/api/clubs';
 import { GlassCard } from '@/components/GlassBox';
 import ImageCropModal from '@/components/ImageCropModal';
 import type { Club } from '@/types/api';
@@ -21,7 +21,7 @@ export default function Clubs() {
   const [allClubs, setAllClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [newName, setNewName] = useState('');
+  const [new_name, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [creating, setCreating] = useState(false);
   const [pendingImageSrc, setPendingImageSrc] = useState<string | null>(null);
@@ -33,7 +33,7 @@ export default function Clubs() {
     let cancelled = false;
     async function load() {
       try {
-        const data = await getClubs();
+        const data = await get_clubs();
         if (!cancelled) setAllClubs(data.all_clubs || []);
       } finally {
         if (!cancelled) setLoading(false);
@@ -44,11 +44,11 @@ export default function Clubs() {
   }, []);
 
   const handleCreate = async () => {
-    const name = newName.trim();
+    const name = new_name.trim();
     if (!name) return;
     setCreating(true);
     try {
-      let club = await createClub(name, newDesc.trim() || undefined);
+      let club = await create_club(name, newDesc.trim() || undefined);
       if (pendingImageBlob) {
         const file = new File([pendingImageBlob], 'thumbnail.jpg', { type: 'image/jpeg' });
         const { url } = await uploadClubImage(club.id, file);
@@ -130,7 +130,7 @@ export default function Clubs() {
 
             <div style={{ marginBottom: '14px' }}>
               <label style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1.5px', display: 'block', marginBottom: '6px' }}>Name</label>
-              <input autoFocus value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleCreate(); }} placeholder="Club name..." style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'var(--t-primary-10)', border: '1px solid var(--t-primary-30)', color: '#fff', fontSize: '14px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} onFocus={e => { e.currentTarget.style.borderColor = 'var(--t-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--t-primary-22)'; }} onBlur={e => { e.currentTarget.style.borderColor = 'var(--t-primary-30)'; e.currentTarget.style.boxShadow = 'none'; }} />
+              <input autoFocus value={new_name} onChange={e => setNewName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleCreate(); }} placeholder="Club name..." style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', background: 'var(--t-primary-10)', border: '1px solid var(--t-primary-30)', color: '#fff', fontSize: '14px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} onFocus={e => { e.currentTarget.style.borderColor = 'var(--t-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--t-primary-22)'; }} onBlur={e => { e.currentTarget.style.borderColor = 'var(--t-primary-30)'; e.currentTarget.style.boxShadow = 'none'; }} />
             </div>
             <div style={{ marginBottom: '20px' }}>
               <label style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1.5px', display: 'block', marginBottom: '6px' }}>Description <span style={{ fontWeight: 400, textTransform: 'none' }}>(optional)</span></label>
@@ -138,7 +138,7 @@ export default function Clubs() {
             </div>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button onClick={() => setShowCreate(false)} style={{ padding: '8px 16px', borderRadius: '8px', background: 'var(--t-primary-15)', border: '1px solid var(--t-primary-35)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-              <button onClick={handleCreate} disabled={creating || !newName.trim()} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(180deg, var(--t-primary)99, var(--t-primary)55)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: (!newName.trim() || creating) ? 0.5 : 1 }}>
+              <button onClick={handleCreate} disabled={creating || !new_name.trim()} style={{ padding: '8px 20px', borderRadius: '8px', background: 'linear-gradient(180deg, var(--t-primary)99, var(--t-primary)55)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: (!new_name.trim() || creating) ? 0.5 : 1 }}>
                 {creating ? 'Creating...' : 'Create'}
               </button>
             </div>
