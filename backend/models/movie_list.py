@@ -24,7 +24,7 @@ class movielist(db.Model):
         if self.is_personal_list():
             return self.user_id == user.id
         elif self.is_club_list():
-            return self.club.is_member(user)
+            return self.club.can_manage_lists(user)
         return False
 
     def to_dict(self, include_movies=False, include_shows=False):

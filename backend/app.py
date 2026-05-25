@@ -18,6 +18,7 @@ from activity import activity
 from settings import settings
 from reviews import reviews
 from search import tmdb
+from custom_media import custom_media_bp
 import cache  # registers tmdb_cache model
 
 # Writes PID for monitoring
@@ -78,6 +79,7 @@ app.register_blueprint(notifications, url_prefix='/api/notifications')
 app.register_blueprint(activity, url_prefix='/api/activity')
 app.register_blueprint(settings, url_prefix='/api/settings')
 app.register_blueprint(reviews, url_prefix='/api/reviews')
+app.register_blueprint(custom_media_bp, url_prefix='/api/custom-media')
 app.register_blueprint(tmdb, url_prefix='/api')
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'uploads')

@@ -2,6 +2,8 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { get_lists_with_movies, add_movie_to_list, remove_movie_from_list } from '@/api/lists';
 import { getMyClubsWithLists } from '@/api/clubs';
+import { get_tv_details, get_movie_details } from '@/api/search';
+import { bulk_update_show_progress, update_movie_progress } from '@/api/progress';
 import { toast } from 'sonner';
 import type { List as ListType, Club, Movie } from '@/types/api';
 import { ChevronUp, ChevronRight, List as ListIcon, Users, Check } from 'lucide-react';
@@ -106,6 +108,19 @@ export default function AddToListMenu({ onClose, triggerRef, movieTitle, movieDa
           poster_url: movieData.poster_url || null,
           media_type: movieData.media_type || 'movie',
         });
+        if (list.name.toLowerCase() === 'watched') {
+          if (movieData.media_type === 'tv') {
+            const details = await get_tv_details(movieData.tmdb_id).catch(() => null);
+            const validSeasons = (details?.seasons || []).filter((s: { season_number: number; episode_count: number }) => s.season_number > 0);
+            if (validSeasons.length > 0) {
+              await bulk_update_show_progress(movieData.tmdb_id, validSeasons, true).catch(() => {});
+            }
+          } else {
+            const details = await get_movie_details(movieData.tmdb_id).catch(() => null);
+            const runtime = details?.runtime || 0;
+            await update_movie_progress(movieData.tmdb_id, runtime > 0 ? runtime : 1, runtime > 0 ? runtime : 1).catch(() => {});
+          }
+        }
         setFeedback({ name: list.name, action: 'added' });
         toast.success(`Added to "${list.name}"`);
       }

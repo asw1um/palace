@@ -38,6 +38,14 @@ export async function get_movie_progress(movie_id: number): Promise<{ watched_mi
   return res.data;
 }
 
+export async function bulk_update_show_progress(
+  show_id: number,
+  seasons: { season_number: number; episode_count: number }[],
+  watched: boolean
+): Promise<void> {
+  await client.post('/watchlist/bulk-show-progress', { show_id, seasons, watched });
+}
+
 export async function update_movie_progress(
   movie_id: number,
   watched_minutes: number,

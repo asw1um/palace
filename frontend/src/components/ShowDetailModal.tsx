@@ -6,6 +6,7 @@ import { X, Star, Tv, Check, ChevronRight, ChevronLeft, Play, Calendar, Plus, Me
 import AddToListMenu from './AddToListMenu';
 import { get_tv_details, get_movie_details, get_season_details } from '@/api/search';
 import { get_show_progress, update_show_progress } from '@/api/progress';
+import { get_custom_media, set_show_seasons } from '@/api/custom_media';
 import { upsert_review, delete_review, get_my_review, get_title_reviews } from '@/api/reviews';
 import type { Review } from '@/api/reviews';
 import { exampleStore } from '@/data/exampleStore';
@@ -110,6 +111,26 @@ export default function ShowDetailModal({ item, onClose }: Props) {
   const tabsRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [customSeasons, setCustomSeasons] = useState<{season_number: number; episode_count: number}[] | null>(() => {
+    try {
+      const raw = localStorage.getItem(`palace_custom_seasons_${item.id}`);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  });
+
+  // Load custom seasons from backend on open (localStorage is instant cache)
+  useEffect(() => {
+    get_custom_media(item.id, 'tv').then(meta => {
+      if (meta?.seasons && meta.seasons.length > 0) {
+        setCustomSeasons(meta.seasons);
+        localStorage.setItem(`palace_custom_seasons_${item.id}`, JSON.stringify(meta.seasons));
+        save_show_meta(item.id, meta.seasons);
+      }
+    }).catch(() => {});
+  }, [item.id]);
+  const [setupPhase, setSetupPhase] = useState<'num' | 'counts' | null>(null);
+  const [setupNumSeasons, setSetupNumSeasons] = useState('');
+  const [setupEpCounts, setSetupEpCounts] = useState<string[]>([]);
 
   const updateScrollArrows = useCallback(() => {
     const el = tabsRef.current;
@@ -245,9 +266,17 @@ export default function ShowDetailModal({ item, onClose }: Props) {
       };
     });
 
-  useEffect(() => { updateScrollArrows(); }, [seasons.length, updateScrollArrows]);
+  const effectiveSeasons: Season[] = customSeasons
+    ? customSeasons.map(cs => ({
+        season_number: cs.season_number,
+        name: `Season ${cs.season_number}`,
+        episodes: seasonCache[cs.season_number]?.episodes ?? placeholderEpisodes(cs.season_number, cs.episode_count),
+      }))
+    : seasons;
 
-  const currentSeason = seasons.find(s => s.season_number === selectedSeason) || seasons[0];
+  useEffect(() => { updateScrollArrows(); }, [effectiveSeasons.length, updateScrollArrows]);
+
+  const currentSeason = effectiveSeasons.find(s => s.season_number === selectedSeason) || effectiveSeasons[0];
   const episodes = currentSeason?.episodes.map(ep => ({
     ...ep,
     watched: watchedMap[`${selectedSeason}-${ep.episode_number}`] || false,
@@ -268,7 +297,7 @@ export default function ShowDetailModal({ item, onClose }: Props) {
   watchedMapRef.current = watchedMap;
 
   const markSeason = useCallback((seasonNum: number, watched: boolean) => {
-    const season = seasons.find(s => s.season_number === seasonNum);
+    const season = effectiveSeasons.find(s => s.season_number === seasonNum);
     if (!season) return;
     setWatchedMap(prev => {
       const next = { ...prev };
@@ -278,7 +307,8 @@ export default function ShowDetailModal({ item, onClose }: Props) {
     Promise.all(season.episodes.map(ep => update_show_progress(item.id, seasonNum, ep.episode_number, watched)))
       .then(() => emit_progress_update(item.id)).catch(() => {});
     exampleStore.dismiss();
-  }, [item.id, seasons]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id, seasons, customSeasons]);
 
   function saveEpPosition(seasonNum: number, epNum: number, secs: number) {
     const key = `${seasonNum}-${epNum}`;
@@ -332,12 +362,12 @@ export default function ShowDetailModal({ item, onClose }: Props) {
     } catch { /* handled */ }
   }
 
-  const totalEpisodes = seasons.reduce((a, s) => a + s.episodes.length, 0);
+  const totalEpisodes = effectiveSeasons.reduce((a, s) => a + s.episodes.length, 0);
   const watchedCount = Object.values(watchedMap).filter(Boolean).length;
   const pct = totalEpisodes > 0 ? Math.round((watchedCount / totalEpisodes) * 100) : 0;
 
   const nextEpisode = (() => {
-    for (const season of seasons) {
+    for (const season of effectiveSeasons) {
       for (const ep of season.episodes) {
         if (!watchedMap[`${season.season_number}-${ep.episode_number}`]) {
           return { season: season.season_number, episode: ep.episode_number, name: ep.name };
@@ -500,8 +530,8 @@ export default function ShowDetailModal({ item, onClose }: Props) {
             </div>
           )}
 
-          {/* Episodes */}
-          {seasons.length > 0 && (
+          {/* Episodes / Season setup */}
+          {effectiveSeasons.length > 0 && setupPhase === null ? (
             <div style={{ padding: '12px 20px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
 
               {/* Season tabs row */}
@@ -520,7 +550,7 @@ export default function ShowDetailModal({ item, onClose }: Props) {
                   onWheel={e => { const el = e.currentTarget; if (el.scrollWidth > el.clientWidth) { el.scrollLeft += e.deltaY; e.preventDefault(); } }}
                   style={{ display: 'flex', gap: '5px', overflowX: 'auto', scrollbarWidth: 'none', alignItems: 'center' }}
                   className="hide-scrollbar">
-                  {seasons.map(s => {
+                  {effectiveSeasons.map(s => {
                     const sw = s.episodes.filter(ep => watchedMap[`${s.season_number}-${ep.episode_number}`]).length;
                     const st = s.episodes.length;
                     const isActive = selectedSeason === s.season_number;
@@ -656,8 +686,114 @@ export default function ShowDetailModal({ item, onClose }: Props) {
                   </motion.div>
                 </AnimatePresence>
               </div>
+
+              {/* Edit custom seasons link */}
+              {customSeasons && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+                  <button onClick={() => {
+                    setSetupNumSeasons(String(customSeasons.length));
+                    setSetupEpCounts(customSeasons.map(cs => String(cs.episode_count)));
+                    setCustomSeasons(null);
+                    setSetupPhase('counts');
+                  }} style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Edit seasons
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+
+          ) : detail !== null && setupPhase === null ? (
+            <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>No Season Data</div>
+              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '12px' }}>
+                This show has no season data available. Set up your seasons to track watch progress.
+              </div>
+              <button onClick={() => setSetupPhase('num')}
+                style={{ padding: '8px 16px', borderRadius: '8px', background: 'var(--t-primary-60)', border: '1px solid var(--t-primary-80)', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--t-primary)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--t-primary-60)'; }}>
+                Set up seasons
+              </button>
+            </div>
+
+          ) : setupPhase === 'num' ? (
+            <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#fff', marginBottom: '12px' }}>How many seasons does this show have?</div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input
+                  type="number"
+                  value={setupNumSeasons}
+                  onChange={e => setSetupNumSeasons(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const n = parseInt(setupNumSeasons);
+                      if (n > 0) { setSetupEpCounts(Array(n).fill('12')); setSetupPhase('counts'); }
+                    }
+                  }}
+                  placeholder="Number of seasons"
+                  min="1"
+                  autoFocus
+                  style={{ width: '150px', padding: '7px 10px', borderRadius: '7px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.25)', color: '#fff', fontSize: '13px', fontFamily: 'inherit', outline: 'none' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--t-primary)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
+                />
+                <button onClick={() => {
+                  const n = parseInt(setupNumSeasons);
+                  if (n > 0) { setSetupEpCounts(Array(n).fill('12')); setSetupPhase('counts'); }
+                }}
+                  style={{ padding: '7px 16px', borderRadius: '7px', background: 'var(--t-primary-60)', border: '1px solid var(--t-primary-80)', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--t-primary)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--t-primary-60)'; }}>
+                  Next
+                </button>
+              </div>
+            </div>
+
+          ) : setupPhase === 'counts' ? (
+            <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#fff', marginBottom: '12px' }}>Episodes per season</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px', maxHeight: '200px', overflowY: 'auto' }}>
+                {setupEpCounts.map((count, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', width: '64px', flexShrink: 0 }}>Season {i + 1}</span>
+                    <input
+                      type="number"
+                      value={count}
+                      onChange={e => setSetupEpCounts(prev => { const next = [...prev]; next[i] = e.target.value; return next; })}
+                      min="1"
+                      style={{ width: '80px', padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.25)', color: '#fff', fontSize: '13px', fontFamily: 'inherit', outline: 'none' }}
+                      onFocus={e => { e.currentTarget.style.borderColor = 'var(--t-primary)'; }}
+                      onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
+                    />
+                    <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>episodes</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => setSetupPhase('num')}
+                  style={{ padding: '7px 14px', borderRadius: '7px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.6)', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Back
+                </button>
+                <button onClick={() => {
+                  const newCS = setupEpCounts.map((count, i) => ({
+                    season_number: i + 1,
+                    episode_count: Math.max(1, parseInt(count) || 12),
+                  }));
+                  localStorage.setItem(`palace_custom_seasons_${item.id}`, JSON.stringify(newCS));
+                  save_show_meta(item.id, newCS);
+                  setCustomSeasons(newCS);
+                  setSetupPhase(null);
+                  setSelectedSeason(1);
+                  set_show_seasons(item.id, newCS).catch(() => {});
+                }}
+                  style={{ padding: '7px 16px', borderRadius: '7px', background: 'var(--t-primary-60)', border: '1px solid var(--t-primary-80)', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--t-primary)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--t-primary-60)'; }}>
+                  Confirm
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           {/* ── REVIEWS section (bottom of scrollable body) ── */}
           {reviewsOpen && (
