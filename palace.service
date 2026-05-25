@@ -1,0 +1,18 @@
+[Unit]
+Description=Palace Flask App
+After=network.target
+
+[Service]
+User=admin
+WorkingDirectory=/var/www/palace/backend
+Environment="PATH=/var/www/palace/venv/bin"
+ExecStart=/var/www/palace/venv/bin/gunicorn \
+    --bind 127.0.0.1:5000 \
+    --workers 2 \
+    --timeout 60 \
+    server_entry:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
