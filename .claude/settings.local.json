@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\swanpro\\\\Documents\\\\GitHub\\\\palace_new\\\\palace\\\\frontend\\\\src\" -Recurse | Where-Object { $_.Extension -in '.ts', '.tsx', '.js', '.jsx' } | Measure-Object)"
-    ]
-  }
-}
