@@ -51,6 +51,7 @@ export interface Club {
   image_url?: string | null;
   admin_id: number;
   mod_ids?: number[];
+  helper_ids?: number[];
   created_at: string;
   member_count: number;
   members?: User[];

@@ -73,6 +73,18 @@ export async function revoke_mod(club_id: number, user_id: number): Promise<void
   await client.delete(`/clubs/${club_id}/mods/${user_id}`);
 }
 
+export async function grant_helper(club_id: number, user_id: number): Promise<void> {
+  await client.post(`/clubs/${club_id}/helpers/${user_id}`);
+}
+
+export async function revoke_helper(club_id: number, user_id: number): Promise<void> {
+  await client.delete(`/clubs/${club_id}/helpers/${user_id}`);
+}
+
+export async function kick_member(club_id: number, user_id: number): Promise<void> {
+  await client.post(`/clubs/${club_id}/kick/${user_id}`);
+}
+
 export async function uploadClubImage(id: number, file: File): Promise<{ url: string }> {
   const form = new FormData();
   form.append('file', file);

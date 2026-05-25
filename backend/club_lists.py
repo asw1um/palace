@@ -14,8 +14,8 @@ def create_club_list(club_id):
     current_user = db.session.get(user,user_id)
     club_obj = club.query.get_or_404(club_id)
 
-    if not club_obj.is_member(current_user):
-        return jsonify({'error': 'Must be a member to create lists'}), 403
+    if not club_obj.can_manage_lists(current_user):
+        return jsonify({'error': 'Must be a helper, mod, or admin to create lists'}), 403
 
     data = request.get_json()
     list_name = data.get('name', '').strip()
@@ -46,8 +46,8 @@ def delete_club_list(club_id, list_id):
     club_obj = club.query.get_or_404(club_id)
     list_obj = movielist.query.get_or_404(list_id)
 
-    if not club_obj.is_member(current_user):
-        return jsonify({'error': 'Not a member'}), 403
+    if not club_obj.can_manage(current_user):
+        return jsonify({'error': 'Must be a mod or admin to delete lists'}), 403
 
     if list_obj.club_id != club_id:
         return jsonify({'error': 'List not in this club'}), 403
@@ -74,8 +74,8 @@ def rename_club_list(club_id, list_id):
     club_obj = club.query.get_or_404(club_id)
     list_obj = movielist.query.get_or_404(list_id)
 
-    if not club_obj.is_member(current_user):
-        return jsonify({'error': 'Not a member'}), 403
+    if not club_obj.can_manage(current_user):
+        return jsonify({'error': 'Must be a mod or admin to rename lists'}), 403
 
     if list_obj.club_id != club_id:
         return jsonify({'error': 'List not in this club'}), 403
