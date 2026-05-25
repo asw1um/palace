@@ -7,6 +7,7 @@ from .watch_progress import ShowProgress, MovieProgress
 from .review import Review, ReviewReaction
 from .user_settings import UserSettings
 from .activity_log import activity_log
+from .custom_media import CustomMedia
 from .notification import (
     Notification,
     ClubInviteNotification,
