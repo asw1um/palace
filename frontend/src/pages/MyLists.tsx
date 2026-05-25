@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getListsWithMovies, createList, deleteList, renameList } from '@/api/lists';
+import { get_lists_with_movies, create_list, delete_list, rename_list } from '@/api/lists';
 
 import { Trash2, Search, Pencil, LayoutGrid, List as ListIcon, Plus, Star, Tv } from 'lucide-react';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -25,7 +25,7 @@ export default function MyLists() {
     let cancelled = false;
     async function load() {
       try {
-        const data = await getListsWithMovies();
+        const data = await get_lists_with_movies();
         if (!cancelled) setLists(data);
       } finally {
         if (!cancelled) setLoading(false);
@@ -37,7 +37,7 @@ export default function MyLists() {
 
   useEffect(() => {
     const refresh = () => {
-      getListsWithMovies().then(data => setLists(data)).catch(() => {});
+      get_lists_with_movies().then(data => setLists(data)).catch(() => {});
     };
     window.addEventListener('palace-lists-changed', refresh);
     return () => window.removeEventListener('palace-lists-changed', refresh);
@@ -47,7 +47,7 @@ export default function MyLists() {
     const name = newListName.trim();
     if (!name) return;
     try {
-      const newList = await createList(name);
+      const newList = await create_list(name);
       setLists(prev => [...prev, newList]);
       setNewListName('');
       setShowCreate(false);
@@ -56,18 +56,18 @@ export default function MyLists() {
     }
   };
 
-  const handleDeleteList = async (listId: number, listName: string) => {
+  const handleDeleteList = async (list_id: number, list_name: string) => {
     const ok = await confirm({
       title: 'Delete List',
-      message: `Are you sure you want to delete "${listName}"?`,
+      message: `Are you sure you want to delete "${list_name}"?`,
       confirmLabel: 'Delete',
       cancelLabel: 'Cancel',
       danger: true,
     });
     if (ok) {
       try {
-        await deleteList(listId);
-        setLists(prev => prev.filter(l => l.id !== listId));
+        await delete_list(list_id);
+        setLists(prev => prev.filter(l => l.id !== list_id));
       } catch {
         // error handled by interceptor
       }
@@ -88,7 +88,7 @@ export default function MyLists() {
       return;
     }
     try {
-      await renameList(list.id, name);
+      await rename_list(list.id, name);
       setLists(prev => prev.map(l => l.id === list.id ? { ...l, name } : l));
     } catch {
       // error handled by interceptor
@@ -242,7 +242,7 @@ export default function MyLists() {
                   {allItems.map(item => (
                     <div key={`${item.type}-${item.id}`} style={{ display: 'flex', flexDirection: 'column', gap: '6px', minHeight: 0, minWidth: 0 }}>
                       <div className="poster-wrap" style={{ position: 'relative', width: '100%' }}>
-                        <Poster posterUrl={item.poster_url} style={{ borderRadius: '8px' }} />
+                        <Poster poster_url={item.poster_url} style={{ borderRadius: '8px' }} />
                       </div>
                       <span style={{ fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>{item.title}</span>
                     </div>

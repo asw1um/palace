@@ -8,28 +8,28 @@ from gamble import get_api_key
 tmdb = Blueprint('tmdb', __name__)
 
 load_dotenv()
-baseURL = "https://api.themoviedb.org/3"
-imageBaseURL = "https://image.tmdb.org/t/p"
-posterSize = "w500"
-backdropSize = "w1280"
-profileSize = "h632"
+base_url = "https://api.themoviedb.org/3"
+image_base_url = "https://image.tmdb.org/t/p"
+poster_size = "w500"
+backdrop_size = "w1280"
+profile_size = "h632"
 
 
-def getPosterURL(posterPath):
-    if posterPath:
-        return f"{imageBaseURL}/{posterSize}{posterPath}"
+def get_poster_url(poster_path):
+    if poster_path:
+        return f"{image_base_url}/{poster_size}{poster_path}"
     return None
 
 
-def getBackdropURL(backdropPath):
-    if backdropPath:
-        return f"{imageBaseURL}/{backdropSize}{backdropPath}"
+def get_backdrop_url(backdrop_path):
+    if backdrop_path:
+        return f"{image_base_url}/{backdrop_size}{backdrop_path}"
     return None
 
 
-def getProfileURL(profilePath):
-    if profilePath:
-        return f"{imageBaseURL}/{profileSize}{profilePath}"
+def get_profile_url(profile_path):
+    if profile_path:
+        return f"{image_base_url}/{profile_size}{profile_path}"
     return None
 
 
@@ -90,7 +90,7 @@ def _format_cast(credits):
             'id': c.get('id'),
             'name': c.get('name'),
             'character': c.get('character'),
-            'profile_url': getProfileURL(c.get('profile_path')),
+            'profile_url': get_profile_url(c.get('profile_path')),
             'order': c.get('order', 999)
         }
         for c in credits.get('cast', [])[:15]  # top 15 billed cast
@@ -116,15 +116,15 @@ def _format_trailer(videos):
     return None
 
 
-def formatMulti(item):
+def format_multi(item):
     media_type = item.get('media_type')
     base = {
         'id': item.get('id'),
         'media_type': media_type,
         'title': item.get('title') or item.get('name'),
         'overview': item.get('overview'),
-        'poster_url': getPosterURL(item.get('poster_path')),
-        'backdrop_url': getBackdropURL(item.get('backdrop_path')),
+        'poster_url': get_poster_url(item.get('poster_path')),
+        'backdrop_url': get_backdrop_url(item.get('backdrop_path')),
         'release_date': item.get('release_date') or item.get('first_air_date'),
         'rating': item.get('vote_average'),
         'popularity': item.get('popularity'),
@@ -135,8 +135,8 @@ def formatMulti(item):
     return base
 
 
-def formatMovie(movie):
-    result = formatMulti(movie)
+def format_movie(movie):
+    result = format_multi(movie)
     result['media_type'] = 'movie'
     result['runtime'] = movie.get('runtime')
     result['tagline'] = movie.get('tagline')
@@ -151,8 +151,8 @@ def formatMovie(movie):
     return result
 
 
-def formatShow(show_data):
-    result = formatMulti(show_data)
+def format_show(show_data):
+    result = format_multi(show_data)
     result['media_type'] = 'tv'
     result['status'] = show_data.get('status')
     result['tagline'] = show_data.get('tagline')
@@ -163,7 +163,7 @@ def formatShow(show_data):
     result['original_language'] = show_data.get('original_language')
     result['genres'] = [g.get('name') for g in show_data.get('genres', [])]
     result['created_by'] = [
-        {'id': c.get('id'), 'name': c.get('name'), 'profile_url': getProfileURL(c.get('profile_path'))}
+        {'id': c.get('id'), 'name': c.get('name'), 'profile_url': get_profile_url(c.get('profile_path'))}
         for c in show_data.get('created_by', [])
     ]
     result['cast'] = _format_cast(show_data.get('credits'))
@@ -173,26 +173,26 @@ def formatShow(show_data):
 
 
 def _search(endpoint, query):
-    data = _cached_tmdb_request(f"{baseURL}/{endpoint}", {"query": query, "page": 1}, ttl_hours=_TTL_SEARCH)
+    data = _cached_tmdb_request(f"{base_url}/{endpoint}", {"query": query, "page": 1}, ttl_hours=_TTL_SEARCH)
     if data:
         return data.get("results", [])
     return []
 
 
-def searchMovie(query):
-    return [formatMovie(m) for m in _search("search/movie", query)]
+def search_movie(query):
+    return [format_movie(m) for m in _search("search/movie", query)]
 
 
-def searchShow(query):
-    return [formatShow(s) for s in _search("search/tv", query)]
+def search_show(query):
+    return [format_show(s) for s in _search("search/tv", query)]
 
 
-def searchMulti(query):
-    data = _cached_tmdb_request(f"{baseURL}/search/multi", {"query": query, "page": 1}, ttl_hours=_TTL_SEARCH)
+def search_multi(query):
+    data = _cached_tmdb_request(f"{base_url}/search/multi", {"query": query, "page": 1}, ttl_hours=_TTL_SEARCH)
     if not data:
         return []
     results = [
-        formatMulti(item)
+        format_multi(item)
         for item in data.get("results", [])
         if item.get('media_type') in ('movie', 'tv')
     ]
@@ -203,17 +203,17 @@ def searchMulti(query):
 _APPEND = "credits,videos,similar,recommendations,images,watch/providers"
 
 
-def getMovie(movieID):
+def get_movie(movie_id):
     data = _cached_tmdb_request(
-        f"{baseURL}/movie/{movieID}",
+        f"{base_url}/movie/{movie_id}",
         {"append_to_response": _APPEND},
         ttl_hours=_TTL_FOREVER,
     )
-    return formatMovie(data) if data else None
+    return format_movie(data) if data else None
 
 
-def getShow(showID):
-    url = f"{baseURL}/tv/{showID}"
+def getShow(show_id):
+    url = f"{base_url}/tv/{show_id}"
     params = {"append_to_response": _APPEND}
     key = _cache_key(url, params)
 
@@ -225,7 +225,7 @@ def getShow(showID):
 
     if not data:
         return None
-    result = formatShow(data)
+    result = format_show(data)
     result['seasons'] = [
         {'season_number': s.get('season_number'), 'episode_count': s.get('episode_count')}
         for s in data.get('seasons', [])
@@ -234,8 +234,8 @@ def getShow(showID):
     return result
 
 
-def getSeasonDetails(showID, seasonNumber):
-    data = _cached_tmdb_request(f"{baseURL}/tv/{showID}/season/{seasonNumber}", ttl_hours=_TTL_SEASON)
+def get_season_details(show_id, season_number):
+    data = _cached_tmdb_request(f"{base_url}/tv/{show_id}/season/{season_number}", ttl_hours=_TTL_SEASON)
     if not data:
         return None
     return {
@@ -249,7 +249,7 @@ def getSeasonDetails(showID, seasonNumber):
                 'overview': ep.get('overview') or '',
                 'air_date': ep.get('air_date') or '',
                 'runtime': ep.get('runtime'),
-                'still_url': getPosterURL(ep.get('still_path')) if ep.get('still_path') else None,
+                'still_url': get_poster_url(ep.get('still_path')) if ep.get('still_path') else None,
             }
             for ep in data.get('episodes', [])
         ]
@@ -258,8 +258,8 @@ def getSeasonDetails(showID, seasonNumber):
 
 _MIN_PERSON_POPULARITY = 1.0
 
-def searchPerson(query):
-    data = _cached_tmdb_request(f"{baseURL}/search/person", {"query": query, "page": 1}, ttl_hours=_TTL_SEARCH)
+def search_person(query):
+    data = _cached_tmdb_request(f"{base_url}/search/person", {"query": query, "page": 1}, ttl_hours=_TTL_SEARCH)
     if not data:
         return []
     results = []
@@ -268,7 +268,7 @@ def searchPerson(query):
         results.append({
             'id': p.get('id'),
             'name': p.get('name'),
-            'profile_url': getProfileURL(p.get('profile_path')),
+            'profile_url': get_profile_url(p.get('profile_path')),
             'department': p.get('known_for_department', ''),
             'popularity': p.get('popularity', 0),
             'known_for': [
@@ -276,7 +276,7 @@ def searchPerson(query):
                     'id': k.get('id'),
                     'title': k.get('title') or k.get('name'),
                     'media_type': k.get('media_type'),
-                    'poster_url': getPosterURL(k.get('poster_path')),
+                    'poster_url': get_poster_url(k.get('poster_path')),
                 }
                 for k in p.get('known_for', [])[:3]
             ]
@@ -284,10 +284,10 @@ def searchPerson(query):
     return results
 
 
-def getPersonCredits(person_id):
+def get_person_credits(person_id):
     # single request: person details + combined_credits to append_to_response (less http requests)
     data = _cached_tmdb_request(
-        f"{baseURL}/person/{person_id}",
+        f"{base_url}/person/{person_id}",
         {"append_to_response": "combined_credits"},
     )
     if not data:
@@ -311,7 +311,7 @@ def getPersonCredits(person_id):
             'id': entry.get('id'),
             'media_type': mt,
             'title': entry.get('title') or entry.get('name'),
-            'poster_url': getPosterURL(entry.get('poster_path')),
+            'poster_url': get_poster_url(entry.get('poster_path')),
             'release_date': entry.get('release_date') or entry.get('first_air_date') or '',
             'rating': entry.get('vote_average'),
             'popularity': entry.get('popularity', 0),
@@ -323,78 +323,78 @@ def getPersonCredits(person_id):
     return {
         'id': person_id,
         'name': data.get('name', ''),
-        'profile_url': getProfileURL(data.get('profile_path')),
+        'profile_url': get_profile_url(data.get('profile_path')),
         'department': data.get('known_for_department', ''),
         'biography': data.get('biography', ''),
         'credits': items,
     }
 
 
-def discoverTrending():
-    data = _cached_tmdb_request(f"{baseURL}/trending/all/week", {"page": 1}, ttl_hours=_TTL_POPULAR)
+def discover_trending():
+    data = _cached_tmdb_request(f"{base_url}/trending/all/week", {"page": 1}, ttl_hours=_TTL_POPULAR)
     if not data:
         return []
     results = []
     for item in data.get("results", []):
         mt = item.get('media_type')
         if mt == 'movie':
-            results.append(formatMovie(item))
+            results.append(format_movie(item))
         elif mt == 'tv':
-            results.append(formatShow(item))
+            results.append(format_show(item))
     return results
 
 
-def discoverPopularMovies():
-    data = _cached_tmdb_request(f"{baseURL}/movie/popular", {"page": 1}, ttl_hours=_TTL_POPULAR)
+def discover_popular_movies():
+    data = _cached_tmdb_request(f"{base_url}/movie/popular", {"page": 1}, ttl_hours=_TTL_POPULAR)
     if not data:
         return []
-    return [formatMovie(m) for m in data.get("results", [])]
+    return [format_movie(m) for m in data.get("results", [])]
 
 
-def discoverPopularShows():
-    data = _cached_tmdb_request(f"{baseURL}/tv/popular", {"page": 1}, ttl_hours=_TTL_POPULAR)
+def discover_popular_shows():
+    data = _cached_tmdb_request(f"{base_url}/tv/popular", {"page": 1}, ttl_hours=_TTL_POPULAR)
     if not data:
         return []
-    return [formatShow(s) for s in data.get("results", [])]
+    return [format_show(s) for s in data.get("results", [])]
 
 # routes
 
 @tmdb.route('/search')
 def search():
     query = request.args.get('query', '')
-    results = searchMovie(query) if query else []
+    results = search_movie(query) if query else []
     return jsonify({'query': query, 'results': results})
 
 
 @tmdb.route('/search/tv')
 def search_tv():
     query = request.args.get('query', '')
-    results = searchShow(query) if query else []
+    results = search_show(query) if query else []
     return jsonify({'query': query, 'results': results})
 
 
 @tmdb.route('/search/multi')
-def search_multi():
+def search_multi_view():
     query = request.args.get('query', '')
-    results = searchMulti(query) if query else []
+    results = search_multi(query) if query else []
     return jsonify({'query': query, 'results': results})
 
 
 @tmdb.route('/search/person')
-def search_person():
+def search_person_view():
     query = request.args.get('query', '')
-    results = searchPerson(query) if query else []
+    results = search_person(query) if query else []
     return jsonify({'query': query, 'results': results})
 
 
 @tmdb.route('/discover')
 def discover():
-    return jsonify({'results': discoverTrending()})
+    return jsonify({'results': discover_trending()})
 
 
 @tmdb.route('/movie/<int:movie_id>')
 def movie_detail(movie_id):
-    result = getMovie(movie_id)
+    result = get_movie(movie_id)
     if not result:
         return jsonify({'error': 'Movie not found'}), 404
     return jsonify(result)
@@ -410,7 +410,7 @@ def show_detail(show_id):
 
 @tmdb.route('/person/<int:person_id>/credits')
 def person_credits(person_id):
-    result = getPersonCredits(person_id)
+    result = get_person_credits(person_id)
     if not result:
         return jsonify({'error': 'Person not found'}), 404
     return jsonify(result)
@@ -418,7 +418,7 @@ def person_credits(person_id):
 
 @tmdb.route('/tv/<int:show_id>/season/<int:season_number>')
 def season_detail(show_id, season_number):
-    result = getSeasonDetails(show_id, season_number)
+    result = get_season_details(show_id, season_number)
     if not result:
         return jsonify({'error': 'Season not found'}), 404
     return jsonify(result)

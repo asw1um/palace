@@ -9,13 +9,13 @@ const posterPatterns = [
 
 interface PosterProps {
   idx?: number;
-  posterUrl?: string | null;
+  poster_url?: string | null;
   progress?: number;
   style?: React.CSSProperties;
   className?: string;
 }
 
-export default function Poster({ idx = 0, posterUrl, progress, style, className }: PosterProps) {
+export default function Poster({ idx = 0, poster_url, progress, style, className }: PosterProps) {
   return (
     <div
       className={className}
@@ -37,16 +37,16 @@ export default function Poster({ idx = 0, posterUrl, progress, style, className 
           right: 0,
           bottom: 0,
           borderRadius: '10px',
-          backgroundImage: posterUrl
-            ? `url(${posterUrl})`
+          backgroundImage: poster_url
+            ? `url(${poster_url})`
             : posterPatterns[idx % posterPatterns.length],
-          backgroundSize: posterUrl ? 'cover' : '10px 10px',
+          backgroundSize: poster_url ? 'cover' : '10px 10px',
           backgroundPosition: 'center',
           border: '1px solid rgba(255,255,255,0.15)',
           boxShadow: '0 2px 12px rgba(0,0,0,0.25)',
         }}
       >
-        {!posterUrl && (
+        {!poster_url && (
           <div style={{ padding: '10px' }}>
             <div
               style={{

@@ -12,7 +12,7 @@ lists = Blueprint('lists', __name__)
 @jwt_required()
 def get_user_lists():
     user_id = int(get_jwt_identity())
-    user_lists = movielist.query.filter_by(userID=user_id).all()
+    user_lists = movielist.query.filter_by(user_id=user_id).all()
     
     return jsonify({
         'lists': [lst.to_dict() for lst in user_lists]
@@ -30,7 +30,7 @@ def get_user_lists_with_movies():
     if cached is not None:
         return jsonify({'lists': cached}), 200
 
-    user_lists = movielist.query.filter_by(userID=user_id).all()
+    user_lists = movielist.query.filter_by(user_id=user_id).all()
     result = [lst.to_dict(include_movies=True, include_shows=True) for lst in user_lists]
     lists_cache_set(user_id, result)
     return jsonify({'lists': result}), 200
@@ -46,8 +46,8 @@ def create_list():
     if not list_name:
         return jsonify({'error': 'List name cannot be empty'}), 400
     
-    current_user = db.session.get(user,user_id)
-    new_list = movielist(name=list_name, userID=user_id)
+    current_user = db.session.get(user, user_id)
+    new_list = movielist(name=list_name, user_id=user_id)
     db.session.add(new_list)
     db.session.commit()
     lists_cache_invalidate(user_id)
@@ -72,7 +72,7 @@ def delete_list(list_id):
     user_id = int(get_jwt_identity())
     list_obj = movielist.query.get_or_404(list_id)
 
-    if list_obj.userID != user_id:
+    if list_obj.user_id != user_id:
         return jsonify({'error': 'Not your list'}), 403
 
     log_event(
@@ -97,7 +97,7 @@ def get_list(list_id):
     list_obj = movielist.query.get_or_404(list_id)
     
     # visibility check
-    if list_obj.is_personal_list() and list_obj.userID != user_id:
+    if list_obj.is_personal_list() and list_obj.user_id != user_id:
         return jsonify({'error': 'You do not have permission to view this list'}), 403
     
     if list_obj.is_club_list():
@@ -115,7 +115,7 @@ def rename_list(list_id):
     user_id = int(get_jwt_identity())
     list_obj = movielist.query.get_or_404(list_id)
     
-    if list_obj.userID != user_id:
+    if list_obj.user_id != user_id:
         return jsonify({'error': 'Not your list'}), 403
     
     data = request.get_json()
@@ -149,7 +149,7 @@ def pin_list(list_id):
     current_user = db.session.get(user,user_id)
     list_obj = movielist.query.get_or_404(list_id)
     
-    if list_obj.is_personal_list() and list_obj.userID != user_id:
+    if list_obj.is_personal_list() and list_obj.user_id != user_id:
         return jsonify({'error': 'Not your list'}), 403
     if list_obj.is_club_list() and not list_obj.club.is_member(current_user):
         return jsonify({'error': 'Must be a club member'}), 403
@@ -212,11 +212,11 @@ def add_movie_to_list(list_id):
     media_type = movie_data.get('media_type', 'movie')
 
     if media_type == 'tv':
-        existing = ShowModel.query.filter_by(userID=user_id, tmdbID=tmdb_id).first()
+        existing = ShowModel.query.filter_by(user_id=user_id, tmdb_id=tmdb_id).first()
         if existing:
             show_obj = existing
         else:
-            show_obj = ShowModel(title=title, posterURL=poster_url, tmdbID=tmdb_id, userID=user_id)
+            show_obj = ShowModel(title=title, poster_url=poster_url, tmdb_id=tmdb_id, user_id=user_id)
             db.session.add(show_obj)
             db.session.commit()
         if show_obj not in list_obj.shows:
@@ -225,11 +225,11 @@ def add_movie_to_list(list_id):
         lists_cache_invalidate(user_id)
         return jsonify({'message': 'Show added to list', 'list': list_obj.to_dict(include_movies=True, include_shows=True)}), 200
     else:
-        existing = MovieModel.query.filter_by(userID=user_id, tmdbID=tmdb_id).first()
+        existing = MovieModel.query.filter_by(user_id=user_id, tmdb_id=tmdb_id).first()
         if existing:
             movie_obj = existing
         else:
-            movie_obj = MovieModel(title=title, posterURL=poster_url, tmdbID=tmdb_id, userID=user_id)
+            movie_obj = MovieModel(title=title, poster_url=poster_url, tmdb_id=tmdb_id, user_id=user_id)
             db.session.add(movie_obj)
             db.session.commit()
         if movie_obj not in list_obj.movies:

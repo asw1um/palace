@@ -4,9 +4,9 @@ import type { TMDBResult } from '@/types/api';
 import { X, Star, Play, Film, Tv, Plus, Clock, MessageSquare, ChevronRight } from 'lucide-react';
 
 import AddToListMenu from './AddToListMenu';
-import { getMovieDetails, getShowDetails } from '@/api/search';
-import { getMovieProgress, updateMovieProgress } from '@/api/progress';
-import { upsertReview, deleteReview, getMyReview, getTitleReviews } from '@/api/reviews';
+import { get_movie_details, get_tv_details } from '@/api/search';
+import { get_movie_progress, update_movie_progress } from '@/api/progress';
+import { upsert_review, delete_review, get_my_review, get_title_reviews } from '@/api/reviews';
 import type { Review } from '@/api/reviews';
 import { toast } from 'sonner';
 
@@ -44,9 +44,9 @@ export default function MediaDetailModal({ item, onClose }: Props) {
     async function load() {
       try {
         const itemTitle = item?.title;
-        let data = await getMovieDetails(id);
+        let data = await get_movie_details(id);
         if (!data || (itemTitle && data.title !== itemTitle)) {
-          const showData = await getShowDetails(id);
+          const showData = await get_tv_details(id);
           if (showData && (!itemTitle || showData.title === itemTitle)) data = showData;
         }
         if (!cancelled) setDetail(data);
@@ -61,7 +61,7 @@ export default function MediaDetailModal({ item, onClose }: Props) {
 
   const year = displayItem.release_date ? displayItem.release_date.slice(0, 4) : '';
   const isMovie = displayItem.media_type !== 'tv';
-  const mediaType = isMovie ? 'movie' : 'tv';
+  const media_type = isMovie ? 'movie' : 'tv';
   const runtimeDisplay = isMovie && displayItem.runtime
     ? `${Math.floor(displayItem.runtime / 60)}h ${displayItem.runtime % 60}m`
     : displayItem.episode_run_time?.[0]
@@ -77,14 +77,14 @@ export default function MediaDetailModal({ item, onClose }: Props) {
 
   useEffect(() => {
     if (!item || !isMovie || !displayItem.runtime) return;
-    const movieId = item.id;
+    const movie_id = item.id;
     let cancelled = false;
     async function load() {
       try {
-        const prog = await getMovieProgress(movieId);
+        const prog = await get_movie_progress(movie_id);
         if (!cancelled) setMovieProgress(prog.watched_minutes || 0);
       } catch {
-        const saved = localStorage.getItem(`palace_movie_progress_${movieId}`);
+        const saved = localStorage.getItem(`palace_movie_progress_${movie_id}`);
         if (saved) {
           try {
             const parsed = JSON.parse(saved);
@@ -115,7 +115,7 @@ export default function MediaDetailModal({ item, onClose }: Props) {
       if (isDragging) {
         const runtime = displayItem.runtime || 0;
         localStorage.setItem(`palace_movie_progress_${displayItem.id}`, JSON.stringify({ watched: progressRef.current, runtime }));
-        updateMovieProgress(displayItem.id, progressRef.current, runtime)
+        update_movie_progress(displayItem.id, progressRef.current, runtime)
           .then(() => window.dispatchEvent(new Event('palace-movie-progress')))
           .catch(() => {});
       }
@@ -139,31 +139,31 @@ export default function MediaDetailModal({ item, onClose }: Props) {
   useEffect(() => {
     if (!reviewsOpen || reviewsLoaded) return;
     let cancelled = false;
-    Promise.all([getMyReview(displayItem.id, mediaType), getTitleReviews(displayItem.id, mediaType)])
+    Promise.all([get_my_review(displayItem.id, media_type), get_title_reviews(displayItem.id, media_type)])
       .then(([my, all]) => {
         if (cancelled) return;
         setMyReview(my); if (my) { setReviewRating(my.rating); setReviewContent(my.content); }
         setAllReviews(all); setReviewsLoaded(true);
       }).catch(() => {});
     return () => { cancelled = true; };
-  }, [reviewsOpen, reviewsLoaded, displayItem.id, mediaType]);
+  }, [reviewsOpen, reviewsLoaded, displayItem.id, media_type]);
 
   async function handleSaveReview() {
     if (!reviewRating && !reviewContent.trim()) return;
     setReviewSaving(true);
     try {
-      const saved = await upsertReview({ tmdb_id: displayItem.id, media_type: mediaType, title: displayItem.title, poster_url: displayItem.poster_url ?? undefined, rating: reviewRating, content: reviewContent });
+      const saved = await upsert_review({ tmdb_id: displayItem.id, media_type: media_type, title: displayItem.title, poster_url: displayItem.poster_url ?? undefined, rating: reviewRating, content: reviewContent });
       setMyReview(saved); toast.success('Review saved');
-      getTitleReviews(displayItem.id, mediaType).then(setAllReviews).catch(() => {});
+      get_title_reviews(displayItem.id, media_type).then(setAllReviews).catch(() => {});
     } catch { /* handled */ } finally { setReviewSaving(false); }
   }
 
   async function handleDeleteReview() {
     if (!myReview) return;
     try {
-      await deleteReview(myReview.id);
+      await delete_review(myReview.id);
       setMyReview(null); setReviewRating(null); setReviewContent(''); toast.success('Review deleted');
-      getTitleReviews(displayItem.id, mediaType).then(setAllReviews).catch(() => {});
+      get_title_reviews(displayItem.id, media_type).then(setAllReviews).catch(() => {});
     } catch { /* handled */ }
   }
 

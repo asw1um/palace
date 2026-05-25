@@ -2,15 +2,15 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Trash2, Search, LayoutGrid, List as ListIcon, Star, Clock, Tv } from 'lucide-react';
 import { useConfirm } from '@/components/ConfirmDialog';
-import { getList, removeMovieFromList } from '@/api/lists';
-import { getMovieDetails } from '@/api/search';
+import { get_list, remove_movie_from_list } from '@/api/lists';
+import { get_movie_details } from '@/api/search';
 import MediaDetailModal from '@/components/MediaDetailModal';
 import ShowDetailModal from '@/components/ShowDetailModal';
 import Poster from '@/components/Poster';
 import type { List as ListType, TMDBResult, Movie, Show } from '@/types/api';
 
-function getMovieProgress(movieId: number) {
-  const raw = localStorage.getItem(`palace_movie_progress_${movieId}`);
+function get_movie_progress(movie_id: number) {
+  const raw = localStorage.getItem(`palace_movie_progress_${movie_id}`);
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
@@ -59,8 +59,8 @@ function showToResult(show: Show): TMDBResult {
   };
 }
 
-function ProgressBar({ movieId, tick: _tick }: { movieId: number; tick?: number }) {
-  const progress = getMovieProgress(movieId);
+function ProgressBar({ movie_id, tick: _tick }: { movie_id: number; tick?: number }) {
+  const progress = get_movie_progress(movie_id);
   if (!progress) return null;
   const progressLabel = `${Math.floor(progress.watched / 60) > 0 ? `${Math.floor(progress.watched / 60)}h ` : ''}${Math.floor(progress.watched % 60)}m`;
   return (
@@ -76,8 +76,8 @@ function ProgressBar({ movieId, tick: _tick }: { movieId: number; tick?: number 
   );
 }
 
-function CompactProgress({ movieId, tick: _tick }: { movieId: number; tick?: number }) {
-  const progress = getMovieProgress(movieId);
+function CompactProgress({ movie_id, tick: _tick }: { movie_id: number; tick?: number }) {
+  const progress = get_movie_progress(movie_id);
   if (!progress) return <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>Movie</span>;
   const progressLabel = `${Math.floor(progress.watched / 60) > 0 ? `${Math.floor(progress.watched / 60)}h ` : ''}${Math.floor(progress.watched % 60)}m`;
   return (
@@ -97,7 +97,7 @@ export default function ListDetail() {
   const location = useLocation();
   const fromClub = (location.state as { fromClub?: number } | null)?.fromClub;
   const fromUser = (location.state as { fromUser?: number } | null)?.fromUser;
-  const listId = parseInt(id || '0');
+  const list_id = parseInt(id || '0');
   const [list, setList] = useState<ListType | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [query, setQuery] = useState('');
@@ -110,7 +110,7 @@ export default function ListDetail() {
     let cancelled = false;
     async function load() {
       try {
-        const data = await getList(listId);
+        const data = await get_list(list_id);
         if (!cancelled) setList(data);
       } catch {
         if (!cancelled) setList(null);
@@ -118,9 +118,9 @@ export default function ListDetail() {
         if (!cancelled) setLoading(false);
       }
     }
-    if (listId) load();
+    if (list_id) load();
     return () => { cancelled = true; };
-  }, [listId]);
+  }, [list_id]);
 
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>Loading...</div>;
   if (!list) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>List not found</div>;
@@ -140,7 +140,7 @@ export default function ListDetail() {
       setSelectedItem(item);
       return;
     }
-    const details = await getMovieDetails(item.id);
+    const details = await get_movie_details(item.id);
     if (details) {
       setSelectedItem({ ...item, ...details });
     } else {
@@ -148,8 +148,8 @@ export default function ListDetail() {
     }
   };
 
-  const handleDelete = async (movieId: number) => {
-    const movie = movies.find(m => m.id === movieId);
+  const handleDelete = async (movie_id: number) => {
+    const movie = movies.find(m => m.id === movie_id);
     if (!movie) return;
     const ok = await confirm({
       title: 'Remove Movie',
@@ -160,16 +160,16 @@ export default function ListDetail() {
     });
     if (ok) {
       try {
-        await removeMovieFromList(listId, movieId);
-        setList(prev => prev ? { ...prev, movies: prev.movies?.filter(m => m.id !== movieId) || [] } : null);
+        await remove_movie_from_list(list_id, movie_id);
+        setList(prev => prev ? { ...prev, movies: prev.movies?.filter(m => m.id !== movie_id) || [] } : null);
       } catch {
         // error handled by interceptor
       }
     }
   };
 
-  const handleDeleteShow = async (showId: number) => {
-    const show = shows.find(s => s.id === showId);
+  const handleDeleteShow = async (show_id: number) => {
+    const show = shows.find(s => s.id === show_id);
     if (!show) return;
     const ok = await confirm({
       title: 'Remove Show',
@@ -180,8 +180,8 @@ export default function ListDetail() {
     });
     if (ok) {
       try {
-        await removeMovieFromList(listId, showId);
-        setList(prev => prev ? { ...prev, shows: prev.shows?.filter(s => s.id !== showId) || [] } : null);
+        await remove_movie_from_list(list_id, show_id);
+        setList(prev => prev ? { ...prev, shows: prev.shows?.filter(s => s.id !== show_id) || [] } : null);
       } catch {
         // error handled by interceptor
       }
@@ -230,7 +230,7 @@ export default function ListDetail() {
             <div key={item.id} style={{ cursor: 'pointer', transition: 'transform 0.15s', minHeight: 0, minWidth: 0 }} onClick={() => handleItemClick(result)} onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-4px)')} onMouseLeave={e => (e.currentTarget.style.transform = 'none')}>
               {/* Poster */}
               <div className="poster-wrap" style={{ position: 'relative', width: '100%' }}>
-                <Poster posterUrl={item.poster_url} style={{ borderRadius: '10px' }} />
+                <Poster poster_url={item.poster_url} style={{ borderRadius: '10px' }} />
               </div>
 
               {/* Title */}
@@ -239,7 +239,7 @@ export default function ListDetail() {
                 <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>{item.title}</span>
               </div>
               {/* Progress */}
-              {!isShowItem && <ProgressBar movieId={(item as Movie).tmdb_id || item.id} tick={progressTick} />}
+              {!isShowItem && <ProgressBar movie_id={(item as Movie).tmdb_id || item.id} tick={progressTick} />}
               {/* Delete */}
               <button
                 onClick={(e) => { e.stopPropagation(); isShowItem ? handleDeleteShow(item.id) : handleDelete(item.id); }}
@@ -294,7 +294,7 @@ export default function ListDetail() {
                   {isShowItem ? <Tv style={{ width: '12px', color: 'var(--t-primary)', flexShrink: 0 }} /> : <Star style={{ width: '12px', color: 'rgba(255,255,255,0.45)', flexShrink: 0 }} />}
                   <div style={{ fontSize: '14px', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
                 </div>
-                {!isShowItem && <CompactProgress movieId={(item as Movie).tmdb_id || item.id} tick={progressTick} />}
+                {!isShowItem && <CompactProgress movie_id={(item as Movie).tmdb_id || item.id} tick={progressTick} />}
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); isShowItem ? handleDeleteShow(item.id) : handleDelete(item.id); }}

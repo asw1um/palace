@@ -5,7 +5,7 @@ class movielist(db.Model):
     __tablename__ = 'movielists'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False)
-    userID = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     club_id = db.Column(db.Integer, db.ForeignKey('clubs.id'), nullable=True)
 
     movies = db.relationship('movie', secondary=movie_list, backref='lists', lazy=True)
@@ -18,11 +18,11 @@ class movielist(db.Model):
         return self.club_id is not None
 
     def is_personal_list(self):
-        return self.userID is not None
+        return self.user_id is not None
 
     def can_edit(self, user):
         if self.is_personal_list():
-            return self.userID == user.id
+            return self.user_id == user.id
         elif self.is_club_list():
             return self.club.is_member(user)
         return False
@@ -31,7 +31,7 @@ class movielist(db.Model):
         data = {
             'id': self.id,
             'name': self.name,
-            'user_id': self.userID,
+            'user_id': self.user_id,
             'club_id': self.club_id,
             'type': 'club' if self.is_club_list() else 'personal',
             'movie_count': len(self.movies),

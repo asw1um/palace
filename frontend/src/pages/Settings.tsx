@@ -7,7 +7,7 @@ import GlassBox from '@/components/GlassBox';
 import ImageCropModal from '@/components/ImageCropModal';
 import { Check, Image, List as ListIcon, Users, Pin, PinOff, Upload, Save, LogOut } from 'lucide-react';
 import { uploadPicture, uploadBanner } from '@/api/auth';
-import { getLists, getPinnedLists, pinList, unpinList } from '@/api/lists';
+import { get_lists, get_pinned_lists, pin_list, unpin_list } from '@/api/lists';
 import { getMyClubsWithLists, getPinnedClubs } from '@/api/clubs';
 import { getSettings, updateSettings } from '@/api/settings';
 import { toast } from 'sonner';
@@ -44,9 +44,9 @@ export default function Settings() {
       try {
         const [settingsData, listsData, clubsData, pinnedListsData, pinnedClubsData] = await Promise.all([
           getSettings().catch(() => null),
-          getLists().catch(() => []),
+          get_lists().catch(() => []),
           getMyClubsWithLists().catch(() => []),
-          getPinnedLists().catch(() => []),
+          get_pinned_lists().catch(() => []),
           getPinnedClubs().catch(() => []),
         ]);
         if (!cancelled) {
@@ -105,7 +105,7 @@ export default function Settings() {
     const currentlyPinned = !!pinnedLists[id];
     try {
       if (currentlyPinned) {
-        await unpinList(id);
+        await unpin_list(id);
         setPinnedLists(prev => {
           const next = { ...prev };
           delete next[id];
@@ -113,7 +113,7 @@ export default function Settings() {
         });
         toast.success('List unpinned');
       } else {
-        await pinList(id);
+        await pin_list(id);
         setPinnedLists(prev => ({ ...prev, [id]: true }));
         toast.success('List pinned');
       }
@@ -164,10 +164,10 @@ export default function Settings() {
     setCropModal(null);
   };
 
-  const handleDisplayedListClick = async (listId: number) => {
-    setDisplayedListId(listId);
+  const handleDisplayedListClick = async (list_id: number) => {
+    setDisplayedListId(list_id);
     try {
-      await updateSettings({ displayed_list: listId });
+      await updateSettings({ displayed_list: list_id });
       window.dispatchEvent(new CustomEvent('settingschange'));
     } catch {
       // error handled by client interceptor
@@ -507,7 +507,7 @@ export default function Settings() {
               No clubs yet. <button onClick={() => window.location.hash = '/clubs'} style={{ background: 'none', border: 'none', color: 'var(--t-primary)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '13px', fontWeight: 600 }}>Browse clubs</button>
             </div>
           ) : (() => {
-            const clubLists: (import('@/types/api').List & { clubName: string })[] = allClubs.flatMap(club => (club.lists || []).map(list => ({ ...list, clubName: club.name })));
+            const clubLists: (import('@/types/api').List & { club_name: string })[] = allClubs.flatMap(club => (club.lists || []).map(list => ({ ...list, club_name: club.name })));
             if (clubLists.length === 0) return (
               <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', padding: '16px', textAlign: 'center' }}>No lists in your clubs yet</div>
             );
@@ -540,7 +540,7 @@ export default function Settings() {
                               {list.name}
                             </div>
                             <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
-                              {list.clubName}
+                              {list.club_name}
                             </div>
                           </div>
                         </div>
