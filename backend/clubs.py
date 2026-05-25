@@ -4,7 +4,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 
-from models import db, user, club
+from models import db, user, club, movielist
 from activity import log_event
 
 CLUB_IMAGE_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'uploads', 'clubs')
@@ -60,6 +60,11 @@ def create_club():
     new_club = club(name=club_name, description=description, admin_id=user_id)
     new_club.members.append(current_user)
     db.session.add(new_club)
+    db.session.flush()
+
+    for default_list_name in ['Currently Watching', 'Want to Watch', 'Watched']:
+        db.session.add(movielist(name=default_list_name, club_id=new_club.id))
+
     db.session.commit()
 
     log_event(
@@ -241,8 +246,9 @@ def grant_mod(club_id, target_user_id):
     if target_user_id not in mods:
         mods.append(target_user_id)
         club_obj.mod_ids = mods
-        db.session.commit()
-    return jsonify({'mod_ids': club_obj.mod_ids}), 200
+    club_obj.helper_ids = [hid for hid in (club_obj.helper_ids or []) if hid != target_user_id]
+    db.session.commit()
+    return jsonify({'mod_ids': club_obj.mod_ids, 'helper_ids': club_obj.helper_ids}), 200
 
 
 @clubs.route('/<int:club_id>/mods/<int:target_user_id>', methods=['DELETE'])
@@ -256,6 +262,63 @@ def revoke_mod(club_id, target_user_id):
     club_obj.mod_ids = mods
     db.session.commit()
     return jsonify({'mod_ids': club_obj.mod_ids}), 200
+
+
+@clubs.route('/<int:club_id>/helpers/<int:target_user_id>', methods=['POST'])
+@jwt_required()
+def grant_helper(club_id, target_user_id):
+    user_id = int(get_jwt_identity())
+    club_obj = club.query.get_or_404(club_id)
+    if club_obj.admin_id != user_id:
+        return jsonify({'error': 'Only the admin can grant helper status'}), 403
+    if target_user_id == user_id:
+        return jsonify({'error': 'Admin cannot assign roles to themselves'}), 400
+    target = user.query.get_or_404(target_user_id)
+    if not club_obj.is_member(target):
+        return jsonify({'error': 'User is not a member'}), 400
+    helpers = list(club_obj.helper_ids or [])
+    if target_user_id not in helpers:
+        helpers.append(target_user_id)
+        club_obj.helper_ids = helpers
+    mods = [mid for mid in (club_obj.mod_ids or []) if mid != target_user_id]
+    club_obj.mod_ids = mods
+    db.session.commit()
+    return jsonify({'helper_ids': club_obj.helper_ids, 'mod_ids': club_obj.mod_ids}), 200
+
+
+@clubs.route('/<int:club_id>/helpers/<int:target_user_id>', methods=['DELETE'])
+@jwt_required()
+def revoke_helper(club_id, target_user_id):
+    user_id = int(get_jwt_identity())
+    club_obj = club.query.get_or_404(club_id)
+    current_user_obj = db.session.get(user, user_id)
+    if club_obj.admin_id != user_id and not club_obj.is_mod(current_user_obj):
+        return jsonify({'error': 'Only admin or mod can revoke helper status'}), 403
+    club_obj.helper_ids = [hid for hid in (club_obj.helper_ids or []) if hid != target_user_id]
+    db.session.commit()
+    return jsonify({'helper_ids': club_obj.helper_ids}), 200
+
+
+@clubs.route('/<int:club_id>/kick/<int:target_user_id>', methods=['POST'])
+@jwt_required()
+def kick_member(club_id, target_user_id):
+    user_id = int(get_jwt_identity())
+    club_obj = club.query.get_or_404(club_id)
+    current_user_obj = db.session.get(user, user_id)
+    if club_obj.admin_id != user_id and not club_obj.is_mod(current_user_obj):
+        return jsonify({'error': 'Only admin or mod can kick members'}), 403
+    target = user.query.get_or_404(target_user_id)
+    if club_obj.is_mod(target) and club_obj.admin_id != user_id:
+        return jsonify({'error': 'Only admin can kick a mod'}), 403
+    if target_user_id == user_id:
+        return jsonify({'error': 'Cannot kick yourself'}), 400
+    if not club_obj.is_member(target):
+        return jsonify({'error': 'User is not a member'}), 400
+    club_obj.remove_member(target)
+    club_obj.mod_ids = [mid for mid in (club_obj.mod_ids or []) if mid != target_user_id]
+    club_obj.helper_ids = [hid for hid in (club_obj.helper_ids or []) if hid != target_user_id]
+    db.session.commit()
+    return jsonify({'message': f'Kicked {target.username}'}), 200
 
 
 @clubs.route('/<int:club_id>/pin', methods=['POST'])
