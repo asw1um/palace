@@ -22,6 +22,10 @@ jobs:
       - name: Check syntax
         run: python -m compileall backend/ -q -x NOGITCOMMIT
 
+      - name: Check imports
+        working-directory: backend
+        run: python -c "import app"
+
   frontend:
     name: Frontend build
     runs-on: ubuntu-latest
