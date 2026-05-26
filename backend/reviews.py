@@ -18,6 +18,7 @@ def _abs_url(path):
 
 def _enrich(review, current_user_id = None):
     review_data = review.to_dict(include_author=True)
+    review_data['is_spoiler'] = review.is_spoiler
     if review_data.get('author'):
         review_data['author']['profile_picture'] = _abs_url(review_data['author'].get('profile_picture'))
     likes_count = ReviewReaction.query.filter_by(review_id=review.id, is_like=True).count()
@@ -58,6 +59,8 @@ def upsert_review():
             existing.title = data['title']
         if 'poster_url' in data:
             existing.poster_url = data['poster_url']
+        if 'is_spoiler' in data:
+            existing.is_spoiler = bool(data['is_spoiler'])
         db.session.commit()
         current_user = db.session.get(user,user_id)
         log_event(
@@ -75,6 +78,7 @@ def upsert_review():
             poster_url=data.get('poster_url', ''),
             rating=data.get('rating'),
             content=data.get('content', ''),
+            is_spoiler = bool(data.get('is_spoiler', False))
         )
         db.session.add(review)
         db.session.commit()
@@ -104,9 +108,10 @@ def delete_review(review_id):
 @reviews.route('/title/<int:tmdb_id>/<media_type>', methods=['GET'])
 @jwt_required()
 def get_title_reviews(tmdb_id, media_type):
+    user_id = int(get_jwt_identity())
     revs = Review.query.filter_by(tmdb_id=tmdb_id, media_type=media_type)\
         .order_by(Review.created_at.desc()).all()
-    return jsonify({'reviews': [_enrich(rev) for rev in revs]}), 200
+    return jsonify({'reviews': [_enrich(rev, current_user_id = user_id) for rev in revs]}), 200
 
 
 # get current user's review for a specific title

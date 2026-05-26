@@ -4,12 +4,10 @@ import type { TMDBResult } from '@/types/api';
 import { X, Star, Play, Film, Tv, Plus, Clock, MessageSquare, ChevronRight } from 'lucide-react';
 
 import AddToListMenu from './AddToListMenu';
+import ReviewPanel from './ReviewPanel';
 import { get_movie_details, get_tv_details } from '@/api/search';
 import { get_movie_progress, update_movie_progress } from '@/api/progress';
 import { get_custom_media, set_movie_runtime } from '@/api/custom_media';
-import { upsert_review, delete_review, get_my_review, get_title_reviews } from '@/api/reviews';
-import type { Review } from '@/api/reviews';
-import { toast } from 'sonner';
 
 interface Props {
   item: TMDBResult | null;
@@ -21,16 +19,7 @@ export default function MediaDetailModal({ item, onClose }: Props) {
   const [detail, setDetail] = useState<TMDBResult | null>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const reviewsSectionRef = useRef<HTMLDivElement>(null);
-
-  // Reviews state
   const [reviewsOpen, setReviewsOpen] = useState(false);
-  const [myReview, setMyReview] = useState<Review | null>(null);
-  const [allReviews, setAllReviews] = useState<Review[]>([]);
-  const [reviewRating, setReviewRating] = useState<number | null>(null);
-  const [reviewContent, setReviewContent] = useState('');
-  const [reviewStarHover, setReviewStarHover] = useState<number | null>(null);
-  const [reviewSaving, setReviewSaving] = useState(false);
-  const [reviewsLoaded, setReviewsLoaded] = useState(false);
 
   useEffect(() => {
     const root = document.getElementById('root');
@@ -80,7 +69,6 @@ export default function MediaDetailModal({ item, onClose }: Props) {
 
   useEffect(() => {
     if (!item || !isMovie) return;
-    // Seed from localStorage cache immediately, then verify/update from backend
     try {
       const cached = localStorage.getItem(`palace_movie_runtime_${item.id}`);
       if (cached) setCustomRuntime(Number(cached));
@@ -144,46 +132,14 @@ export default function MediaDetailModal({ item, onClose }: Props) {
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
   }, [isDragging, displayItem.id, effectiveRuntime, updateProgressFromMouse]);
 
-  function formatTime(minutes: number) {
-    const h = Math.floor(minutes / 60);
-    const m = Math.floor(minutes % 60);
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
-  }
-
-  // Reviews
   useEffect(() => {
     if (reviewsOpen) setTimeout(() => reviewsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   }, [reviewsOpen]);
 
-  useEffect(() => {
-    if (!reviewsOpen || reviewsLoaded) return;
-    let cancelled = false;
-    Promise.all([get_my_review(displayItem.id, media_type), get_title_reviews(displayItem.id, media_type)])
-      .then(([my, all]) => {
-        if (cancelled) return;
-        setMyReview(my); if (my) { setReviewRating(my.rating); setReviewContent(my.content); }
-        setAllReviews(all); setReviewsLoaded(true);
-      }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [reviewsOpen, reviewsLoaded, displayItem.id, media_type]);
-
-  async function handleSaveReview() {
-    if (!reviewRating && !reviewContent.trim()) return;
-    setReviewSaving(true);
-    try {
-      const saved = await upsert_review({ tmdb_id: displayItem.id, media_type: media_type, title: displayItem.title, poster_url: displayItem.poster_url ?? undefined, rating: reviewRating, content: reviewContent });
-      setMyReview(saved); toast.success('Review saved');
-      get_title_reviews(displayItem.id, media_type).then(setAllReviews).catch(() => {});
-    } catch { /* handled */ } finally { setReviewSaving(false); }
-  }
-
-  async function handleDeleteReview() {
-    if (!myReview) return;
-    try {
-      await delete_review(myReview.id);
-      setMyReview(null); setReviewRating(null); setReviewContent(''); toast.success('Review deleted');
-      get_title_reviews(displayItem.id, media_type).then(setAllReviews).catch(() => {});
-    } catch { /* handled */ }
+  function formatTime(minutes: number) {
+    const h = Math.floor(minutes / 60);
+    const m = Math.floor(minutes % 60);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
   }
 
   const progressPct = isMovie && effectiveRuntime ? (movieProgress / effectiveRuntime) * 100 : 0;
@@ -203,16 +159,13 @@ export default function MediaDetailModal({ item, onClose }: Props) {
           <X style={{ width: '14px' }} />
         </button>
 
-        {/* ── HEADER: poster + info ── */}
+        {/* Header */}
         <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '20px', padding: '20px', flexShrink: 0, background: 'linear-gradient(180deg, var(--t-primary-25) 0%, var(--t-primary-12) 100%)' }}>
-          {/* Poster */}
           <div style={{ aspectRatio: '2/3', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.12)', background: '#0a0814', flexShrink: 0 }}>
             {displayItem.poster_url
               ? <img src={displayItem.poster_url} alt={displayItem.title} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
               : <div style={{ width: '100%', height: '100%', background: 'var(--t-primary-20)' }} />}
           </div>
-
-          {/* Info */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0, paddingTop: '4px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--t-primary-18)', color: 'var(--t-primary)', fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '99px', letterSpacing: '0.5px' }}>
@@ -234,7 +187,6 @@ export default function MediaDetailModal({ item, onClose }: Props) {
                 {displayItem.genres.slice(0, 5).map(g => <span key={g} style={{ background: 'var(--t-primary-18)', color: 'var(--t-primary)', fontSize: '11px', padding: '3px 9px', borderRadius: '99px', border: '1px solid var(--t-primary-25)' }}>{g}</span>)}
               </div>
             )}
-            {/* Buttons */}
             <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap', marginTop: '4px' }}>
               <div style={{ position: 'relative', display: 'inline-block' }}>
                 <button ref={addButtonRef} onClick={() => setMenuOpen(!menuOpen)}
@@ -271,161 +223,102 @@ export default function MediaDetailModal({ item, onClose }: Props) {
           </div>
         </div>
 
-        {/* ── BODY: scrollable ── */}
+        {/* Body */}
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
 
-            {/* Movie progress */}
-            {isMovie && effectiveRuntime > 0 ? (
-              <div style={{ padding: '12px 24px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                    <Clock style={{ width: '10px' }} /> Your Progress
-                  </span>
-                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#fff' }}>
-                    {formatTime(movieProgress)} <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>/ {formatTime(effectiveRuntime)}</span>
-                  </span>
-                </div>
-                <div ref={sliderRef} onMouseDown={handleSliderMouseDown}
-                  style={{ position: 'relative', padding: '6px 0', cursor: isDragging ? 'ew-resize' : 'pointer', userSelect: 'none' }}>
-                  <div style={{ height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '99px', overflow: 'hidden' }}>
-                    <div style={{ width: `${progressPct}%`, height: '100%', background: 'linear-gradient(90deg, var(--t-primary), var(--t-glow))', borderRadius: '99px', boxShadow: '0 0 8px var(--t-primary-55)', transition: isDragging ? 'none' : 'width 0.2s' }} />
-                  </div>
-                  <div style={{ position: 'absolute', left: `${progressPct}%`, top: '50%', transform: 'translate(-50%, -50%)', width: '14px', height: '14px', borderRadius: '50%', background: 'var(--t-primary)', border: '2px solid #fff', boxShadow: '0 0 8px var(--t-primary-55)', pointerEvents: 'none', zIndex: 1, transition: isDragging ? 'none' : 'left 0.2s' }} />
-                </div>
-                {customRuntime > 0 && !displayItem.runtime && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-                    <button onClick={() => { setCustomRuntime(0); setRuntimeInput(''); localStorage.removeItem(`palace_movie_runtime_${item.id}`); }}
-                      style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                      Custom runtime ({effectiveRuntime}m) · Reset
-                    </button>
-                  </div>
-                )}
+          {/* Movie progress */}
+          {isMovie && effectiveRuntime > 0 ? (
+            <div style={{ padding: '12px 24px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                  <Clock style={{ width: '10px' }} /> Your Progress
+                </span>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#fff' }}>
+                  {formatTime(movieProgress)} <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>/ {formatTime(effectiveRuntime)}</span>
+                </span>
               </div>
-            ) : isMovie ? (
-              <div style={{ padding: '12px 24px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <Clock style={{ width: '10px' }} /> Set Runtime to Track Progress
+              <div ref={sliderRef} onMouseDown={handleSliderMouseDown}
+                style={{ position: 'relative', padding: '6px 0', cursor: isDragging ? 'ew-resize' : 'pointer', userSelect: 'none' }}>
+                <div style={{ height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '99px', overflow: 'hidden' }}>
+                  <div style={{ width: `${progressPct}%`, height: '100%', background: 'linear-gradient(90deg, var(--t-primary), var(--t-glow))', borderRadius: '99px', boxShadow: '0 0 8px var(--t-primary-55)', transition: isDragging ? 'none' : 'width 0.2s' }} />
                 </div>
-                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', marginBottom: '10px' }}>
-                  No runtime data available. Enter the duration to enable progress tracking.
-                </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <input
-                    type="number"
-                    value={runtimeInput}
-                    onChange={e => setRuntimeInput(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        const mins = parseInt(runtimeInput);
-                        if (mins > 0) {
-                          localStorage.setItem(`palace_movie_runtime_${item.id}`, String(mins));
-                          setCustomRuntime(mins);
-                          set_movie_runtime(item.id, mins).catch(() => {});
-                        }
-                      }
-                    }}
-                    placeholder="Duration in minutes"
-                    min="1"
-                    style={{ width: '170px', padding: '7px 10px', borderRadius: '7px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.25)', color: '#fff', fontSize: '13px', fontFamily: 'inherit', outline: 'none' }}
-                    onFocus={e => { e.currentTarget.style.borderColor = 'var(--t-primary)'; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
-                  />
-                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>min</span>
-                  <button
-                    onClick={() => {
-                      const mins = parseInt(runtimeInput);
-                      if (mins > 0) {
-                        localStorage.setItem(`palace_movie_runtime_${item.id}`, String(mins));
-                        setCustomRuntime(mins);
-                        set_movie_runtime(item.id, mins).catch(() => {});
-                      }
-                    }}
-                    style={{ padding: '7px 16px', borderRadius: '7px', background: 'var(--t-primary-60)', border: '1px solid var(--t-primary-80)', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--t-primary)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'var(--t-primary-60)'; }}>
-                    Set
+                <div style={{ position: 'absolute', left: `${progressPct}%`, top: '50%', transform: 'translate(-50%, -50%)', width: '14px', height: '14px', borderRadius: '50%', background: 'var(--t-primary)', border: '2px solid #fff', boxShadow: '0 0 8px var(--t-primary-55)', pointerEvents: 'none', zIndex: 1, transition: isDragging ? 'none' : 'left 0.2s' }} />
+              </div>
+              {customRuntime > 0 && !displayItem.runtime && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                  <button onClick={() => { setCustomRuntime(0); setRuntimeInput(''); localStorage.removeItem(`palace_movie_runtime_${item.id}`); }}
+                    style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Custom runtime ({effectiveRuntime}m) · Reset
                   </button>
                 </div>
+              )}
+            </div>
+          ) : isMovie ? (
+            <div style={{ padding: '12px 24px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <Clock style={{ width: '10px' }} /> Set Runtime to Track Progress
               </div>
-            ) : null}
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', marginBottom: '10px' }}>
+                No runtime data available. Enter the duration to enable progress tracking.
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input type="number" value={runtimeInput} onChange={e => setRuntimeInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const mins = parseInt(runtimeInput);
+                      if (mins > 0) { localStorage.setItem(`palace_movie_runtime_${item.id}`, String(mins)); setCustomRuntime(mins); set_movie_runtime(item.id, mins).catch(() => {}); }
+                    }
+                  }}
+                  placeholder="Duration in minutes" min="1"
+                  style={{ width: '170px', padding: '7px 10px', borderRadius: '7px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(0,0,0,0.25)', color: '#fff', fontSize: '13px', fontFamily: 'inherit', outline: 'none' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--t-primary)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }} />
+                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>min</span>
+                <button
+                  onClick={() => {
+                    const mins = parseInt(runtimeInput);
+                    if (mins > 0) { localStorage.setItem(`palace_movie_runtime_${item.id}`, String(mins)); setCustomRuntime(mins); set_movie_runtime(item.id, mins).catch(() => {}); }
+                  }}
+                  style={{ padding: '7px 16px', borderRadius: '7px', background: 'var(--t-primary-60)', border: '1px solid var(--t-primary-80)', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--t-primary)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--t-primary-60)'; }}>
+                  Set
+                </button>
+              </div>
+            </div>
+          ) : null}
 
-            {/* Cast */}
-            {displayItem.cast && displayItem.cast.length > 0 && (
-              <div style={{ padding: '12px 24px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '1.5px', marginBottom: '10px' }}>CAST</div>
-                <div style={{ display: 'flex', gap: '14px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.15) transparent' }}>
-                  {displayItem.cast.slice(0, 10).map(c => (
-                    <div key={c.id} style={{ flexShrink: 0, textAlign: 'center', width: '60px' }}>
-                      {c.profile_url
-                        ? <img src={c.profile_url} alt={c.name} style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.12)', margin: '0 auto 4px', display: 'block' }} />
-                        : <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--t-primary-25)', margin: '0 auto 4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 600, color: '#fff' }}>
-                            {c.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
-                          </div>}
-                      <div style={{ color: '#fff', fontSize: '10px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
-                      <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.character}</div>
-                    </div>
-                  ))}
-                </div>
+          {/* Cast */}
+          {displayItem.cast && displayItem.cast.length > 0 && (
+            <div style={{ padding: '12px 24px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '1.5px', marginBottom: '10px' }}>CAST</div>
+              <div style={{ display: 'flex', gap: '14px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.15) transparent' }}>
+                {displayItem.cast.slice(0, 10).map(c => (
+                  <div key={c.id} style={{ flexShrink: 0, textAlign: 'center', width: '60px' }}>
+                    {c.profile_url
+                      ? <img src={c.profile_url} alt={c.name} style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.12)', margin: '0 auto 4px', display: 'block' }} />
+                      : <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--t-primary-25)', margin: '0 auto 4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 600, color: '#fff' }}>
+                          {c.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                        </div>}
+                    <div style={{ color: '#fff', fontSize: '10px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
+                    <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.character}</div>
+                  </div>
+                ))}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Inline reviews */}
-            {reviewsOpen && (
-              <div ref={reviewsSectionRef} style={{ borderTop: '1px solid rgba(255,255,255,0.1)', padding: '20px 24px', background: 'var(--t-primary-08)' }}>
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '10px' }}>Your Rating</div>
-                  <div style={{ display: 'flex', gap: '4px', marginBottom: '12px' }}>
-                    {[1,2,3,4,5].map(star => (
-                      <button key={star} onClick={() => setReviewRating(star === reviewRating ? null : star)} onMouseEnter={() => setReviewStarHover(star)} onMouseLeave={() => setReviewStarHover(null)}
-                        style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', lineHeight: 0 }}>
-                        <Star style={{ width: '22px', height: '22px', color: (reviewStarHover ?? reviewRating ?? 0) >= star ? '#ffd700' : 'rgba(255,255,255,0.2)', fill: (reviewStarHover ?? reviewRating ?? 0) >= star ? '#ffd700' : 'none', transition: 'color 0.1s, fill 0.1s' }} />
-                      </button>
-                    ))}
-                  </div>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>Your Thoughts</div>
-                  <textarea value={reviewContent} onChange={e => setReviewContent(e.target.value)} placeholder="What did you think? (optional)" rows={3}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.25)', color: '#fff', fontSize: '13px', fontFamily: 'inherit', resize: 'vertical', outline: 'none', boxSizing: 'border-box', lineHeight: 1.5 }}
-                    onFocus={e => { e.currentTarget.style.borderColor = 'var(--t-primary)'; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }} />
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                    <button onClick={handleSaveReview} disabled={reviewSaving || (!reviewRating && !reviewContent.trim())}
-                      style={{ padding: '8px 18px', borderRadius: '8px', background: 'var(--t-primary)', border: 'none', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!reviewRating && !reviewContent.trim()) ? 0.4 : 1 }}>
-                      {reviewSaving ? 'Saving…' : myReview ? 'Update Review' : 'Save Review'}
-                    </button>
-                    {myReview && <button onClick={handleDeleteReview} style={{ padding: '8px 14px', borderRadius: '8px', background: 'rgba(220,60,60,0.12)', border: '1px solid rgba(220,60,60,0.25)', color: '#f56565', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }}>Delete</button>}
-                  </div>
-                </div>
-                <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '16px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '12px' }}>
-                    Palace Reviews {allReviews.length > 0 && <span style={{ color: 'rgba(255,255,255,0.25)', fontWeight: 400 }}>· {allReviews.length}</span>}
-                  </div>
-                  {allReviews.length === 0
-                    ? <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: '20px 0' }}>No reviews yet — be the first!</div>
-                    : <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {allReviews.map(r => {
-                          const name = r.author?.nickname || r.author?.username || 'User';
-                          return (
-                            <div key={r.id} style={{ padding: '12px', borderRadius: '8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                                {r.author?.profile_picture
-                                  ? <div className="avatar-circle" style={{ width: '28px', height: '28px' }}><img src={r.author.profile_picture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /></div>
-                                  : <div style={{ width: '28px', height: '28px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--t-primary-25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, color: '#fff' }}>{name.slice(0,2).toUpperCase()}</div>}
-                                <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff', flex: 1 }}>{name}</span>
-                                {r.rating !== null && (
-                                  <div style={{ display: 'flex', gap: '2px' }}>
-                                    {[1,2,3,4,5].map(s => <Star key={s} style={{ width: '12px', height: '12px', color: (r.rating ?? 0) >= s ? '#ffd700' : 'rgba(255,255,255,0.15)', fill: (r.rating ?? 0) >= s ? '#ffd700' : 'none' }} />)}
-                                  </div>
-                                )}
-                              </div>
-                              {r.content && <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.65)', lineHeight: 1.55 }}>{r.content}</p>}
-                              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)', marginTop: '6px' }}>{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                            </div>
-                          );
-                        })}
-                      </div>}
-                </div>
-              </div>
-            )}
+          {/* Reviews — delegated to ReviewPanel */}
+          {reviewsOpen && (
+            <div ref={reviewsSectionRef} style={{ borderTop: '1px solid rgba(255,255,255,0.1)', padding: '20px 24px', background: 'var(--t-primary-08)' }}>
+              <ReviewPanel
+                tmdb_id={displayItem.id}
+                media_type={media_type}
+                title={displayItem.title}
+                poster_url={displayItem.poster_url}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>,
