@@ -1,8 +1,8 @@
-name: Deploy
+name: Deploy Dev
 
 on:
   push:
-    branches: [main]
+    branches: [dev]
 
 jobs:
   backend:
@@ -47,7 +47,7 @@ jobs:
         run: npm run build
 
   deploy:
-    name: Deploy to VPS
+    name: Deploy to VPS (dev)
     runs-on: ubuntu-latest
     needs: [backend, frontend]
     steps:
@@ -59,8 +59,8 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -e
-            cd /var/www/palace
-            git pull origin main
+            cd /var/www/palace-dev
+            git pull origin dev
             source venv/bin/activate
             pip install -r requirements.txt -q
             cd frontend
@@ -69,11 +69,11 @@ jobs:
             cd ..
             python -c "
             import sys, os
-            sys.path.insert(0, '/var/www/palace/backend')
-            os.chdir('/var/www/palace/backend')
+            sys.path.insert(0, '/var/www/palace-dev/backend')
+            os.chdir('/var/www/palace-dev/backend')
             from app import app, db
             with app.app_context():
                 db.create_all()
             "
-            sudo systemctl restart palace_backend
+            sudo systemctl restart palace-dev
             echo "Deploy complete"
