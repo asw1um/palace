@@ -58,21 +58,27 @@ namespace parser
 
         static constexpr auto tok_lut = make_tok_lut();
 
+        enum parse_state
+        {
+                S_ERROR,
+                S_METHOD,
+                S_TARGET,
+                S_DONE
+        };
+        
+        const parse_state parse_lut[4][7] =
+        {
+                {S_ERROR, S_ERROR, S_ERROR, S_ERROR, S_ERROR, S_ERROR, S_ERROR},
+                {S_ERROR, S_METHOD, S_TARGET, S_ERROR, S_METHOD, S_ERROR, S_ERROR},
+                {S_ERROR, S_TARGET, S_DONE, S_TARGET, S_TARGET, S_ERROR, S_ERROR},
+                {S_ERROR, S_DONE, S_DONE, S_DONE, S_DONE, S_DONE, S_DONE}
+        };
+
         struct http_req
         {
                 std::string method;
                 std::string target;
-        };
-
-        enum parse_state
-        {
-                S_METHOD,
-                S_TARGET
-        };
-        
-        const parse_state parse_lut[] =
-        {
-                
+                parse_state state;
         };
 }
 
@@ -81,9 +87,14 @@ int main(int argc, char *argv[])
         std::string test_req = "GET / HTTP/1.1\r\n"; 
         std::array<parser::token_type, 18> toks = {};
         int i = 0;
+        parser::http_req req{"", "", parser::S_METHOD};
         for(char *p = test_req.data(); *p != '\0'; ++p)
         {
+                if (req.state == parser::S_DONE) break;
                 toks[i] = parser::tok_lut[*p];
+                req.state = parser::parse_lut[req.state][toks[i]];
+                if (toks[i] != parser::T_SPACE && req.state == parser::S_METHOD) req.method.append(p, 1);
+                if (toks[i] != parser::T_SPACE && req.state == parser::S_TARGET) req.target.append(p, 1);
                 ++i;
         }
         std::cout << "Done token classification.\n";
