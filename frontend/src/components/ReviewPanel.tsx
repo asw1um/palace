@@ -85,7 +85,7 @@ export function ReviewCard({ r, currentUserId, onReact, themeColor }: { r: Revie
   return (
     <div style={{ padding: '15px 12px 4px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {r.author?.profile_picture ? (
             <img src={r.author.profile_picture} alt="" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />
@@ -222,7 +222,7 @@ export default function ReviewPanel({ tmdb_id, media_type, title, poster_url }: 
     
     const isFullWrapped = /^\|\|[\s\S]*\|\|$/.test(content.trim());
     const effectiveIsSpoiler = isSpoiler || isFullWrapped;
-    const effectiveContent = effectiveIsSpoiler ? content.trim().replace(/\|\|/g, ''): content;
+    const effectiveContent = effectiveIsSpoiler ? content.trim().replace(/\|\|(.*?)\|\|/g, '$1'): content;
 
     try {
       const saved = await upsert_review({ tmdb_id, media_type, title, poster_url: poster_url || '', rating, content: effectiveContent, is_spoiler: effectiveIsSpoiler });
