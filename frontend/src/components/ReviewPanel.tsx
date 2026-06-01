@@ -73,7 +73,7 @@ type Node =
 
 type BranchNode = Exclude<Node, { type: 'text' }>;
 
-const SCAN_RE = /(\\\|\||\\[*_~]|\|\||\*\*\*|\*\*|__|~~|\*(?!\*)(?=[^*])|_(?!_)(?=[^_]))/g;
+const SCAN_RE = /(\\\|\||\\(?:\*\*\*|\*\*|__|\|\||[*_~])|\|\||\*\*\*|\*\*|__|~~|\*(?!\*)(?=[^*])|_(?!_)(?=[^_]))/g;
 const BP: Record<string, number> = { '||': 40, '***': 35, '**': 30, '__': 20, '~~': 20, '*': 10, '_': 10 };
 const DELIM_TYPE: Record<string, Node['type']> = { '||': 'spoiler', '***': 'bolditalic', '**': 'bold', '__': 'underline', '~~': 'strike', '*': 'italic', '_': 'italic' };
 
@@ -123,9 +123,11 @@ function renderNodes(nodes: Node[], themeColor: string): React.ReactNode[] {
     switch (branch.type) {
       case 'spoiler':   return <InlineSpoiler key={i} text={nodesToString(branch.children)} themeColor={themeColor} />;
       case 'bold':      return <strong key={i} style={{ color: '#fff', fontWeight: 700 }}>{inner}</strong>;
+      case 'bolditalic': return <strong key={i} style={{ color: '#fff', fontWeight: 700 }}><em style={{ fontStyle: 'italic' }}>{inner}</em></strong>;
       case 'italic':    return <em key={i} style={{ fontStyle: 'italic' }}>{inner}</em>;
       case 'strike':    return <span key={i} style={{ textDecoration: 'line-through', opacity: 0.6 }}>{inner}</span>;
       case 'underline': return <span key={i} style={{ textDecoration: 'underline' }}>{inner}</span>;
+      default:           return inner;
     }
   });
 }
