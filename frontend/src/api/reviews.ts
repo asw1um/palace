@@ -10,6 +10,7 @@ export interface Review {
   rating: number | null;
   content: string;
   created_at: string;
+  is_spoiler?:boolean;
   author?: { id: number; username: string; nickname: string | null; profile_picture: string | null };
   reactions?: { likes: number; dislikes: number; my_reaction: 'like' | 'dislike' | null };
 }
@@ -21,6 +22,7 @@ export async function upsert_review(data: {
   poster_url?: string;
   rating?: number | null;
   content?: string;
+  is_spoiler?: boolean
 }): Promise<Review> {
   const res = await client.post('/reviews', data);
   return res.data.review;

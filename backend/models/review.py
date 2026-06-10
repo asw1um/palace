@@ -14,6 +14,7 @@ class Review(db.Model):
     content = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    is_spoiler = db.Column(db.Boolean, default = False, nullable=False)
 
     author = db.relationship('user', backref='reviews')
 
