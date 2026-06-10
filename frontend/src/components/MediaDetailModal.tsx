@@ -223,12 +223,8 @@ export default function MediaDetailModal({ item, onClose }: Props) {
           </div>
         </div>
 
-<<<<<<< HEAD
 
         {/* ── BODY: scrollable ── */}
-=======
-        {/* Body */}
->>>>>>> 6647f332710d3a9596a36bee6fa88ca09c48670f
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
 
           {/* Movie progress */}
