@@ -14,30 +14,45 @@ class tmdb_cache(db.Model):
 
     @classmethod
     def get(cls, key):
-        entry = cls.query.filter_by(cache_key=key).first()
-        if not entry:
-            return None
-        if datetime.utcnow() > entry.expires_at:
-            db.session.delete(entry)
-            db.session.commit()
-            return None
-        return entry.data
+        import models.database as _db_module
+        sess = _db_module.SessionLocal()
+        try:
+            entry = sess.query(cls).filter_by(cache_key=key).first()
+            if not entry:
+                return None
+            if datetime.utcnow() > entry.expires_at:
+                sess.delete(entry)
+                sess.commit()
+                return None
+            return entry.data
+        finally:
+            sess.close()
 
     @classmethod
     def set(cls, key, data, ttl_hours=24):
-        expires = datetime.utcnow() + timedelta(hours=ttl_hours)
-        entry = cls.query.filter_by(cache_key=key).first()
-        if entry:
-            entry.data = data
-            entry.expires_at = expires
-        else:
-            db.session.add(cls(cache_key=key, data=data, expires_at=expires))
-        db.session.commit()
+        import models.database as _db_module
+        sess = _db_module.SessionLocal()
+        try:
+            expires = datetime.utcnow() + timedelta(hours=ttl_hours)
+            entry = sess.query(cls).filter_by(cache_key=key).first()
+            if entry:
+                entry.data = data
+                entry.expires_at = expires
+            else:
+                sess.add(cls(cache_key=key, data=data, expires_at=expires))
+            sess.commit()
+        finally:
+            sess.close()
 
     @classmethod
     def flush_expired(cls):
-        cls.query.filter(cls.expires_at < datetime.utcnow()).delete()
-        db.session.commit()
+        import models.database as _db_module
+        sess = _db_module.SessionLocal()
+        try:
+            sess.query(cls).filter(cls.expires_at < datetime.utcnow()).delete()
+            sess.commit()
+        finally:
+            sess.close()
 
 
 cache_get = tmdb_cache.get
@@ -46,8 +61,13 @@ cache_flush_expired = tmdb_cache.flush_expired
 
 
 def cache_flush():
-    tmdb_cache.query.delete()
-    db.session.commit()
+    import models.database as _db_module
+    sess = _db_module.SessionLocal()
+    try:
+        sess.query(tmdb_cache).delete()
+        sess.commit()
+    finally:
+        sess.close()
 
 
 # per user cache

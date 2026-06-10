@@ -24,7 +24,7 @@ jobs:
 
       - name: Check imports
         working-directory: backend
-        run: python -c "import app"
+        run: python -c "import main"
 
   frontend:
     name: Frontend build

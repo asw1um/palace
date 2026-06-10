@@ -1,11 +1,8 @@
 import os
 import requests
-from flask import Blueprint, request, jsonify
 from dotenv import load_dotenv
 from cache import cache_get, cache_set, cache_flush, cache_flush_expired
 from gamble import get_api_key
-
-tmdb = Blueprint('tmdb', __name__)
 
 load_dotenv()
 base_url = "https://api.themoviedb.org/3"
@@ -356,69 +353,4 @@ def discover_popular_shows():
     if not data:
         return []
     return [format_show(s) for s in data.get("results", [])]
-
-# routes
-
-@tmdb.route('/search')
-def search():
-    query = request.args.get('query', '')
-    results = search_movie(query) if query else []
-    return jsonify({'query': query, 'results': results})
-
-
-@tmdb.route('/search/tv')
-def search_tv():
-    query = request.args.get('query', '')
-    results = search_show(query) if query else []
-    return jsonify({'query': query, 'results': results})
-
-
-@tmdb.route('/search/multi')
-def search_multi_view():
-    query = request.args.get('query', '')
-    results = search_multi(query) if query else []
-    return jsonify({'query': query, 'results': results})
-
-
-@tmdb.route('/search/person')
-def search_person_view():
-    query = request.args.get('query', '')
-    results = search_person(query) if query else []
-    return jsonify({'query': query, 'results': results})
-
-
-@tmdb.route('/discover')
-def discover():
-    return jsonify({'results': discover_trending()})
-
-
-@tmdb.route('/movie/<int:movie_id>')
-def movie_detail(movie_id):
-    result = get_movie(movie_id)
-    if not result:
-        return jsonify({'error': 'Movie not found'}), 404
-    return jsonify(result)
-
-
-@tmdb.route('/tv/<int:show_id>')
-def show_detail(show_id):
-    result = getShow(show_id)
-    if not result:
-        return jsonify({'error': 'Show not found'}), 404
-    return jsonify(result)
-
-
-@tmdb.route('/person/<int:person_id>/credits')
-def person_credits(person_id):
-    result = get_person_credits(person_id)
-    if not result:
-        return jsonify({'error': 'Person not found'}), 404
-    return jsonify(result)
-
-
-@tmdb.route('/tv/<int:show_id>/season/<int:season_number>')
-def season_detail(show_id, season_number):
-    result = get_season_details(show_id, season_number)
-    if not result:
-        return jsonify({'error': 'Season not found'}), 404
-    return jsonify(result)
+    

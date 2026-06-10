@@ -24,7 +24,7 @@ jobs:
 
       - name: Check imports
         working-directory: backend
-        run: python -c "import app"
+        run: python -c "import main"
 
   frontend:
     name: Frontend build
@@ -67,13 +67,8 @@ jobs:
             npm ci --silent
             npm run build
             cd ..
-            python -c "
-            import sys, os
-            sys.path.insert(0, '/var/www/palace-dev/backend')
-            os.chdir('/var/www/palace-dev/backend')
-            from app import app, db
-            with app.app_context():
-                db.create_all()
-            "
+            cd backend
+            python -c "from models.database import Base, init_db; import os; e = init_db('sqlite:///instance/users.db'); Base.metadata.create_all(bind=e)"
+            cd ..
             sudo systemctl restart palace-dev
             echo "Deploy complete"

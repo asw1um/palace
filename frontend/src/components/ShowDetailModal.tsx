@@ -488,6 +488,7 @@ export default function ShowDetailModal({ item, onClose }: Props) {
           </div>
         </div>
 
+
         {/* ── SCROLLABLE BODY ── */}
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
 
