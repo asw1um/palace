@@ -28,6 +28,7 @@ class Review(db.Model):
             'poster_url': self.poster_url or '',
             'rating': self.rating,
             'content': self.content or '',
+            'is_spoiler': self.is_spoiler or False,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }

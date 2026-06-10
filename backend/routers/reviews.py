@@ -42,6 +42,7 @@ class upsert_review_request(BaseModel):
     content: str = ''
     title: str = ''
     poster_url: str = ''
+    is_spoiler: bool = False
 
 
 class react_request(BaseModel):
@@ -68,6 +69,7 @@ async def upsert_review(
             existing.title = body.title
         if body.poster_url:
             existing.poster_url = body.poster_url
+        existing.is_spoiler = body.is_spoiler
         db_session.commit()
         log_event(
             event_type='user_updated_review',
@@ -85,6 +87,7 @@ async def upsert_review(
         poster_url=body.poster_url,
         rating=body.rating,
         content=body.content,
+        is_spoiler=body.is_spoiler,
     )
     db_session.add(review)
     db_session.commit()
