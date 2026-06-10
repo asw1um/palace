@@ -60,6 +60,7 @@ jobs:
           script: |
             set -e
             cd /var/www/palace-dev
+            git checkout -- .
             git pull origin dev
             source venv/bin/activate
             pip install -r requirements.txt -q
