@@ -69,20 +69,7 @@ jobs:
             cd ..
             cd backend
             python -c "from models.database import Base, init_db; import os; e = init_db('sqlite:///instance/users.db'); Base.metadata.create_all(bind=e)"
-            python -c "
-import sqlite3
-conn = sqlite3.connect('instance/users.db')
-migrations = [
-    'ALTER TABLE reviews ADD COLUMN is_spoiler BOOLEAN NOT NULL DEFAULT 0',
-]
-for sql in migrations:
-    try:
-        conn.execute(sql)
-        conn.commit()
-    except Exception:
-        pass
-conn.close()
-"
+            python migrate.py
             cd ..
             sudo systemctl restart palace-dev
             echo "Deploy complete"
