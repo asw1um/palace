@@ -49,7 +49,7 @@ class react_request(BaseModel):
     reaction: str
 
 
-@router.post('/')
+@router.post('')
 async def upsert_review(
     body: upsert_review_request,
     request: Request,
