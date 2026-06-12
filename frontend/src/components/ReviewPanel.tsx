@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, ThumbsUp, ThumbsDown, EyeOff, Eye } from 'lucide-react';
+import { X,Star, ThumbsUp, ThumbsDown, EyeOff, Eye } from 'lucide-react';
 import { upsert_review, delete_review, get_my_review, get_title_reviews, react_to_review } from '@/api/reviews';
 import type { Review } from '@/api/reviews';
 import { useAuth } from '@/contexts/AuthContext';
@@ -146,6 +146,7 @@ export function ReviewCard({ r, currentUserId, onReact, themeColor }: { r: Revie
   const isReviewSpoiler = !!r.is_spoiler;
   const shouldHide = isReviewSpoiler && !revealFullSpoiler;
   const displayName = (u: Review['author']) => u?.nickname || u?.username || 'User';
+ 
 
   return (
     <div style={{ padding: '15px 12px 4px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
@@ -262,6 +263,8 @@ export default function ReviewPanel({ tmdb_id, media_type, title, poster_url }: 
   const activeTheme = THEMES.find(t => t.id === themeId) ?? THEMES[0]; 
   const themeColor = activeTheme.primary;
   const isFullWrapped = /^\|\|[\s\S]*\|\|$/.test(content.trim());
+  const [syntaxModalOpen, setSyntaxModalOpen] = useState(false);
+  const [previewReveal, setPreviewReveal] = useState(false);
 
   useEffect(() => {
     get_my_review(tmdb_id, media_type).then(r => {
@@ -336,11 +339,22 @@ export default function ReviewPanel({ tmdb_id, media_type, title, poster_url }: 
           <StarRow value={rating} onChange={setRating} />
         </div>
 
-        <div style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '8px' }}>Your Thoughts</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <div style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Your Thoughts</div>
+        <button
+          type="button"
+          onClick={() => setSyntaxModalOpen(true)}
+          style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255,255,255,0.35)', fontSize: '11px', fontWeight: 500, cursor: 'pointer', textDecoration: 'underline', transition: 'color 0.15s' }}
+          onMouseEnter={e => e.currentTarget.style.color = 'var(--t-primary)'}
+          onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.35)'}
+        >
+          Formatting Options
+        </button>
+      </div>
         <textarea
           value={content}
           onChange={e => setContent(e.target.value)}
-          placeholder="What did you think? Use ||text|| for inline spoilers."
+          placeholder="What did you think?"
           rows={3}
           style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.25)', color: '#fff', fontSize: '13px', fontFamily: 'inherit', resize: 'vertical', outline: 'none', boxSizing: 'border-box', lineHeight: 1.5 }}
           onFocus={e => { e.currentTarget.style.borderColor = 'var(--t-primary)'; }}
@@ -483,6 +497,115 @@ export default function ReviewPanel({ tmdb_id, media_type, title, poster_url }: 
           </div>
         )}
       </div>
+      {/* TEXT FORMATTING MODAL OVERLAY */}
+      {syntaxModalOpen && (
+        <div 
+          onClick={() => setSyntaxModalOpen(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10, 10, 12, 0.65)' }}
+        >
+          <div 
+            onClick={e => e.stopPropagation()}
+            style={{ background: 'rgba(30, 28, 40, 0.95)', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '24px', borderRadius: '12px', width: '340px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255,255,255,0.02)', color: '#fff', position: 'relative' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+              <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 700, letterSpacing: '0.5px' }}>Formatting Options</h3>
+              <button 
+                onClick={() => setSyntaxModalOpen(false)}
+                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+              >
+                <X style={{ width: '16px', height: '16px' }} />
+              </button>
+            </div>
+
+            {/* COLUMN LABELS */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.1)', fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <span>Style / Syntax</span>
+              <span>Result</span>
+            </div>
+
+            {/* SYNTAX ROWS CONTAINER */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px', marginTop: '10px' }}>
+            {/* Inline Spoiler */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', maxWidth: '55%' }}>
+                  <span style={{ fontWeight: 500 }}>Inline Spoiler</span>
+                  <code style={{ color: 'rgba(255,255,255,0.6)', background: 'rgba(255,255,255,0.05)', padding: '2px 4px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px', overflowWrap: 'break-word' }}>some ||spoiler|| text</code>
+                </div>
+                <div style={{ fontSize: '12px', color: '#fff', textAlign: 'right', lineHeight: '1.4' }}>
+                  some{' '}
+                  <span 
+                    onClick={() => setPreviewReveal(!previewReveal)}
+                    style={{ 
+                      background: previewReveal ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.25)', 
+                      color: previewReveal ? 'rgba(255,255,255,0.9)' : 'transparent', 
+                      padding: '2px 6px', 
+                      borderRadius: '4px', 
+                      fontSize: '11px', 
+                      fontWeight: previewReveal ? 500 : 400,
+                      userSelect: 'none', 
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease-in-out',
+                    }} 
+                    onMouseEnter={e => {
+                      if (!previewReveal) e.currentTarget.style.background = 'rgba(255,255,255,0.35)';
+                    }}
+                    onMouseLeave={e => {
+                      if (!previewReveal) e.currentTarget.style.background = 'rgba(255,255,255,0.25)';
+                    }}
+                    title={previewReveal ? "Click to hide" : "Click to reveal"}
+                  >
+                    spoiler
+                  </span>{' '}
+                  text
+                </div>
+              </div>
+
+              {/* Bold Text */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span style={{ fontWeight: 500 }}>Bold Text</span>
+                  <code style={{ display: 'inline-block',width: 'fit-content', color: 'rgba(255,255,255,0.6)', background: 'rgba(255,255,255,0.05)', padding: '2px 4px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px' }}>**text**</code>
+                </div>
+                <span style={{ fontWeight: 700, color: '#fff' }}>Bold Text</span>
+              </div>
+
+              {/* Italic Text */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span style={{ fontWeight: 500 }}>Italic Text</span>
+                  <code style={{ display: 'inline-block',width: 'fit-content',color: 'rgba(255,255,255,0.6)', background: 'rgba(255,255,255,0.05)', padding: '2px 4px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px' }}>*text*</code>
+                </div>
+                <span style={{ fontStyle: 'italic', color: '#fff' }}>Italic Text</span>
+              </div>
+
+              {/* Underline Text */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span style={{ fontWeight: 500 }}>Underline Text</span>
+                  <code style={{ display: 'inline-block',width: 'fit-content',color: 'rgba(255,255,255,0.6)', background: 'rgba(255,255,255,0.05)', padding: '2px 4px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px' }}>__text__</code>
+                </div>
+                <span style={{ textDecoration: 'underline', textDecorationThickness: '1px', color: '#fff' }}>Underline Text</span>
+              </div>
+
+              {/* Strikethrough */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span style={{ fontWeight: 500 }}>Strikethrough</span>
+                  <code style={{ display: 'inline-block',width: 'fit-content',color: 'rgba(255,255,255,0.6)', background: 'rgba(255,255,255,0.05)', padding: '2px 4px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px' }}>~~text~~</code>
+                </div>
+                <span style={{ textDecoration: 'line-through', textDecorationThickness: '1px', color: 'rgba(255,255,255,0.6)' }}>Strikethrough</span>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => setSyntaxModalOpen(false)}
+              style={{ marginTop: '20px', width: '100%', background: 'var(--t-primary)', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '12px' }}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
