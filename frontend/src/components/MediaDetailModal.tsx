@@ -1,13 +1,14 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { TMDBResult } from '@/types/api';
-import { X, Star, Play, Film, Tv, Plus, Clock, MessageSquare, ChevronRight } from 'lucide-react';
+import { X, Star, Play, Film, Tv, Plus, Clock, MessageSquare, ChevronRight} from 'lucide-react';
 
 import AddToListMenu from './AddToListMenu';
 import ReviewPanel from './ReviewPanel';
 import { get_movie_details, get_tv_details } from '@/api/search';
 import { get_movie_progress, update_movie_progress } from '@/api/progress';
 import { get_custom_media, set_movie_runtime } from '@/api/custom_media';
+import { get_title_reviews } from '@/api/reviews';
 
 interface Props {
   item: TMDBResult | null;
@@ -63,6 +64,21 @@ export default function MediaDetailModal({ item, onClose }: Props) {
   const [isDragging, setIsDragging] = useState(false);
   const sliderRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef(movieProgress);
+  const [ratingHover, setRatingHover] = useState(false);
+  const [ratedCount, setRatedCount] = useState(0);
+  const [tmdbHover, setTmdbHover] = useState(false);
+  const [userAvgRating, setUserAvgRating] = useState<number | null>(null);
+  useEffect(() => {
+  get_title_reviews(displayItem.id, media_type)
+    .then(reviews => {
+      const rated = reviews.filter(r => r.rating !== null);
+      if (rated.length === 0) return;
+      const avg = rated.reduce((sum, r) => sum + (r.rating ?? 0), 0) / rated.length;
+      setUserAvgRating(Math.round(avg * 10) / 10);
+      setRatedCount(rated.length);
+    })
+    .catch(() => {});
+}, [displayItem.id, media_type]);
   useEffect(() => { progressRef.current = movieProgress; }, [movieProgress]);
   const [customRuntime, setCustomRuntime] = useState(0);
   const [runtimeInput, setRuntimeInput] = useState('');
@@ -172,7 +188,114 @@ export default function MediaDetailModal({ item, onClose }: Props) {
                 {isMovie ? <Film style={{ width: '10px' }} /> : <Tv style={{ width: '10px' }} />}
                 {isMovie ? 'MOVIE' : 'TV SHOW'}
               </span>
-              {displayItem.rating > 0 && <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#fbbf24', fontSize: '12px', fontWeight: 700 }}><Star style={{ width: '12px' }} />{displayItem.rating.toFixed(1)}</span>}
+              {/* TMDB rating badge */}
+              {displayItem.rating > 0 && (
+                <span
+                  onMouseEnter={() => setTmdbHover(true)}
+                  onMouseLeave={() => setTmdbHover(false)}
+                  style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 700, cursor: 'default' }}
+                >
+                  <span style={{ 
+                    background: '#01b4e4', 
+                    color: '#0d253f', 
+                    fontSize: '9px', 
+                    fontWeight: 900, 
+                    padding: '2px 4px', 
+                    borderRadius: '3px', 
+                    letterSpacing: '0.2px',
+                    lineHeight: '1'
+                  }}>
+                    TMDB
+                  </span>
+                  
+                  <span style={{ color: '#01b4e4' }}>{displayItem.rating.toFixed(1)}</span>
+
+                  {tmdbHover && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 6px)',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      background: 'rgba(24, 24, 30, 0.45)', // Lighter, highly transparent dark base
+                      border: '1px solid rgba(255, 255, 255, 0.08)', // Muted, soft border
+                      boxShadow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 4px 12px rgba(0, 0, 0, 0.3)', // Keeps it crisp
+                      backdropFilter: 'blur(10px)',
+                      
+                      borderRadius: '6px',
+                      padding: '5px 10px',
+                      fontSize: '11px',
+                      fontWeight: 500,
+                      color: 'rgba(255,255,255,0.9)',
+                      whiteSpace: 'nowrap',
+                      pointerEvents: 'none',
+                      zIndex: 50,
+                      
+                    }}>
+                      TMDB average
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: 0,
+                        height: 0,
+                        borderLeft: '5px solid transparent',
+                        borderRight: '5px solid transparent',
+                        borderBottom: '5px solid var(--t-primary)',
+                      }} />
+                    </div>
+                  )}
+                </span>
+              )}
+
+              {/* Palace user avg rating badge */}
+              {userAvgRating !== null && (
+                <span
+                  onMouseEnter={() => setRatingHover(true)}
+                  onMouseLeave={() => setRatingHover(false)}
+                  style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '3px', fontSize: '12px', fontWeight: 700, color: 'var(--t-primary)', cursor: 'default' }}
+                >
+                <Star style={{ width: '14px', height: '14px', fill: 'None', color: 'var(--t-primary)', strokeWidth: '3px' }} />
+                  {userAvgRating.toFixed(1)}
+
+                  {ratingHover && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 6px)',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      background: 'rgba(24, 24, 30, 0.45)', // Lighter, highly transparent dark base
+                      border: '1px solid rgba(255, 255, 255, 0.08)', // Muted, soft border
+                      boxShadow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 4px 12px rgba(0, 0, 0, 0.3)', // Keeps it crisp
+                      backdropFilter: 'blur(10px)',
+                      borderRadius: '6px',
+                      padding: '5px 10px',
+                      fontSize: '11px',
+                      fontWeight: 500,
+                      color: 'rgba(255,255,255,0.9)',
+                      whiteSpace: 'nowrap',
+                      pointerEvents: 'none',
+                      zIndex: 50,
+                      
+                    }}>
+                      Palace average · {ratedCount} rating{ratedCount !== 1 ? 's' : ''}
+                      
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: 0,
+                        height: 0,
+                        borderLeft: '5px solid transparent',
+                        borderRight: '5px solid transparent',
+                        borderBottom: '5px solid var(--t-primary)',
+                      }} />
+                    </div>
+                  )}
+                </span>
+              )}
+
               {year && <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>{year}</span>}
               {runtimeDisplay && <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '12px' }}>{runtimeDisplay}</span>}
               {displayItem.status && <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>{displayItem.status}</span>}
