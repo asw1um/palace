@@ -8,6 +8,9 @@ import { Users, Calendar, Star } from 'lucide-react';
 import GlassBox from '@/components/GlassBox';
 import Poster from '@/components/Poster';
 import type { User, List, Club, Activity } from '@/types/api';
+import { useTheme } from '@/data/ThemeContext';
+import { THEMES } from '@/data/themeStore';
+import { ReviewContentRenderer } from '@/utils/markdownParser';
 
 function userGradient(nickname: string) {
   const hash = nickname.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -37,6 +40,9 @@ export default function UserProfile() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const { themeId } = useTheme(); // Use whatever theme hook or state your profile uses
+  const activeTheme = THEMES.find(t => t.id === themeId) ?? THEMES[0];
+  const themeColor = activeTheme.primary; // This creates the 'themeColor' variable
 
   useEffect(() => {
     let cancelled = false;
@@ -203,9 +209,13 @@ export default function UserProfile() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto' }}>
                 {reviews.map(r => (
-                  <div key={r.id} onClick={() => navigate(`/discover?q=${encodeURIComponent(r.title)}`)} style={{ display: 'flex', gap: '12px', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', cursor: 'pointer', transition: 'background 0.1s' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.09)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}>
+                    <div 
+                      key={r.id} 
+                      onClick={() => navigate(`/${r.media_type || 'movie'}/${r.tmdb_id}?tab=reviews#review-${r.id}`)} 
+                      style={{ display: 'flex', gap: '12px', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', cursor: 'pointer', transition: 'background 0.1s' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.09)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+                    >
                     {r.poster_url
                       ? <img src={r.poster_url} alt="" style={{ width: '40px', height: '60px', borderRadius: '5px', objectFit: 'cover', flexShrink: 0 }} />
                       : <div style={{ width: '40px', height: '60px', borderRadius: '5px', background: 'rgba(255,255,255,0.07)', flexShrink: 0 }} />
@@ -220,7 +230,21 @@ export default function UserProfile() {
                           <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginLeft: '3px' }}>{r.rating}/5</span>
                         </div>
                       )}
-                      {r.content && <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.55)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.content}</div>}
+                      {r.content && (
+                        <div 
+                          style={{ 
+                            fontSize: '12px', 
+                            color: 'rgba(255,255,255,0.55)', 
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}
+                        >
+                          <ReviewContentRenderer text={r.content} themeColor={themeColor} />
+                        </div>
+                      )}
                       <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)' }}>{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                     </div>
                   </div>
