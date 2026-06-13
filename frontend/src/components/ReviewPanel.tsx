@@ -73,7 +73,7 @@ type Node =
 
 type BranchNode = Exclude<Node, { type: 'text' }>;
 
-const SCAN_RE = /(\\\|\||\\(?:\*\*\*|\*\*|__|\|\||[*_~])|\|\||\*\*\*|\*\*|__|~~|\*(?!\*)(?=[^*])|_(?!_)(?=[^_]))/g;
+const SCAN_RE = /(\\\|\||\\(?:\*\*\*|\*\*|__|\|\||[*_~])|\|\||\*\*\*|\*\*|__|~~|`|\*|_)/g;
 const BP: Record<string, number> = { '||': 40, '***': 35, '**': 30, '__': 20, '~~': 20, '*': 10, '_': 10 };
 const DELIM_TYPE: Record<string, Node['type']> = { '||': 'spoiler', '***': 'bolditalic', '**': 'bold', '__': 'underline', '~~': 'strike', '*': 'italic', '_': 'italic' };
 
@@ -100,7 +100,13 @@ function parseExpr(tokens: RawToken[], openDelim: string | null = null): Node[] 
     if (tok.kind === 'text') { tokens.shift(); nodes.push({ type: 'text', value: tok.value }); continue; }
     const delim = tok.delim;
     if (delim === openDelim) { tokens.shift(); return nodes; }
-    if (openDelim && (BP[delim] ?? 0) < (BP[openDelim] ?? 0)) { tokens.shift(); nodes.push({ type: 'text', value: delim }); continue; }
+    if (openDelim && (BP[delim] ?? 0) < (BP[openDelim] ?? 0)) { 
+      const hasInnerClose = tokens.findIndex((t, i) => i > 0 && t.kind === 'delim' && t.delim === delim) !== -1;
+      if (!hasInnerClose) {
+        tokens.shift();
+        nodes.push({ type: 'text', value: delim });
+        continue;
+      }}
     const closeIdx = tokens.findIndex((t, i) => i > 0 && t.kind === 'delim' && t.delim === delim);
     if (closeIdx === -1) { tokens.shift(); nodes.push({ type: 'text', value: delim }); continue; }
     tokens.shift();
