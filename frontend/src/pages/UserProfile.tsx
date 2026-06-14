@@ -11,6 +11,11 @@ import type { User, List, Club, Activity } from '@/types/api';
 import { useTheme } from '@/data/ThemeContext';
 import { THEMES } from '@/data/themeStore';
 import { ReviewContentRenderer } from '@/utils/markdownParser';
+import MediaDetailModal from '@/components/MediaDetailModal';
+import ShowDetailModal from '@/components/ShowDetailModal';
+import { get_movie_details, get_tv_details } from '@/api/search';
+import { useSearchParams } from 'react-router-dom';
+import type { TMDBResult } from '@/types/api';
 
 function userGradient(nickname: string) {
   const hash = nickname.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -43,6 +48,27 @@ export default function UserProfile() {
   const { themeId } = useTheme(); // Use whatever theme hook or state your profile uses
   const activeTheme = THEMES.find(t => t.id === themeId) ?? THEMES[0];
   const themeColor = activeTheme.primary; // This creates the 'themeColor' variable
+  const [selectedItem, setSelectedItem] = useState<TMDBResult | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+  const shouldOpen = searchParams.get('mediaModal') === 'true';
+  const id = searchParams.get('id');
+  const type = searchParams.get('type');
+  if (!shouldOpen || !id || !type) return;
+
+  const fetcher = type === 'tv' ? get_tv_details : get_movie_details;
+  fetcher(Number(id)).then(data => { if (data) setSelectedItem(data); }).catch(() => {});
+}, [searchParams]);
+
+  const closeModal = () => {
+    setSelectedItem(null);
+    searchParams.delete('mediaModal');
+    searchParams.delete('id');
+    searchParams.delete('type');
+    searchParams.delete('tab');
+    setSearchParams(searchParams, { replace: true });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -82,11 +108,11 @@ export default function UserProfile() {
   const display_name = user.nickname || user.username || 'User';
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', paddingRight: '4px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: '16px', alignItems: 'start' }}>
+    <div style={{ height: '100%', overflowY: 'auto',padding: '0 16px 16px 12px', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'start', width: '100%' }}>
 
         {/* ===== LEFT COLUMN ===== */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ flex: '1 1 320px', minWidth: 0, maxWidth: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
           {/* Profile card */}
           <div style={{
@@ -200,7 +226,7 @@ export default function UserProfile() {
         </div>
 
         {/* ===== RIGHT COLUMN ===== */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+       <div style={{ flex: '1 1 320px', minWidth: 0, maxWidth: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
           {/* Reviews */}
           <GlassBox title={`Reviews · ${reviews.length}`} collapsible defaultCollapsed={false}>
@@ -208,50 +234,59 @@ export default function UserProfile() {
               <div style={{ textAlign: 'center', padding: '28px', color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>No reviews yet</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto' }}>
-                {reviews.map(r => (
+                {reviews.map(r => {
+                  /* ADD THESE TWO LINES INSIDE THE MAP WRAPPER */
+                  const mediaType = r.media_type === 'show' || r.media_type === 'tv' ? 'tv' : 'movie';
+                  const targetId = r.tmdb_id || r.id;
+
+                  return (
                     <div 
                       key={r.id} 
-                      onClick={() => navigate(`/${r.media_type || 'movie'}/${r.tmdb_id}?tab=reviews#review-${r.id}`)} 
+                      onClick={() => setSearchParams({ mediaModal: 'true', id: String(targetId), type: mediaType, tab: 'reviews' })}
                       style={{ display: 'flex', gap: '12px', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', cursor: 'pointer', transition: 'background 0.1s' }}
                       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.09)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
                     >
-                    {r.poster_url
-                      ? <img src={r.poster_url} alt="" style={{ width: '40px', height: '60px', borderRadius: '5px', objectFit: 'cover', flexShrink: 0 }} />
-                      : <div style={{ width: '40px', height: '60px', borderRadius: '5px', background: 'rgba(255,255,255,0.07)', flexShrink: 0 }} />
-                    }
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '4px' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</div>
-                      {r.rating !== null && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                          {[1,2,3,4,5].map(s => (
-                            <Star key={s} style={{ width: '12px', height: '12px', color: (r.rating ?? 0) >= s ? '#ffd700' : 'rgba(255,255,255,0.18)', fill: (r.rating ?? 0) >= s ? '#ffd700' : 'none' }} />
-                          ))}
-                          <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginLeft: '3px' }}>{r.rating}/5</span>
-                        </div>
-                      )}
-                      {r.content && (
-                        <div 
-                          style={{ 
-                            fontSize: '12px', 
-                            color: 'rgba(255,255,255,0.55)', 
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}
-                        >
-                          <ReviewContentRenderer text={r.content} themeColor={themeColor} />
-                        </div>
-                      )}
-                      <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)' }}>{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                      {r.poster_url
+                        ? <img src={r.poster_url} alt="" style={{ width: '40px', height: '60px', borderRadius: '5px', objectFit: 'cover', flexShrink: 0 }} />
+                        : <div style={{ width: '40px', height: '60px', borderRadius: '5px', background: 'rgba(255,255,255,0.07)', flexShrink: 0 }} />
+                      }
+                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '4px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</div>
+                        {r.rating !== null && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            {[1,2,3,4,5].map(s => (
+                              <Star key={s} style={{ width: '12px', height: '12px', color: (r.rating ?? 0) >= s ? '#ffd700' : 'rgba(255,255,255,0.18)', fill: (r.rating ?? 0) >= s ? '#ffd700' : 'none' }} />
+                            ))}
+                            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginLeft: '3px' }}>{r.rating}/5</span>
+                          </div>
+                        )}
+                        {r.content && (
+                          <div 
+                            style={{ 
+                              fontSize: '12px', 
+                              color: 'rgba(255,255,255,0.55)', 
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              overflowWrap: 'break-word',
+                              wordBreak: 'normal'
+                            }}
+                          >
+                            <ReviewContentRenderer text={r.content} themeColor={themeColor} />
+                          </div>
+                        )}
+                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)' }}>{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                  
+                })}
               </div>
             )}
-          </GlassBox>
+</GlassBox>
 
           <h2 style={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '2px', textTransform: 'uppercase', margin: 0 }}>Lists · {user_lists.length}</h2>
 
@@ -291,8 +326,14 @@ export default function UserProfile() {
               );
             })
           )}
+
         </div>
       </div>
+          {selectedItem && selectedItem.media_type === 'tv' ? (
+      <ShowDetailModal item={selectedItem} onClose={closeModal} />
+      ) : selectedItem ? (
+        <MediaDetailModal item={selectedItem} onClose={closeModal} />
+      ) : null}
     </div>
   );
 }

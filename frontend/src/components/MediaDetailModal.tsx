@@ -9,6 +9,7 @@ import { get_movie_details, get_tv_details } from '@/api/search';
 import { get_movie_progress, update_movie_progress } from '@/api/progress';
 import { get_custom_media, set_movie_runtime } from '@/api/custom_media';
 import { get_title_reviews } from '@/api/reviews';
+import { useSearchParams } from 'react-router-dom';
 
 interface Props {
   item: TMDBResult | null;
@@ -21,12 +22,19 @@ export default function MediaDetailModal({ item, onClose }: Props) {
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const reviewsSectionRef = useRef<HTMLDivElement>(null);
   const [reviewsOpen, setReviewsOpen] = useState(false);
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     const root = document.getElementById('root');
     if (root) root.style.filter = 'blur(16px) brightness(0.65)';
     return () => { if (root) root.style.filter = ''; };
   }, []);
+
+  useEffect(() => {
+      if (item && searchParams.get('tab') === 'reviews') {
+        setReviewsOpen(true);
+      }
+    }, [item, searchParams]);
 
   useEffect(() => {
     if (!item) return;
