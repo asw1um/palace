@@ -60,7 +60,7 @@ async def get_clubs(
         'all_clubs': [_club_dict(c) for c in db_session.query(Club).all()],
     }
 
-
+@router.post('', status_code=201)
 @router.post('/', status_code=201)
 async def create_club(
     body: create_club_request,
