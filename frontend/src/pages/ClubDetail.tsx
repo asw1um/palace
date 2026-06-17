@@ -13,6 +13,7 @@ import GlassBox from '@/components/GlassBox';
 import type { Club, User, TMDBResult } from '@/types/api';
 import { useIsMobile } from '@/hooks/use-mobile';
 
+
 function userGradient(nickname: string) {
   const hash = nickname.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
   const hues = [200, 220, 240, 180, 260, 210, 230, 190];
@@ -46,6 +47,7 @@ export default function ClubDetail() {
   const [loading, setLoading] = useState(true);
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
   const [popupPos, setPopupPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [globalViewMode, setGlobalViewMode] = useState<'grid' | 'list'>('grid');
   const popupRef = useRef<HTMLDivElement>(null);
   const confirm = useConfirm();
 
@@ -220,7 +222,7 @@ export default function ClubDetail() {
             <div style={{ aspectRatio: '16/9', background: club.image_url ? `url(${club.image_url}) center/cover no-repeat` : clubGradient(club.name), position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {!club.image_url && <Users style={{ width: '32px', color: 'rgba(255,255,255,0.18)' }} />}
               {canManage && (
-                <button onClick={openEdit} style={{ position: 'absolute', top: '8px', right: '8px', display: 'flex', alignItems: 'center', gap: '4px', padding: '5px 10px', borderRadius: '6px', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button onClick={openEdit} style={{ position: 'absolute', top: '8px', right: '8px', display: 'flex', alignItems: 'center', gap: '4px', padding: isMobile ? '8px 14px' : '5px 10px', borderRadius: '6px', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: isMobile ? '13px' : '11px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                   <Settings style={{ width: '11px' }} /> Edit
                 </button>
               )}
@@ -301,12 +303,23 @@ export default function ClubDetail() {
         {/* ── RIGHT: Lists ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {/* Lists header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'space-between' }}>
             <h2 style={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '2px', textTransform: 'uppercase', margin: 0 }}>Lists · {clubLists.length}</h2>
+
+            {isMobile && (
+                <div style={{ marginLeft: '20px', display: 'flex', background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', overflow: 'hidden', height: '40px', flexShrink: 0 }}>
+                  <button onClick={() => setGlobalViewMode('grid')} style={{ padding: '0 10px', background: globalViewMode === 'grid' ? 'var(--t-primary-25)' : 'transparent', border: 'none', cursor: 'pointer' }}>
+                    <LayoutGrid style={{ width: '15px', color: globalViewMode === 'grid' ? 'var(--t-primary)' : 'rgba(255,255,255,0.4)' }} />
+                  </button>
+                  <button onClick={() => setGlobalViewMode('list')} style={{ padding: '0 10px', background: globalViewMode === 'list' ? 'var(--t-primary-25)' : 'transparent', border: 'none', cursor: 'pointer' }}>
+                    <ListIcon style={{ width: '15px', color: globalViewMode === 'list' ? 'var(--t-primary)' : 'rgba(255,255,255,0.4)' }} />
+                  </button>
+                </div>
+              )}
             {(canManage || isHelper) && (
               <button
                 onClick={e => { e.stopPropagation(); setShowCreateList(true); setNewListName(''); }}
-                style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', borderRadius: '7px', background: 'var(--t-primary-20)', border: '1px solid var(--t-primary-35)', color: 'var(--t-primary)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ marginLeft: isMobile ? 'auto' : undefined, display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', borderRadius: '7px', background: 'var(--t-primary-20)', border: '1px solid var(--t-primary-35)', color: 'var(--t-primary)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--t-primary-30)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'var(--t-primary-20)'; }}
               >
@@ -323,7 +336,7 @@ export default function ClubDetail() {
             clubLists.map(list => {
               const allItems = [...(list.movies || []).map(m => ({ ...m, type: 'movie' as const })), ...(list.shows || []).map(s => ({ ...s, type: 'tv' as const }))];
               const totalCount = (list.movie_count || 0) + (list.show_count || 0);
-              const viewMode = listViewModes[list.id] ?? 'grid';
+              const viewMode = isMobile ? globalViewMode : (listViewModes[list.id] ?? 'grid');
               return (
                 <GlassBox
                   key={list.id}
@@ -339,9 +352,9 @@ export default function ClubDetail() {
                       ) : (
                         <span>{list.name}</span>
                       )}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '6px' }}>
                         <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', background: 'rgba(0,0,0,0.15)', padding: '2px 8px', borderRadius: '8px', letterSpacing: '0', textTransform: 'none', fontWeight: 400 }}>{totalCount} titles</span>
-                        {renamingListId !== list.id && (
+                        {renamingListId !== list.id && !isMobile &&(
                           <div style={{ display: 'flex', background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
                             <button onClick={e => { e.stopPropagation(); setListViewModes(p => ({ ...p, [list.id]: 'grid' })); }} style={{ padding: '4px 7px', background: viewMode === 'grid' ? 'var(--t-primary-25)' : 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                               <LayoutGrid style={{ width: '12px', color: viewMode === 'grid' ? 'var(--t-primary)' : 'rgba(255,255,255,0.35)' }} />
@@ -351,16 +364,18 @@ export default function ClubDetail() {
                             </button>
                           </div>
                         )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '4px' : '6px' }}>
                         {canManage && renamingListId !== list.id && (
                           <>
-                            <button onClick={e => { e.stopPropagation(); setRenamingListId(list.id); setRenameValue(list.name); }} title="Rename" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '3px', display: 'flex', alignItems: 'center' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}>
-                              <Pencil style={{ width: '12px' }} />
+                            <button onClick={e => { e.stopPropagation(); setRenamingListId(list.id); setRenameValue(list.name); }} title="Rename" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: isMobile ? '8px' : '3px', display: 'flex', alignItems: 'center' }} onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}>
+                              <Pencil style={{ width: isMobile ? '18px' : '13px' }} />
                             </button>
-                            <button onClick={e => { e.stopPropagation(); handleDeleteList(list.id, list.name); }} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '3px', display: 'flex', alignItems: 'center' }} onMouseEnter={e => { e.currentTarget.style.color = '#f56565'; }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}>
-                              <Trash2 style={{ width: '12px' }} />
+                            <button onClick={e => { e.stopPropagation(); handleDeleteList(list.id, list.name); }} title="Delete" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: isMobile ? '8px' : '3px', display: 'flex', alignItems: 'center' }} onMouseEnter={e => { e.currentTarget.style.color = '#f56565'; }} onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}>
+                              <Trash2 style={{ width: isMobile ? '18px' : '13px' }} />
                             </button>
                           </>
                         )}
+                        </div>
                       </div>
                     </div>
                   }
