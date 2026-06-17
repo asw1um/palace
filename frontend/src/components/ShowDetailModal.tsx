@@ -12,6 +12,7 @@ import type { Review } from '@/api/reviews';
 import { exampleStore } from '@/data/exampleStore';
 import { toast } from 'sonner';
 import type { TMDBResult } from '@/types/api';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Episode {
   id: number;
@@ -99,6 +100,7 @@ export default function ShowDetailModal({ item, onClose }: Props) {
   const reviewsSectionRef = useRef<HTMLDivElement>(null);
   const toggleWatchedRef = useRef<(s: number, e: number) => void>(() => {});
   const watchedMapRef = useRef<Record<string, boolean>>({});
+  const isMobile = useIsMobile();
   // Review state
   const [myReview, setMyReview] = useState<Review | null>(null);
   const [allReviews, setAllReviews] = useState<Review[]>([]);
@@ -387,8 +389,9 @@ export default function ShowDetailModal({ item, onClose }: Props) {
       <div
         className="modal-in"
         style={{
-          width: 'min(920px, 96vw)', maxHeight: '90vh',
-          borderRadius: '16px', overflow: 'hidden',
+          width: isMobile ? '100vw' : 'min(920px, 96vw)',
+          maxHeight: isMobile ? '100vh' : '90vh',
+          borderRadius: isMobile ? '0px' : '16px', overflow: 'hidden',
           background: 'linear-gradient(180deg, var(--t-primary-18) 0%, var(--t-primary-10) 100%)',
           border: '1px solid rgba(255,255,255,0.2)',
           boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
@@ -405,9 +408,9 @@ export default function ShowDetailModal({ item, onClose }: Props) {
         </button>
 
         {/* ── HEADER: poster + info ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '20px', padding: '20px', flexShrink: 0, background: 'linear-gradient(180deg, var(--t-primary-25) 0%, var(--t-primary-12) 100%)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '90px 1fr' : '160px 1fr', gap: isMobile ? '10px' : '20px', padding: isMobile ? '12px' : '20px', flexShrink: 0, background: 'linear-gradient(180deg, var(--t-primary-25) 0%, var(--t-primary-12) 100%)' }}>
           {/* Poster */}
-          <div style={{ aspectRatio: '2/3', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.12)', background: '#0a0814', flexShrink: 0 }}>
+          <div style={{ aspectRatio: '2/3', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.12)', background: '#0a0814', flexShrink: 0 ,width: isMobile ? '90px' : undefined, alignSelf: isMobile ? 'flex-start' : undefined }}>
             {displayItem.poster_url
               ? <img src={displayItem.poster_url} alt={displayItem.title} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
               : <div style={{ width: '100%', height: '100%', background: 'var(--t-primary-20)' }} />}
@@ -431,19 +434,19 @@ export default function ShowDetailModal({ item, onClose }: Props) {
 
             {/* Title + tagline */}
             <div>
-              <h2 style={{ margin: 0, color: '#fff', fontSize: '26px', fontWeight: 700, lineHeight: 1.15, overflowWrap: 'break-word' }}>{displayItem.title}</h2>
-              {displayItem.tagline && <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontStyle: 'italic' }}>{displayItem.tagline}</p>}
+              <h2 style={{ margin: 0, color: '#fff', fontSize: isMobile ? '18px' : '26px', fontWeight: 700, lineHeight: 1.15, overflowWrap: 'break-word' }}>{displayItem.title}</h2>
+              {!isMobile && displayItem.tagline && <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontStyle: 'italic' }}>{displayItem.tagline}</p>}
             </div>
 
             {/* Overview */}
             {displayItem.overview && (
-              <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '12px', lineHeight: 1.55, maxWidth: '520px', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' as any }}>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '12px', lineHeight: 1.55, maxWidth: '520px', display: '-webkit-box', WebkitLineClamp: isMobile ? 2 : 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' as any }}>
                 {displayItem.overview}
               </p>
             )}
 
             {/* Genres */}
-            {displayItem.genres && displayItem.genres.length > 0 && (
+            {!isMobile && displayItem.genres && displayItem.genres.length > 0 && (
               <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                 {displayItem.genres.slice(0, 4).map(g => (
                   <span key={g} style={{ background: 'var(--t-primary-18)', color: 'var(--t-primary)', fontSize: '11px', padding: '3px 9px', borderRadius: '99px', border: '1px solid var(--t-primary-25)' }}>{g}</span>
@@ -452,10 +455,10 @@ export default function ShowDetailModal({ item, onClose }: Props) {
             )}
 
             {/* Action buttons */}
-            <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap', marginTop: '4px' }}>
-              <div style={{ position: 'relative', display: 'inline-block' }}>
+            <div style={{ display: isMobile ? 'grid' : 'flex', gridTemplateColumns: isMobile ? '1fr 1fr' : undefined, gap: isMobile ? '6px' : '7px', flexWrap: 'wrap', marginTop: isMobile ? '6px' : '4px' }}>
+              <div style={{ position: 'relative', display: isMobile ? 'block' : 'inline-block', width: isMobile ? '100%' : undefined }}>
                 <button ref={addButtonRef} onClick={() => setMenuOpen(!menuOpen)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 13px', borderRadius: '8px', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
+                  style={{ display: 'flex', width: isMobile ? '100%' : undefined, justifyContent: 'center', alignItems: 'center', gap: '5px', padding: '7px 13px', borderRadius: '8px', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.22)'; }}
                   onMouseLeave={e => { if (!menuOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}>
                   <Plus style={{ width: '12px' }} /> Add to List
@@ -464,7 +467,7 @@ export default function ShowDetailModal({ item, onClose }: Props) {
               </div>
               {displayItem.trailer_key && (
                 <a href={`https://youtube.com/watch?v=${displayItem.trailer_key}`} target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 13px', borderRadius: '8px', background: 'rgba(200,60,60,0.7)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: '12px', fontWeight: 600, textDecoration: 'none', transition: 'all 0.15s' }}
+                  style={{ display: 'flex', justifyContent: 'center', width: isMobile ? '100%' : undefined, alignItems: 'center', gap: '5px', padding: '7px 13px', borderRadius: '8px', background: 'rgba(200,60,60,0.7)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: '12px', fontWeight: 600, textDecoration: 'none', transition: 'all 0.15s' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(200,60,60,0.9)'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'rgba(200,60,60,0.7)'; }}>
                   <Play style={{ width: '12px' }} /> Trailer
@@ -472,14 +475,14 @@ export default function ShowDetailModal({ item, onClose }: Props) {
               )}
               {displayItem.tmdb_url && (
                 <a href={displayItem.tmdb_url} target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 13px', borderRadius: '8px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)', color: '#fff', fontSize: '12px', fontWeight: 500, textDecoration: 'none', transition: 'all 0.15s' }}
+                  style={{ display: 'flex', justifyContent: 'center', width: isMobile ? '100%' : undefined, alignItems: 'center', gap: '5px', padding: '7px 13px', borderRadius: '8px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)', color: '#fff', fontSize: '12px', fontWeight: 500, textDecoration: 'none', transition: 'all 0.15s' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}>
                   <ChevronRight style={{ width: '12px' }} /> TMDB
                 </a>
               )}
               <button onClick={() => setReviewsOpen(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 13px', borderRadius: '8px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)', color: '#fff', fontSize: '12px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto', transition: 'all 0.15s' }}
+                style={{ display: 'flex', justifyContent: 'center', marginLeft: isMobile ? '0' : 'auto', width: isMobile ? '100%' : undefined, alignItems: 'center', gap: '5px', padding: '7px 13px', borderRadius: '8px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)', color: '#fff', fontSize: '12px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}>
                 <MessageSquare style={{ width: '12px' }} /> Reviews
@@ -493,7 +496,7 @@ export default function ShowDetailModal({ item, onClose }: Props) {
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
 
           {/* Progress + resume */}
-          <div style={{ padding: '12px 20px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ padding: isMobile ? '10px 14px' : '12px 20px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '5px' }}>
                 <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px', fontWeight: 600 }}>Overall progress</span>
@@ -513,7 +516,7 @@ export default function ShowDetailModal({ item, onClose }: Props) {
 
           {/* Cast */}
           {displayItem.cast && displayItem.cast.length > 0 && (
-            <div style={{ padding: '12px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ padding: isMobile ? '10px 14px' : '12px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '1.5px', marginBottom: '10px' }}>CAST</div>
               <div style={{ display: 'flex', gap: '14px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.15) transparent' }}>
                 {displayItem.cast.slice(0, 10).map(c => (
@@ -533,7 +536,7 @@ export default function ShowDetailModal({ item, onClose }: Props) {
 
           {/* Episodes / Season setup */}
           {effectiveSeasons.length > 0 && setupPhase === null ? (
-            <div style={{ padding: '12px 20px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ padding: isMobile ? '10px 14px 16px' : '12px 20px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
 
               {/* Season tabs row */}
               <div style={{ position: 'relative', marginBottom: '12px' }}>
@@ -798,7 +801,7 @@ export default function ShowDetailModal({ item, onClose }: Props) {
 
           {/* ── REVIEWS section (bottom of scrollable body) ── */}
           {reviewsOpen && (
-          <div ref={reviewsSectionRef} style={{ borderTop: '1px solid rgba(255,255,255,0.1)', padding: '20px', background: 'var(--t-primary-08)' }}>
+          <div ref={reviewsSectionRef} style={{ borderTop: '1px solid rgba(255,255,255,0.1)', padding: isMobile ? '14px' : '20px', background: 'var(--t-primary-08)' }}>
             {/* Write your review */}
             <div style={{ marginBottom: '20px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '10px' }}>Your Rating</div>
