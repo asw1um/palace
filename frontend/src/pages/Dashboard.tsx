@@ -343,7 +343,7 @@ export default function Dashboard() {
           {lists.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {lists.map((list) => (
-                <div key={list.id} onClick={() => navigate('/lists')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.04)', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)'; }} onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}>
+                <div key={list.id} onClick={() => navigate(`/lists/${list.id}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.04)', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)'; }} onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: primary, boxShadow: `0 0 5px ${glow}55`, flexShrink: 0 }} />
                     <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>{list.name}</span>
@@ -355,7 +355,7 @@ export default function Dashboard() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px', color: 'rgba(255,255,255,0.4)', gap: '8px' }}>
               <div style={{ fontSize: '13px' }}>No pinned lists</div>
-              <button onClick={() => navigate('/lists')} style={{ padding: '6px 14px', borderRadius: '6px', background: `linear-gradient(180deg, ${primary}99, ${primary}55)`, border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <button onClick={() => navigate('/settings')} style={{ padding: '6px 14px', borderRadius: '6px', background: `linear-gradient(180deg, ${primary}99, ${primary}55)`, border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                 <Plus style={{ width: '11px', display: 'inline', marginRight: '4px' }} />Pin a List
               </button>
             </div>
@@ -363,9 +363,9 @@ export default function Dashboard() {
         </GlassBox>
 
         {/* Club Lists */}
-        <GlassBox title="Club Lists">
+        <GlassBox title="Club Lists" style={{ maxHeight: isMobile ? '320px' : undefined }}>
           {myClubsWithLists.length > 0 && myClubsWithLists.some(c => (c.lists || []).length > 0) ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: isMobile ? '320px' : '220px', overflowY: 'auto' }}>
               {myClubsWithLists.filter(c => (c.lists || []).length > 0).map(club => (
                 <div key={club.id}>
                   <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', paddingLeft: '2px' }}>{club.name}</div>

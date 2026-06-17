@@ -114,22 +114,43 @@ export default function MyLists() {
   return (
   <div style={{ height: isMobile ? 'auto' : '100%', overflowY: isMobile ? 'initial' : 'auto', paddingRight: isMobile ? '0px' : '8px', boxSizing: 'border-box', width: '100%' }}>
       {/* Header: title left, search + create + collapse all right */}
+      {isMobile ? (
+      /* --- MOBILE LAYOUT: Unified Toolbar --- */
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', textTransform: 'uppercase', margin: 0 }}>My Lists</h1>
+          <button onClick={() => setShowCreate(true)} style={{ padding: '8px 12px', borderRadius: '10px', background: 'var(--t-primary-25)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Plus style={{ width: '14px' }} /> Create
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.35)', borderRadius: '10px', padding: '0 16px', height: '40px' }}>
+            <Search style={{ width: '16px', color: 'rgba(255,255,255,0.7)' }} />
+            <input style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '14px', width: '100%' }} placeholder="Search..." value={query} onChange={e => setQuery(e.target.value)} />
+          </div>
+          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.35)', borderRadius: '10px', overflow: 'hidden', height: '40px' }}>
+            <button onClick={() => setGlobalViewMode('grid')} style={{ padding: '0 12px', background: globalViewMode === 'grid' ? 'var(--t-primary-25)' : 'transparent', border: 'none' }}><LayoutGrid style={{ width: '16px' }} /></button>
+            <button onClick={() => setGlobalViewMode('list')} style={{ padding: '0 12px', background: globalViewMode === 'list' ? 'var(--t-primary-25)' : 'transparent', border: 'none' }}><ListIcon style={{ width: '16px' }} /></button>
+          </div>
+        </div>
+      </div>
+    ) : (
       <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '20px' }}>
         <h1 style={{ fontSize: isMobile ? '24px' : '36px', fontWeight: 700, color: '#fff', letterSpacing: '3px', textTransform: 'uppercase', textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>My Lists</h1>
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column-reverse' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: '10px', width: isMobile ? '100%' : 'auto' }}>
           <button
             onClick={() => setShowCreate(true)}
             style={{
-              padding: '10px 16px', borderRadius: '10px',
+              padding: isMobile ? '8px 12px' : '10px 16px', borderRadius: '10px',
               background: 'var(--t-primary-25)', border: '1px solid rgba(255,255,255,0.2)',
-              color: '#fff', fontSize: '13px', fontWeight: 700,
+              color: '#fff', fontSize: '13px', fontWeight: 700, justifyContent: 'center',
               cursor: 'pointer', fontFamily: 'inherit', display: 'flex',
               alignItems: 'center', gap: '6px', transition: 'all 0.15s',
             }}
             onMouseEnter={e => { e.currentTarget.style.background = 'var(--t-primary-50)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'var(--t-primary-25)'; }}
           >
-            <Plus style={{ width: '14px', color: 'var(--t-primary)' }} /> Create List
+            <Plus style={{ width: '14px', color: 'var(--t-primary)', flexShrink: 0 }} /> Create List
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: isMobile ? '100%' : '260px', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '10px', padding: '10px 16px', backdropFilter: 'blur(8px)', boxShadow: '0 2px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.15)' }}>
             <Search style={{ width: '16px', color: 'rgba(255,255,255,0.7)', flexShrink: 0 }} />
@@ -145,7 +166,7 @@ export default function MyLists() {
           </div>
         </div>
       </div>
-
+    ) }
       {/* Create list form */}
       {showCreate && (
         <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
@@ -210,6 +231,7 @@ export default function MyLists() {
                   {editingId !== list.id && (
                     <>
                       {/* Per-list view mode toggle */}
+                      {!isMobile && (
                       <div style={{ display: 'flex', background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
                         <button
                           onClick={e => { e.stopPropagation(); setListViewModes(prev => ({ ...prev, [list.id]: 'grid' })); }}
@@ -226,6 +248,7 @@ export default function MyLists() {
                           <ListIcon style={{ width: '12px', color: viewMode === 'list' ? 'var(--t-primary)' : 'rgba(255,255,255,0.35)' }} />
                         </button>
                       </div>
+                      )}
                       <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '3px', display: 'flex', alignItems: 'center', position: 'relative', zIndex: 10 }} onClick={(e) => startRename(list, e)} title="Rename">
                         <Pencil style={{ width: '13px' }} />
                       </button>

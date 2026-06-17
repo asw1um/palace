@@ -48,7 +48,7 @@ async def get_user_lists_with_movies(
     lists_cache_set(current_user.id, result)
     return {'lists': result}
 
-
+@router.post('', status_code=201)
 @router.post('/', status_code=201)
 async def create_list(
     body: create_list_request,

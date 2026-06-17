@@ -206,6 +206,18 @@ export default function ListDetail() {
       </div>
 
       {/* Controls bar: search + view toggle */}
+      {isMobile ? (
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', width: '100%' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', padding: '0 14px', height: '40px' }}>
+            <Search style={{ width: '14px', color: 'rgba(255,255,255,0.7)', flexShrink: 0 }} />
+            <input style={{ background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: '13px', width: '100%' }} placeholder="Search..." value={query} onChange={e => setQuery(e.target.value)} />
+          </div>
+          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', overflow: 'hidden', height: '40px', flexShrink: 0 }}>
+            <button onClick={() => setViewMode('grid')} style={{ padding: '0 12px', background: viewMode === 'grid' ? 'var(--t-primary-25)' : 'transparent', border: 'none', cursor: 'pointer' }}><LayoutGrid style={{ width: '15px', color: viewMode === 'grid' ? 'var(--t-primary)' : 'rgba(255,255,255,0.4)' }} /></button>
+            <button onClick={() => setViewMode('list')} style={{ padding: '0 12px', background: viewMode === 'list' ? 'var(--t-primary-25)' : 'transparent', border: 'none', borderLeft: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}><ListIcon style={{ width: '15px', color: viewMode === 'list' ? 'var(--t-primary)' : 'rgba(255,255,255,0.4)' }} /></button>
+          </div>
+        </div>
+      ) : (
       <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: '12px', marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', padding: '8px 14px', backdropFilter: 'blur(8px)' }}>
           <Search style={{ width: '14px', color: 'rgba(255,255,255,0.7)', flexShrink: 0 }} />
@@ -221,7 +233,7 @@ export default function ListDetail() {
           </button>
         </div>
       </div>
-
+        )}
         {/* Grid View */}
         {viewMode === 'grid' && (
           <div style={{ 
