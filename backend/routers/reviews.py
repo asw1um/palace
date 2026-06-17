@@ -188,7 +188,7 @@ async def react_to_review(
     log_event(
         event_type=f'user_{body.reaction}d_review',
         user_id=current_user.id,
-        description=f"{current_user.display_name} {body.reaction}d a review for film ID {review.tmdb_id}",
+        description=f"{current_user.display_name} {body.reaction}d a review for {review.title}",
         session=db_session,
     )
     return {'message': f'Added {body.reaction}', 'current_reaction': body.reaction}
