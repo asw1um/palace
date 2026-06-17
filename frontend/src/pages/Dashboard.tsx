@@ -12,7 +12,7 @@ import { get_pinned_lists, get_lists_with_movies } from '@/api/lists';
 import { getPinnedClubs, getMyClubsWithLists } from '@/api/clubs';
 import { getActivity } from '@/api/activity';
 import { getTrending, get_movie_details } from '@/api/search';
-
+import {useIsMobile} from '@/hooks/use-mobile';
 import { getSettings } from '@/api/settings';
 import { getAllProgress } from '@/api/progress';
 import type { List, Club, Activity, TMDBResult } from '@/types/api';
@@ -21,6 +21,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const [selectedItem, setSelectedItem] = useState<TMDBResult | null>(null);
+  const isMobile = useIsMobile();
 
   const handleItemClick = async (item: TMDBResult) => {
     if (item.media_type === 'tv') {
@@ -160,7 +161,7 @@ export default function Dashboard() {
   const primary = 'var(--t-primary)';
 
   return (
-    <div style={{ height: '100%', overflow: 'hidden', paddingRight: '4px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+    <div style={{ height: 'auto' , overflow: isMobile ? 'initial' : 'hidden', paddingRight: isMobile ? '0px' : '4px', display: 'flex', flexDirection: 'column', gap: '14px', width: '100%', boxSizing: 'border-box' }}>
 
       <div style={{ flexShrink: 0 }}>
         <AnimatedSearchBar />
@@ -336,7 +337,7 @@ export default function Dashboard() {
       })()}
 
       {/* ── ROW 2: My Lists + Club Lists ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
         {/* My Lists */}
         <GlassBox title="My Lists">
           {lists.length > 0 ? (
@@ -392,18 +393,18 @@ export default function Dashboard() {
       </div>
 
       {/* ── ROW 3: Activity + Trending ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px', flex: isMobile ? 'none' : '1', minHeight: 0 }}>
         {/* Recent Activity */}
-        <GlassBox title="Recent Activity" style={{ flex: 1, minHeight: 0 }}>
+        <GlassBox title="Recent Activity" style={{ flex: 1, minHeight: 0, maxHeight: isMobile ? '240px' : 'none', overflowY: isMobile ? 'auto' : 'visible' }}>
           {activities.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              {activities.map((act) => (
+              {(isMobile ? activities.slice(0, 7) : activities).map((act) => (
                 <div key={act.id}
                   style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)', transition: 'background 0.1s', flexShrink: 0, cursor: 'pointer' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
                 >
-                  <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: `linear-gradient(135deg, ${theme.primary}66, ${theme.primary}22)`, border: '1px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#fff', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
+                  <div style={{ width: '30px', height: 'auto', borderRadius: '8px', background: `linear-gradient(135deg, ${theme.primary}66, ${theme.primary}22)`, border: '1px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#fff', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
                     {(act.actor?.nickname ?? 'U').slice(0, 2).toUpperCase()}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -424,7 +425,7 @@ export default function Dashboard() {
         {/* Trending */}
         <GlassBox title="Trending" style={{ flex: 1, minHeight: 0 }}>
           {trending.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(auto-fill, minmax(85px, 1fr))' : 'repeat(4, 1fr)', gap: '10px', alignItems: 'start' }}>
               {trending.map((item) => (
                 <div key={item.id} style={{ cursor: 'pointer', transition: 'transform 0.15s', minWidth: 0 }} onClick={() => handleItemClick(item)} onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-4px)')} onMouseLeave={e => (e.currentTarget.style.transform = 'none')}>
                   <div className="poster-wrap" style={{ position: 'relative', width: '100%' }}>
@@ -434,7 +435,7 @@ export default function Dashboard() {
                     </div>
                     <QuickAddButton item={item} />
                   </div>
-                  <div style={{ marginTop: '8px', height: '20px', display: 'flex', alignItems: 'center', gap: '5px', overflow: 'hidden' }}>
+                  <div style={{ marginTop: '8px', height: 'auto', display: 'flex', alignItems: 'center', gap: '5px', overflow: 'hidden' }}>
                     {item.media_type === 'tv' ? <Tv style={{ width: '12px', color: primary, flexShrink: 0 }} /> : <Star style={{ width: '12px', color: 'rgba(255,255,255,0.45)', flexShrink: 0 }} />}
                     <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>{item.title}</span>
                   </div>

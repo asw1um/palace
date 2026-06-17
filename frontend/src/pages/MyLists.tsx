@@ -7,11 +7,13 @@ import { useConfirm } from '@/components/ConfirmDialog';
 import GlassBox from '@/components/GlassBox';
 import Poster from '@/components/Poster';
 import type { List as ListType } from '@/types/api';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function MyLists() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [globalViewMode, setGlobalViewMode] = useState<'grid' | 'list'>('grid');
+  const isMobile = useIsMobile();
   const [listViewModes, setListViewModes] = useState<Record<number, 'grid' | 'list'>>({});
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -110,11 +112,11 @@ export default function MyLists() {
   }
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', paddingRight: '8px' }}>
+  <div style={{ height: isMobile ? 'auto' : '100%', overflowY: isMobile ? 'initial' : 'auto', paddingRight: isMobile ? '0px' : '8px', boxSizing: 'border-box', width: '100%' }}>
       {/* Header: title left, search + create + collapse all right */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <h1 style={{ fontSize: '36px', fontWeight: 700, color: '#fff', letterSpacing: '3px', textTransform: 'uppercase', textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>My Lists</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '20px' }}>
+        <h1 style={{ fontSize: isMobile ? '24px' : '36px', fontWeight: 700, color: '#fff', letterSpacing: '3px', textTransform: 'uppercase', textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>My Lists</h1>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column-reverse' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: '10px', width: isMobile ? '100%' : 'auto' }}>
           <button
             onClick={() => setShowCreate(true)}
             style={{
@@ -129,7 +131,7 @@ export default function MyLists() {
           >
             <Plus style={{ width: '14px', color: 'var(--t-primary)' }} /> Create List
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '260px', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '10px', padding: '10px 16px', backdropFilter: 'blur(8px)', boxShadow: '0 2px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.15)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: isMobile ? '100%' : '260px', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '10px', padding: '10px 16px', backdropFilter: 'blur(8px)', boxShadow: '0 2px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.15)' }}>
             <Search style={{ width: '16px', color: 'rgba(255,255,255,0.7)', flexShrink: 0 }} />
             <input style={{ background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: '14px', fontFamily: 'inherit', width: '100%', caretColor: 'var(--t-primary)', textShadow: '0 1px 3px rgba(0,0,0,0.4)' }} placeholder="Search lists..." value={query} onChange={e => setQuery(e.target.value)} />
           </div>
@@ -238,7 +240,12 @@ export default function MyLists() {
           >
             {viewMode === 'grid' ? (
               <div onClick={() => navigate(`/lists/${list.id}`)} style={{ cursor: 'pointer' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '8px', alignItems: 'start' }}>
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: isMobile ? 'repeat(auto-fill, minmax(75px, 1fr))' : 'repeat(auto-fill, minmax(100px, 1fr))', 
+                  gap: '12px 8px', 
+                  alignItems: 'start' 
+                }}>
                   {allItems.map(item => (
                     <div key={`${item.type}-${item.id}`} style={{ display: 'flex', flexDirection: 'column', gap: '6px', minHeight: 0, minWidth: 0 }}>
                       <div className="poster-wrap" style={{ position: 'relative', width: '100%' }}>

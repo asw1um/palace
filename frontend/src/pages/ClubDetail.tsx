@@ -11,6 +11,7 @@ import ShowDetailModal from '@/components/ShowDetailModal';
 import Poster from '@/components/Poster';
 import GlassBox from '@/components/GlassBox';
 import type { Club, User, TMDBResult } from '@/types/api';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 function userGradient(nickname: string) {
   const hash = nickname.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -36,6 +37,7 @@ function clubGradient(name: string) {
 export default function ClubDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { user: current_user } = useAuth();
   const club_id = parseInt(id || '0');
   const [club, setClub] = useState<Club | null>(null);
@@ -201,13 +203,13 @@ export default function ClubDetail() {
 
   return (
     <>
-    <div style={{ height: '100%', overflowY: 'auto', paddingRight: '8px' }}>
+    <div style={{ height: isMobile ? 'auto' : '100%', overflowY: isMobile ? 'initial' : 'auto', paddingRight: isMobile ? '0' : '8px' }}>
       <button style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }} onClick={() => navigate('/clubs')} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}>
         <ArrowLeft style={{ width: '14px' }} /> Clubs
       </button>
 
       {/* ── Two-column layout ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '440px 1fr', gap: '16px', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '440px 1fr', gap: '16px', alignItems: 'start' }}>
 
         {/* ── LEFT: Club card + Members ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -366,7 +368,7 @@ export default function ClubDetail() {
                   {allItems.length > 0 ? (
                     viewMode === 'grid' ? (
                       <div onClick={() => navigate(`/lists/${list.id}`, { state: { fromClub: club.id } })} style={{ cursor: 'pointer' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '6px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(4, 1fr)' : 'repeat(8, 1fr)', gap: '6px' }}>
                           {allItems.map(item => (
                             <div key={item.id} style={{ minWidth: 0 }}>
                               <Poster poster_url={item.poster_url} style={{ borderRadius: '6px' }} />
@@ -487,7 +489,7 @@ export default function ClubDetail() {
       return (
         <div
           ref={popupRef}
-          style={{ position: 'fixed', left: popupPos.x, top: popupPos.y, zIndex: 500, width: '340px', borderRadius: '18px', overflow: 'hidden', background: 'linear-gradient(180deg, var(--t-primary-20) 0%, var(--t-primary-14) 100%), rgba(6, 4, 14, 0.96)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)', border: '1px solid var(--t-primary-40)', boxShadow: '0 24px 64px rgba(0,0,0,0.9)', animation: 'popIn 0.18s cubic-bezier(0.34,1.56,0.64,1)', maxHeight: '90vh', overflowY: 'auto' }}
+          style={{ position: 'fixed', left: isMobile ? '50%' : popupPos.x, top: isMobile ? '50%' : popupPos.y, transform: isMobile ? 'translate(-50%, -50%)' : 'none', width: isMobile ? 'calc(100vw - 32px)' : '340px', zIndex: 500, borderRadius: '18px', overflow: 'hidden', background: 'linear-gradient(180deg, var(--t-primary-20) 0%, var(--t-primary-14) 100%), rgba(6, 4, 14, 0.96)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)', border: '1px solid var(--t-primary-40)', boxShadow: '0 24px 64px rgba(0,0,0,0.9)', animation: 'popIn 0.18s cubic-bezier(0.34,1.56,0.64,1)', maxHeight: '90vh', overflowY: 'auto' }}
         >
           {/* Banner */}
           <div style={{ height: '110px', background: m.banner ? `url(${m.banner}) center/cover` : userBannerGradient(display_name), position: 'relative', flexShrink: 0 }}>

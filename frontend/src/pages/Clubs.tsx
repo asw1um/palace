@@ -5,6 +5,7 @@ import { get_clubs, create_club, uploadClubImage } from '@/api/clubs';
 import { GlassCard } from '@/components/GlassBox';
 import ImageCropModal from '@/components/ImageCropModal';
 import type { Club } from '@/types/api';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 function clubGradient(name: string) {
   const hash = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -16,6 +17,7 @@ function clubGradient(name: string) {
 
 export default function Clubs() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [query, setQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [allClubs, setAllClubs] = useState<Club[]>([]);
@@ -75,24 +77,78 @@ export default function Clubs() {
     : allClubs;
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', paddingRight: '8px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <h1 style={{ fontSize: '36px', fontWeight: 700, color: '#fff', letterSpacing: '3px', textTransform: 'uppercase', textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>Clubs</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button onClick={() => setShowCreate(true)} style={{ padding: '10px 16px', borderRadius: '10px', background: 'var(--t-primary-25)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'var(--t-primary-50)'; }} onMouseLeave={e => { e.currentTarget.style.background = 'var(--t-primary-25)'; }}>
-            <Plus style={{ width: '14px', color: 'var(--t-primary)' }} /> Create Club
-          </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '320px', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '10px', padding: '10px 16px', backdropFilter: 'blur(8px)' }}>
-            <Search style={{ width: '16px', color: 'rgba(255,255,255,0.7)', flexShrink: 0 }} />
-            <input style={{ background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: '14px', fontFamily: 'inherit', width: '100%', caretColor: 'var(--t-primary)' }} placeholder="Search clubs..." value={query} onChange={e => setQuery(e.target.value)} />
+    <div style={{ height: isMobile ? 'auto' : '100%', overflowY: isMobile ? 'initial' : 'auto', paddingRight: isMobile ? '0px' : '8px', boxSizing: 'border-box', width: '100%' }}>
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row', 
+        gap: '16px', 
+        marginBottom: '20px',
+        alignItems: isMobile ? 'stretch' : 'center',
+        justifyContent: 'space-between'
+      }}>
+        
+        <h1 style={{ 
+          fontSize: isMobile ? '24px' : '36px', 
+          fontWeight: 700, 
+          color: '#fff', 
+          letterSpacing: '3px', 
+          textTransform: 'uppercase', 
+          margin: 0 
+        }}>Clubs</h1>
+
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: isMobile ? 'column' : 'row', 
+          gap: '12px', 
+          width: isMobile ? '100%' : 'auto',
+          alignItems: isMobile ? 'stretch' : 'center'
+        }}>
+          
+          {/* Search */}
+          <div style={{ 
+            flexGrow: 1, 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '10px', 
+            background: 'rgba(0,0,0,0.35)', 
+            border: '1px solid rgba(255,255,255,0.3)', 
+            borderRadius: '10px', 
+            padding: '10px 16px' 
+          }}>
+            <Search style={{ width: '16px', color: 'rgba(255,255,255,0.7)' }} />
+            <input style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '14px', width: '100%' }} placeholder="Search clubs..." value={query} onChange={e => setQuery(e.target.value)} />
           </div>
-          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', overflow: 'hidden' }}>
-            <button onClick={() => setViewMode('grid')} style={{ padding: '10px 12px', background: viewMode === 'grid' ? 'var(--t-primary-25)' : 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 0.15s' }}>
-              <LayoutGrid style={{ width: '16px', color: viewMode === 'grid' ? 'var(--t-primary)' : 'rgba(255,255,255,0.4)' }} />
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: '12px', flexShrink: 0 }}>
+            <button 
+              onClick={() => setShowCreate(true)} 
+              style={{ 
+                padding: isMobile ? '8px 16px' : '10px 20px', // Smaller padding on mobile
+                fontSize: '13px',
+                borderRadius: '10px', 
+                background: 'var(--t-primary-25)', 
+                border: '1px solid rgba(255,255,255,0.2)', 
+                color: '#fff', 
+                fontWeight: 700, 
+                cursor: 'pointer',
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '6px' 
+              }}
+            >
+              <Plus style={{ width: '14px', color: 'var(--t-primary)' }} /> 
+              {isMobile ? 'Create' : 'Create Club'} 
             </button>
-            <button onClick={() => setViewMode('list')} style={{ padding: '10px 12px', background: viewMode === 'list' ? 'var(--t-primary-25)' : 'transparent', border: 'none', borderLeft: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 0.15s' }}>
-              <List style={{ width: '16px', color: viewMode === 'list' ? 'var(--t-primary)' : 'rgba(255,255,255,0.4)' }} />
-            </button>
+            
+            <div style={{ display: 'flex', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', overflow: 'hidden' }}>
+              <button onClick={() => setViewMode('grid')} style={{ padding: '10px 12px', background: viewMode === 'grid' ? 'var(--t-primary-25)' : 'transparent', border: 'none' }}>
+                <LayoutGrid style={{ width: '16px', color: viewMode === 'grid' ? 'var(--t-primary)' : 'rgba(255,255,255,0.4)' }} />
+              </button>
+              <button onClick={() => setViewMode('list')} style={{ padding: '10px 12px', background: viewMode === 'list' ? 'var(--t-primary-25)' : 'transparent', border: 'none', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
+                <List style={{ width: '16px', color: viewMode === 'list' ? 'var(--t-primary)' : 'rgba(255,255,255,0.4)' }} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -100,7 +156,7 @@ export default function Clubs() {
       {/* Create club modal */}
       {showCreate && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} onClick={() => setShowCreate(false)}>
-          <div className="modal-in" style={{ background: 'linear-gradient(180deg, var(--t-primary-20) 0%, var(--t-primary-10) 100%)', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', border: '1px solid var(--t-primary-40)', borderRadius: '16px', padding: '28px', width: '440px', boxShadow: '0 24px 64px rgba(0,0,0,0.5), inset 0 1px 0 var(--t-primary-30)' }} onClick={e => e.stopPropagation()}>
+          <div className="modal-in" style={{ background: 'linear-gradient(180deg, var(--t-primary-20) 0%, var(--t-primary-10) 100%)', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', border: '1px solid var(--t-primary-40)', borderRadius: '16px', padding: isMobile ? '20px' : '28px', width: isMobile ? 'calc(100% - 32px)' : '440px', maxWidth: '440px', boxShadow: '0 24px 64px rgba(0,0,0,0.5), inset 0 1px 0 var(--t-primary-30)' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
               <span style={{ fontSize: '18px', fontWeight: 700, color: '#fff' }}>Create Club</span>
               <button onClick={() => setShowCreate(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.5)', padding: '4px' }}><X style={{ width: '18px' }} /></button>
@@ -164,7 +220,7 @@ export default function Clubs() {
           {query.length > 0 ? `No clubs found for "${query}"` : 'No clubs yet. Be the first to create one!'}
         </div>
       ) : viewMode === 'grid' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(auto-fill, minmax(130px, 1fr))' : 'repeat(auto-fill, 220px)', gap: '14px' }}>
           {filtered.map((club) => (
             <div
               key={club.id}

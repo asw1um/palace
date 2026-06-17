@@ -10,12 +10,14 @@ import QuickAddButton from '@/components/QuickAddButton';
 import Poster from '@/components/Poster';
 import { GlassCard } from '@/components/GlassBox';
 import type { TMDBResult, List as ListType } from '@/types/api';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type SearchMode = 'titles' | 'people';
 const BIO_LIMIT = 300;
 
 export default function Discover() {
   const [searchParams] = useSearchParams();
+  const isMobile = useIsMobile();
   const initialQuery = searchParams.get('q') || '';
   const [inputValue, setInputValue] = useState(initialQuery);
   const [query, setQuery] = useState(initialQuery);
@@ -99,10 +101,10 @@ export default function Discover() {
   };
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', paddingRight: '8px' }}>
+    <div style={{ height: isMobile ? 'auto' : '100%', overflowY: isMobile ? 'initial' : 'auto', paddingRight: isMobile ? '0px' : '8px', boxSizing: 'border-box', width: '100%' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <h1 style={{ fontSize: '36px', fontWeight: 700, color: '#fff', letterSpacing: '3px', textTransform: 'uppercase', textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>Discover</h1>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '20px' }}>
+        <h1 style={{ fontSize: isMobile ? '24px' : '36px', fontWeight: 700, color: '#fff', letterSpacing: '3px', textTransform: 'uppercase', textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>Discover</h1>
         <div style={{ display: 'flex', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', overflow: 'hidden' }}>
           <button onClick={() => setViewMode('grid')} style={{ padding: '8px 12px', background: viewMode === 'grid' ? 'var(--t-primary-25)' : 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 0.15s' }}>
             <LayoutGrid style={{ width: '16px', color: viewMode === 'grid' ? 'var(--t-primary)' : 'rgba(255,255,255,0.4)' }} />
@@ -159,7 +161,7 @@ export default function Discover() {
             <ArrowLeft style={{ width: '14px' }} /> Back to results
           </button>
 
-          <div style={{ display: 'flex', gap: '28px', alignItems: 'flex-start', marginBottom: '28px', padding: '20px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '16px' : '28px', alignItems: isMobile ? 'center' : 'flex-start', textAlign: isMobile ? 'center' : 'left', marginBottom: '28px', padding: '20px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
             {selectedPerson.profile_url
               ? <img src={selectedPerson.profile_url} alt="" style={{ width: '110px', height: '110px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--t-primary-50)', flexShrink: 0, boxShadow: '0 4px 20px rgba(0,0,0,0.4)' }} />
               : <div style={{ width: '110px', height: '110px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: '3px solid var(--t-primary-40)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><User style={{ width: '36px', color: 'rgba(255,255,255,0.3)' }} /></div>
@@ -194,7 +196,7 @@ export default function Discover() {
           </div>
 
           {viewMode === 'grid' ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px', alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(auto-fill, minmax(130px, 1fr))' : 'repeat(auto-fill, 145px)', gap: '16px', justifyContent: isMobile ? 'stretch' : 'start', alignItems: 'start' }}>
               {selectedPerson.credits.map(item => {
                 const asResult: TMDBResult = { id: item.id, media_type: item.media_type, title: item.title, poster_url: item.poster_url, rating: item.rating ?? 0, overview: '', backdrop_url: null, release_date: item.release_date ?? '', popularity: item.popularity ?? 0, genre_ids: [] };
                 const isInList = inListIds.has(item.id);
@@ -251,7 +253,7 @@ export default function Discover() {
         ) : peopleResults.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>No people found</div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(auto-fill, minmax(130px, 1fr))' : 'repeat(auto-fill, 145px)', gap: '16px', justifyContent: isMobile ? 'stretch' : 'start', alignItems: 'start' }}>
             {peopleResults.map(person => (
               <div
                 key={person.id}
@@ -286,11 +288,11 @@ export default function Discover() {
             {query ? 'No results found' : 'No trending data available'}
           </div>
         ) : viewMode === 'grid' ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px', alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(auto-fill, minmax(130px, 1fr))' : 'repeat(auto-fill, 145px)', gap: '16px', justifyContent: isMobile ? 'stretch' : 'start', alignItems: 'start' }}>
             {results.map(item => {
               const isInList = inListIds.has(item.id);
               return (
-                <div key={item.id} style={{ cursor: 'pointer', transition: 'transform 0.15s', minHeight: 0, minWidth: 0 }} onClick={() => setSelectedItem(item)} onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-4px)')} onMouseLeave={e => (e.currentTarget.style.transform = 'none')}>
+                <div key={item.id} style={{ cursor: 'pointer', transition: 'transform 0.15s', minHeight: 0, minWidth: 0, maxWidth: isMobile ? 'none' : '160px', width: '100%' }} onClick={() => setSelectedItem(item)} onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-4px)')} onMouseLeave={e => (e.currentTarget.style.transform = 'none')}>
                   <div className="poster-wrap" style={{ position: 'relative', width: '100%' }}>
                     <Poster poster_url={item.poster_url} style={{ borderRadius: '10px', border: isInList ? '2px solid var(--t-primary)' : '1px solid rgba(255,255,255,0.15)', boxShadow: isInList ? '0 0 12px var(--t-primary-40)' : undefined, transition: 'box-shadow 0.2s' }} />
                     {isInList && <div style={{ position: 'absolute', top: '6px', right: '6px', width: '20px', height: '20px', borderRadius: '50%', background: 'var(--t-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', zIndex: 2 }}><Check style={{ width: '12px', color: '#fff' }} /></div>}

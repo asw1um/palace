@@ -16,6 +16,7 @@ import ShowDetailModal from '@/components/ShowDetailModal';
 import { get_movie_details, get_tv_details } from '@/api/search';
 import { useSearchParams } from 'react-router-dom';
 import type { TMDBResult } from '@/types/api';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 function userGradient(nickname: string) {
   const hash = nickname.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -41,6 +42,7 @@ function clubGradient(name: string) {
 export default function UserProfile() {
   const { username } = useParams();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [profile, setProfile] = useState<{ user: User; lists: List[]; clubs: Club[] } | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -132,7 +134,7 @@ export default function UserProfile() {
             </div>
 
             {/* Avatar */}
-            <div style={{ position: 'relative', marginTop: '-54px', padding: '0 18px' }}>
+            <div style={{ position: 'relative', marginTop: isMobile ? '-40px' : '-54px', padding: '0 18px' }}>
               {user.profile_picture ? (
                 <div className="avatar-circle" style={{ width: '108px', height: '108px', boxShadow: '0 0 0 5px rgba(255,255,255,0.12), 0 8px 24px rgba(0,0,0,0.5)' }}>
                   <img src={user.profile_picture} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
@@ -310,7 +312,7 @@ export default function UserProfile() {
                 >
                   {allItems.length > 0 ? (
                     <div onClick={() => navigate(`/lists/${list.id}`, { state: { fromUser: username } })} style={{ cursor: 'pointer' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '6px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(4, 1fr)' : 'repeat(8, 1fr)', gap: '6px' }}>
                         {allItems.map(item => (
                           <div key={item.id} style={{ minWidth: 0 }}>
                             <Poster poster_url={item.poster_url} style={{ borderRadius: '6px' }} />

@@ -3,6 +3,8 @@ import { Bell, Check, CheckCheck, Trash2, Users, X } from 'lucide-react';
 import { getNotifications, markRead, markUnread, deleteNotification, markAllRead, acceptInvite, declineInvite } from '@/api/notifications';
 import type { Notification } from '@/types/api';
 
+// create mobile support for notifications page whenever it is done
+
 function NotifIcon({ type }: { type: string }) {
   if (type === 'club_invite') return <Users style={{ width: '16px', color: 'var(--t-primary)' }} />;
   if (type.startsWith('club_')) return <Users style={{ width: '16px', color: 'rgba(255,255,255,0.5)' }} />;
@@ -12,6 +14,7 @@ function NotifIcon({ type }: { type: string }) {
 export default function Notifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+
 
   useEffect(() => {
     let cancelled = false;

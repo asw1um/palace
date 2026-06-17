@@ -4,6 +4,7 @@ import { Search, LayoutGrid, List } from 'lucide-react';
 import { getUsers } from '@/api/users';
 import { GlassCard } from '@/components/GlassBox';
 import type { User } from '@/types/api';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 function userBannerGradient(nickname: string) {
   const hash = nickname.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -24,6 +25,7 @@ function userGradient(nickname: string) {
 
 export default function Users() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [query, setQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [users, setUsers] = useState<User[]>([]);
@@ -53,14 +55,14 @@ export default function Users() {
   return (
     <div style={{ height: '100%', overflowY: 'auto', paddingRight: '8px' }}>
       {/* Header: title left, search + toggle right */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', marginBottom: '20px', gap: '16px' }}>
         <h1 style={{ fontSize: '36px', fontWeight: 700, color: '#fff', letterSpacing: '3px', textTransform: 'uppercase', textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>Users</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '320px', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '10px', padding: '10px 16px', backdropFilter: 'blur(8px)', boxShadow: '0 2px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.15)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: isMobile ? '100%' : '320px', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '10px', padding: '10px 16px', backdropFilter: 'blur(8px)', boxShadow: '0 2px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.15)' }}>
             <Search style={{ width: '16px', color: 'rgba(255,255,255,0.7)', flexShrink: 0 }} />
             <input style={{ background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: '14px', fontFamily: 'inherit', width: '100%', caretColor: 'var(--t-primary)', textShadow: '0 1px 3px rgba(0,0,0,0.4)' }} placeholder="Search users..." value={query} onChange={e => setQuery(e.target.value)} />
           </div>
-          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', flexShrink: 0, background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', overflow: 'hidden' }}>
             <button onClick={() => setViewMode('grid')} style={{ padding: '10px 12px', background: viewMode === 'grid' ? 'var(--t-primary-25)' : 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 0.15s' }}>
               <LayoutGrid style={{ width: '16px', color: viewMode === 'grid' ? 'var(--t-primary)' : 'rgba(255,255,255,0.4)' }} />
             </button>
@@ -78,7 +80,7 @@ export default function Users() {
           {query.length > 0 ? `No users found for "${query}"` : 'No users yet'}
         </div>
       ) : viewMode === 'grid' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(auto-fill, minmax(120px, 1fr))' : 'repeat(4, 1fr)', gap: '14px' }}>
           {filtered.map(u => {
             const display_name = u.nickname || u.username || 'User';
             return (

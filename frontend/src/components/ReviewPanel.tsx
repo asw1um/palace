@@ -104,7 +104,7 @@ export function ReviewCard({ r, currentUserId, onReact, themeColor }: { r: Revie
       </div>
 
       {/* Content */}
-      <div style={{ margin: '14px 0 0 0' }}>
+      <div style={{ margin: '14px 0 0 0' , overflowWrap: 'break-word', wordBreak: 'break-word'}}>
         {shouldHide ? (
           <div
             onClick={() => setRevealFullSpoiler(true)}
@@ -293,7 +293,7 @@ export default function ReviewPanel({ tmdb_id, media_type, title, poster_url }: 
 
         {/* Live preview */}
         {content && !isSpoiler &&  !/^\|\|[\s\S]*\|\|$/.test(content.trim()) &&(
-          <div style={{ marginTop: '8px', padding: '8px 12px', borderRadius: '6px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div style={{ marginTop: '8px', padding: '8px 12px', borderRadius: '6px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
             <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginBottom: '4px' }}>Preview</div>
             <ReviewContentRenderer text={content} themeColor = {themeColor} />
           </div>

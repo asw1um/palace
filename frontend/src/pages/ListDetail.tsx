@@ -8,6 +8,7 @@ import MediaDetailModal from '@/components/MediaDetailModal';
 import ShowDetailModal from '@/components/ShowDetailModal';
 import Poster from '@/components/Poster';
 import type { List as ListType, TMDBResult, Movie, Show } from '@/types/api';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 function get_movie_progress(movie_id: number) {
   const raw = localStorage.getItem(`palace_movie_progress_${movie_id}`);
@@ -95,6 +96,7 @@ export default function ListDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useIsMobile();
   const fromClub = (location.state as { fromClub?: number } | null)?.fromClub;
   const fromUser = (location.state as { fromUser?: number } | null)?.fromUser;
   const list_id = parseInt(id || '0');
@@ -189,7 +191,7 @@ export default function ListDetail() {
   };
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', paddingRight: '8px' }}>
+    <div style={{ height: isMobile ? 'auto' : '100%', overflowY: isMobile ? 'initial' : 'auto', paddingRight: isMobile ? '0px' : '8px', boxSizing: 'border-box', width: '100%' }}>
       <button style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }} onClick={() => navigate(backPath)} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}>
         <ArrowLeft style={{ width: '14px' }} /> {backLabel}
       </button>
@@ -204,7 +206,7 @@ export default function ListDetail() {
       </div>
 
       {/* Controls bar: search + view toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: '12px', marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', padding: '8px 14px', backdropFilter: 'blur(8px)' }}>
           <Search style={{ width: '14px', color: 'rgba(255,255,255,0.7)', flexShrink: 0 }} />
           <input style={{ background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: '13px', fontFamily: 'inherit', width: '100%' }} placeholder="Search in this list..." value={query} onChange={e => setQuery(e.target.value)} />
@@ -220,9 +222,16 @@ export default function ListDetail() {
         </div>
       </div>
 
-      {/* Grid View */}
-      {viewMode === 'grid' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px', alignItems: 'start' }}>
+        {/* Grid View */}
+        {viewMode === 'grid' && (
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: isMobile ? 'repeat(auto-fill, minmax(130px, 1fr))' : 'repeat(auto-fill, 145px)', 
+            gap: '16px 12px', 
+            justifyContent: isMobile ? 'stretch' : 'start',
+            alignItems: 'start',
+            width: '100%'
+          }}>
           {filtered.map((item) => {
             const isShowItem = 'total_seasons' in item;
             const result = isShowItem ? showToResult(item as Show) : movieToResult(item as Movie);

@@ -5,6 +5,7 @@ import { useTheme } from '@/data/ThemeContext';
 import { get_lists_with_movies } from '@/api/lists';
 import { get_clubs } from '@/api/clubs';
 import type { List as ListType, Club } from '@/types/api';
+import {useIsMobile} from '@/hooks/use-mobile';
 import OceanBackground from './OceanBackground';
 
 const VERSION = '0.9.0';
@@ -49,6 +50,8 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
+  const isSidebarVisible = !isMobile 
 
   const navItems = [
   { path: '/', label: 'Dashboard' },
@@ -60,6 +63,12 @@ export default function Layout() {
   { path: '/notifications', label: 'Notifications' },
   { path: '/settings', label: 'Settings' },
 ];
+
+
+
+  const topBarItems = isSidebarVisible 
+    ? navItems.slice(0, 7)
+    : navItems.slice(0,8);          
 
   const { theme } = useTheme();
   const [clock, setClock] = useState('');
@@ -148,13 +157,14 @@ export default function Layout() {
   return (
     <>
       <OceanBackground />
-      <div style={{ height: '100vh', display: 'flex', fontFamily: "'Segoe UI', system-ui, sans-serif", overflow: 'hidden', position: 'relative', zIndex: 1 }}>
+     <div style={{ height: '100%', display: 'flex', fontFamily: "'Segoe UI', system-ui, sans-serif", overflow: 'hidden', position: 'fixed', zIndex: 1 , boxSizing: 'border-box', width: '100%'}}>
         {/* LEFT SIDEBAR */}
-        <aside style={{
-          width: '200px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '10px',
-          padding: '12px',
-          overflow: 'hidden',
-        }}>
+          {!isMobile && (
+          <aside style={{
+            width: '200px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '10px',
+            padding: '12px',
+            overflow: 'hidden',
+          }}>
           {/* MY PROFILE */}
           <SidebarBox title="My Profile">
             <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
@@ -253,24 +263,29 @@ export default function Layout() {
             </div>
           </SidebarBox>
         </aside>
+          )}
 
         {/* MAIN CONTENT */}
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '12px 12px 12px 4px' }}>
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflow: 'hidden', padding: isMobile ? '8px' : '12px 12px 12px 4px' , boxSizing: 'border-box', minWidth: 0 }}>
           <div style={{
-            flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+            
+            height:'100%', 
+            flex: isMobile ? 'none' : '1',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden',
             borderRadius: '10px',
             border: '1px solid rgba(255,255,255,0.25)',
             boxShadow: '0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.15)',
             background: 'linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.06) 100%)',
             position: 'relative',
             backdropFilter: 'blur(8px)',
+            boxSizing: 'border-box',
           }}>
             {/* Gloss */}
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '80px', background: 'linear-gradient(180deg, rgba(255,255,255,0.1) 0%, transparent 100%)', borderRadius: '10px 10px 0 0', pointerEvents: 'none', zIndex: 0 }} />
 
             {/* TAB BAR */}
-            <div style={{ display: 'flex', gap: '4px', flexShrink: 0, padding: '12px 16px 0', position: 'relative', zIndex: 1, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-              {navItems.slice(0, 7).map(item => {
+            <div style={{ display: 'flex', gap: '4px', flexShrink: 0, padding: '12px 16px 0', position: 'relative', zIndex: 1, borderBottom: '1px solid rgba(255,255,255,0.1)', overflowX: isMobile ? 'auto' : 'visible', WebkitOverflowScrolling: 'touch' , scrollbarWidth: 'none'}}>
+              {topBarItems.map(item => {
                 const myProfilePath = user?.username ? `/profile/${user.username}` : '';
                 const isActive = location.pathname === item.path
                   || (item.path === '/clubs' && location.pathname.startsWith('/clubs'))
@@ -301,7 +316,15 @@ export default function Layout() {
             </div>
 
             {/* Content */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px', position: 'relative', zIndex: 1 }}>
+            <div style={{ 
+              flex: 1, 
+              display: 'flex',          // Forces children to interact with the full height
+              flexDirection: 'column',   // Keeps page elements stacking downward naturally
+              overflowY: 'auto', 
+              padding: isMobile ? '12px' : '20px', 
+              position: 'relative', 
+              zIndex: 1 
+            }}>
               <Outlet />
             </div>
           </div>

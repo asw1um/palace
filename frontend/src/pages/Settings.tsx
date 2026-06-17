@@ -12,6 +12,7 @@ import { getMyClubsWithLists, getPinnedClubs } from '@/api/clubs';
 import { getSettings, updateSettings } from '@/api/settings';
 import { toast } from 'sonner';
 import type { List as ListType, Club } from '@/types/api';
+import {useIsMobile} from '@/hooks/use-mobile';
 
 const LS_KEYS = {
   profilePicture: 'palace_profile_picture',
@@ -23,6 +24,7 @@ export default function Settings() {
   const { user, updateProfile, refreshUser, logout } = useAuth();
   const confirm = useConfirm();
   const [saved, setSaved] = useState(false);
+  const isMobile = useIsMobile();
 
   /* ─── Real data from API ─── */
   const [myLists, setMyLists] = useState<ListType[]>([]);
@@ -200,9 +202,9 @@ export default function Settings() {
   const activeTheme = THEMES.find(t => t.id === themeId) ?? THEMES[0];
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', paddingRight: '8px' }}>
+    <div style={{ height: isMobile ? 'auto' : '100%', overflowY: isMobile ? 'initial' : 'auto', paddingRight: isMobile ? '0px' : '8px', boxSizing: 'border-box', width: '100%' }}>
       <h1 style={{
-        fontSize: '36px', fontWeight: 700, color: '#fff',
+        fontSize: isMobile ? '24px' : '36px', fontWeight: 700, color: '#fff',
         letterSpacing: '3px', textTransform: 'uppercase',
         marginBottom: '16px', textShadow: '0 2px 12px rgba(0,0,0,0.3)',
       }}>
@@ -219,7 +221,7 @@ export default function Settings() {
           }}>
             Theme
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(auto-fill, minmax(76px, 1fr))' : 'repeat(7, 1fr)', gap: '8px' }}>
             {THEMES.map(t => {
               const isActive = themeId === t.id;
               return (
@@ -266,7 +268,13 @@ export default function Settings() {
         </GlassBox>
 
         {/* ── Two-column layout: Profile left, settings right ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '16px', alignItems: 'start' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: isMobile ? '1fr' : '400px 1fr', 
+          gap: '16px', 
+          alignItems: 'start',
+          width: '100%'
+        }}>
 
         {/* ── LEFT: Account / Profile — same card style as UserProfile ── */}
         <div>
@@ -394,7 +402,7 @@ export default function Settings() {
             {/* My lists */}
             <div>
               <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>My Lists</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px' }}>
                 {myLists.map(list => {
                   const isActive = displayedListId === list.id;
                   return (
@@ -412,7 +420,7 @@ export default function Settings() {
                 <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                   <Users style={{ width: '10px' }} />{club.name}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px' }}>
                   {(club.lists || []).map(list => {
                     const isActive = displayedListId === list.id;
                     return (
@@ -438,7 +446,7 @@ export default function Settings() {
               No lists yet. <button onClick={() => window.location.hash = '/lists'} style={{ background: 'none', border: 'none', color: 'var(--t-primary)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '13px', fontWeight: 600 }}>Create a list</button>
             </div>
           ) : (
-          <div style={{ maxHeight: '188px', overflowY: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          <div style={{ maxHeight: '188px', overflowY: 'auto', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px' }}>
             {myLists.map(list => {
               const isPinned = !!pinnedLists[list.id];
               return (
@@ -512,7 +520,7 @@ export default function Settings() {
               <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', padding: '16px', textAlign: 'center' }}>No lists in your clubs yet</div>
             );
             return (
-              <div style={{ maxHeight: '188px', overflowY: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div style={{ maxHeight: '188px', overflowY: 'auto', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px' }}>
                 {clubLists.map(list => {
                   const isPinned = !!pinnedLists[list.id];
                   return (

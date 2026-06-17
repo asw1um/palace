@@ -4,10 +4,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/data/ThemeContext';
 import { User, Lock, Sparkles, ArrowRight, LogIn, Eye, EyeOff } from 'lucide-react';
 import OceanBackground from '@/components/OceanBackground';
+//login didnt need to be changed for mobile
 
 export default function LoginSignup() {
   const { theme } = useTheme();
   const { login, signup } = useAuth();
+
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
