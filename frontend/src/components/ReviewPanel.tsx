@@ -132,8 +132,8 @@ export function ReviewCard({ r, currentUserId, onReact, themeColor }: { r: Revie
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'space-between', 
-        marginTop: '12px', // FIX: Pushes the row down away from the text/date above it
-        marginBottom: '6px' // FIX: Pushes the row UP away from the card's bottom border
+        marginTop: '12px', 
+        marginBottom: '6px' 
       }}>
         <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)' }}>
           {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}

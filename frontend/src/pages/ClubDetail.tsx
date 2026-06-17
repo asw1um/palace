@@ -270,11 +270,11 @@ export default function ClubDetail() {
                       onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
                     >
                       {m.profile_picture ? (
-                        <div className="avatar-circle" style={{ width: '52px', height: '52px', border: `2px solid ${isSelected ? 'var(--t-primary)' : 'rgba(255,255,255,0.2)'}`, boxShadow: isSelected ? '0 0 0 3px var(--t-primary-30)' : 'none', transition: 'all 0.15s' }}>
+                        <div className="avatar-circle" style={{ width: '52px', height: '52px', borderRadius: '50%', overflow: 'hidden', boxShadow: isSelected ? 'inset 0 0 0 2px var(--t-primary), 0 0 0 3px var(--t-primary-30)' : 'inset 0 0 0 2px rgba(255,255,255,0.2)', transition: 'all 0.15s' }}>
                           <img src={m.profile_picture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         </div>
                       ) : (
-                        <div className="avatar-circle" style={{ width: '52px', height: '52px', background: userGradient(display_name), border: `2px solid ${isSelected ? 'var(--t-primary)' : 'rgba(255,255,255,0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#fff', boxShadow: isSelected ? '0 0 0 3px var(--t-primary-30)' : 'none', transition: 'all 0.15s' }}>
+                        <div className="avatar-circle" style={{ width: '52px', height: '52px', background: userGradient(display_name), borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#fff', boxShadow: isSelected ? 'inset 0 0 0 2px var(--t-primary), 0 0 0 3px var(--t-primary-30)' : 'inset 0 0 0 2px rgba(255,255,255,0.2)', transition: 'all 0.15s' }}>
                           {display_name.slice(0, 2).toUpperCase()}
                         </div>
                       )}

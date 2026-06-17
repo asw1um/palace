@@ -235,7 +235,6 @@ export default function UserProfile() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto' }}>
                 {reviews.map(r => {
-                  /* ADD THESE TWO LINES INSIDE THE MAP WRAPPER */
                   const mediaType = r.media_type === 'show' || r.media_type === 'tv' ? 'tv' : 'movie';
                   const targetId = r.tmdb_id || r.id;
 
