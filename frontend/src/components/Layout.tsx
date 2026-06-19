@@ -51,7 +51,8 @@ export default function Layout() {
   const location = useLocation();
   const { user } = useAuth();
   const isMobile = useIsMobile();
-  const isSidebarVisible = !isMobile 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
 
   const navItems = [
   { path: '/', label: 'Dashboard' },
@@ -66,9 +67,8 @@ export default function Layout() {
 
 
 
-  const topBarItems = isSidebarVisible 
-    ? navItems.slice(0, 7)
-    : navItems.slice(0,8);          
+
+  const topBarItems = isMobile ? [] : navItems
 
   const { theme } = useTheme();
   const [clock, setClock] = useState('');
@@ -159,11 +159,26 @@ export default function Layout() {
       <OceanBackground />
      <div style={{ height: '100%', display: 'flex', fontFamily: "'Segoe UI', system-ui, sans-serif", overflow: 'hidden', position: 'fixed', zIndex: 1 , boxSizing: 'border-box', width: '100%'}}>
         {/* LEFT SIDEBAR */}
-          {!isMobile && (
-          <aside style={{
-            width: '200px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '10px',
+          {isMobile && isSidebarOpen &&(
+            <div
+              onClick={() => setIsSidebarOpen(false)}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100, backdropFilter: 'blur(4px)' }} 
+            />
+          )}
+          <aside 
+          style={{
+            position: isMobile ? 'fixed' : 'relative',
+            top: 0,
+            left: isMobile ? (isSidebarOpen ? '0' : '-260px') : '0',
+            width: '260px',
+            height: '100%',
+            zIndex: 101,
+            backdropFilter: 'blur(12px)',
+            transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            display: 'flex', flexDirection: 'column', gap: '10px',
             padding: '12px',
-            overflow: 'hidden',
+            overflowY: 'auto',
+            boxShadow: isMobile ? '2px 0 15px themeColor' : 'none'
           }}>
           {/* MY PROFILE */}
           <SidebarBox title="My Profile">
@@ -263,10 +278,36 @@ export default function Layout() {
             </div>
           </SidebarBox>
         </aside>
-          )}
-
+      {/* MENU BUTTON - Pinned at top-left */}
+        {isMobile && !isSidebarOpen && (
+          <button 
+            onClick={() => setIsSidebarOpen(true)}
+            style={{
+              position: 'fixed',
+              top: '10px',
+              left: '10px',
+              zIndex: 90,
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#fff',
+              padding: '6px 10px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              backdropFilter: 'blur(10px)',
+              fontSize: '12px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+            }}
+          >
+            {/* Simple Icon */}
+            <span style={{ fontSize: '16px' }}>☰</span>
+            Menu
+          </button>
+        )}
         {/* MAIN CONTENT */}
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflow: 'hidden', padding: isMobile ? '8px' : '12px 12px 12px 4px' , boxSizing: 'border-box', minWidth: 0 }}>
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflow: 'hidden', padding: isMobile ? '50px 8px 8px 8px ' : '12px 12px 12px 4px' , boxSizing: 'border-box', minWidth: 0 }}>
           <div style={{
             
             height:'100%', 
