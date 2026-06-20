@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Any
@@ -39,6 +39,8 @@ async def get_user_lists(
 async def get_user_lists_with_movies(
     current_user: User = Depends(get_current_user),
     db_session: Session = Depends(get_db),
+    sort_by: str = Query("date_added", regex="^(date_added|title|updated_at)$"),
+    order: str = Query("desc", regex="^(asc|desc)")
 ):
     cached = lists_cache_get(current_user.id)
     if cached is not None:
