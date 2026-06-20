@@ -9,6 +9,13 @@ import Poster from '@/components/Poster';
 import type { List as ListType } from '@/types/api';
 import { useIsMobile } from '@/hooks/use-mobile';
 
+interface SortControlsProps {
+  sortBy: string;
+  setSortBy: (value: string) => void;
+  order: string;
+  setOrder: (value: string) => void;
+}
+
 export default function MyLists() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
@@ -22,28 +29,33 @@ export default function MyLists() {
   const [lists, setLists] = useState<ListType[]>([]);
   const [loading, setLoading] = useState(true);
   const confirm = useConfirm();
+  const [sortBy, setSortBy] = useState('date_added');
+  const [order, setOrder] = useState('desc');
 
   useEffect(() => {
     let cancelled = false;
+
     async function load() {
+      setLoading(true);
       try {
-        const data = await get_lists_with_movies();
-        if (!cancelled) setLists(data);
+        const data = await get_lists_with_movies({ sort_by: sortBy, order: order });
+        // Use the data directly if it is an array
+        if (!cancelled) setLists(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Failed to load lists:", err);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
-    load();
-    return () => { cancelled = true; };
-  }, []);
 
-  useEffect(() => {
-    const refresh = () => {
-      get_lists_with_movies().then(data => setLists(data)).catch(() => {});
+    load();
+
+    window.addEventListener('palace-lists-changed', load);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('palace-lists-changed', load);
     };
-    window.addEventListener('palace-lists-changed', refresh);
-    return () => window.removeEventListener('palace-lists-changed', refresh);
-  }, []);
+  }, [sortBy, order]);
 
   const handleCreateList = async () => {
     const name = newListName.trim();
@@ -99,6 +111,44 @@ export default function MyLists() {
     setEditValue('');
   };
 
+  const SortControls = ({ sortBy, setSortBy, order, setOrder }: SortControlsProps) => {
+  return (
+    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+      <select 
+        value={sortBy} 
+        onChange={(e) => setSortBy(e.target.value)}
+        style={{ 
+          flex: 1, // Allows it to expand to fill available space
+          background: 'rgba(0,0,0,0.35)', 
+          border: '1px solid rgba(255, 255, 255, 0.2)', 
+          borderRadius: '8px', 
+          color: '#fff', 
+          padding: '0 10px', 
+          height: '40px',
+          cursor: 'pointer',
+          appearance: 'none',
+          outline: 'none',
+          backgroundImage: 'url("data:image/svg+xml;utf8,<svg fill=\'white\' height=\'24\' viewBox=\'0 0 24 24\' width=\'24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7 10l5 5 5-5z\'/></svg>")',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'right 8px center',
+          paddingRight: '30px'
+        }}
+      >
+        <option value="date_added" style={{ background: '#2d2d2d' }}>Date Added</option>
+        <option value="name" style={{ background: '#2d2d2d' }}>Title</option>
+        <option value="updated_at" style={{ background: '#2d2d2d' }}>Last Updated</option>
+      </select>
+
+      <button 
+        onClick={() => setOrder(order === 'asc' ? 'desc' : 'asc')}
+        style={{ padding: '0 15px', height: '40px', background: 'rgba(0,0,0,0.35)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+      >
+        {order === 'asc' ? '↑ Asc' : '↓ Desc'}
+      </button>
+    </div>
+  );
+};
+
   const filtered = query.length > 0
     ? lists.filter(l => l.name.toLowerCase().includes(query.toLowerCase()))
     : lists;
@@ -114,30 +164,51 @@ export default function MyLists() {
   return (
   <div style={{ height: isMobile ? 'auto' : '100%', overflowY: isMobile ? 'initial' : 'auto', paddingRight: isMobile ? '0px' : '8px', boxSizing: 'border-box', width: '100%' }}>
       {/* Header: title left, search + create + collapse all right */}
-      {isMobile ? (
-      /* --- MOBILE LAYOUT: Unified Toolbar --- */
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', textTransform: 'uppercase', margin: 0 }}>My Lists</h1>
-          <button onClick={() => setShowCreate(true)} style={{ padding: '8px 12px', borderRadius: '10px', background: 'var(--t-primary-25)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Plus style={{ width: '14px' }} /> Create
-          </button>
-        </div>
-        <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.35)', borderRadius: '10px', padding: '0 16px', height: '40px' }}>
-            <Search style={{ width: '16px', color: 'rgba(255,255,255,0.7)' }} />
-            <input style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '14px', width: '100%' }} placeholder="Search..." value={query} onChange={e => setQuery(e.target.value)} />
-          </div>
-          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.35)', borderRadius: '10px', overflow: 'hidden', height: '40px' }}>
-            <button onClick={() => setGlobalViewMode('grid')} style={{ padding: '0 12px', background: globalViewMode === 'grid' ? 'var(--t-primary-25)' : 'transparent', border: 'none' }}><LayoutGrid style={{ width: '16px' }} /></button>
-            <button onClick={() => setGlobalViewMode('list')} style={{ padding: '0 12px', background: globalViewMode === 'list' ? 'var(--t-primary-25)' : 'transparent', border: 'none' }}><ListIcon style={{ width: '16px' }} /></button>
-          </div>
-        </div>
+     {isMobile ? (
+  /* --- MOBILE LAYOUT: Compact Toolbar --- */
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', textTransform: 'uppercase', margin: 0 }}>My Lists</h1>
+      <button onClick={() => setShowCreate(true)} style={{ padding: '8px 16px', borderRadius: '10px', background: 'var(--t-primary-25)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <Plus style={{ width: '14px' }} /> Create
+      </button>
+    </div>
+
+    {/* Controls Row: Sort, Order, Search, and Toggle */}
+    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+      <select 
+        value={sortBy} 
+        onChange={(e) => setSortBy(e.target.value)}
+        style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', color: '#fff', padding: '0 10px', height: '40px', flex: '2', minWidth: '100px', cursor: 'pointer' }}
+      >
+        <option value="name">Title</option>
+        <option value="date_added">Date Added</option>
+        <option value="updated_at">Last Updated</option>
+      </select>
+
+      <button 
+        onClick={() => setOrder(order === 'asc' ? 'desc' : 'asc')}
+        style={{ padding: '0 12px', height: '40px', background: 'rgba(0,0,0,0.35)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', flex: '1', minWidth: '60px' }}
+      >
+        {order === 'asc' ? '↑ Asc' : '↓ Desc'}
+      </button>
+
+      <div style={{ flex: '2', display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.35)', borderRadius: '8px', padding: '0 12px', height: '40px', border: '1px solid rgba(255,255,255,0.2)' }}>
+        <Search style={{ width: '16px', color: 'rgba(255,255,255,0.5)' }} />
+        <input style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '13px', width: '100%', marginLeft: '8px' }} placeholder="Search..." value={query} onChange={e => setQuery(e.target.value)} />
       </div>
-    ) : (
+
+      <div style={{ display: 'flex', background: 'rgba(0,0,0,0.35)', borderRadius: '8px', overflow: 'hidden', height: '40px', border: '1px solid rgba(255,255,255,0.2)' }}>
+        <button onClick={() => setGlobalViewMode('grid')} style={{ padding: '0 12px', background: globalViewMode === 'grid' ? 'var(--t-primary-25)' : 'transparent', border: 'none' }}><LayoutGrid style={{ width: '16px', color: '#fff' }} /></button>
+        <button onClick={() => setGlobalViewMode('list')} style={{ padding: '0 12px', background: globalViewMode === 'list' ? 'var(--t-primary-25)' : 'transparent', border: 'none', borderLeft: '1px solid rgba(255,255,255,0.1)' }}><ListIcon style={{ width: '16px', color: '#fff' }} /></button>
+      </div>
+    </div>
+  </div>
+) :(
       <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '20px' }}>
         <h1 style={{ fontSize: isMobile ? '24px' : '36px', fontWeight: 700, color: '#fff', letterSpacing: '3px', textTransform: 'uppercase', textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>My Lists</h1>
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column-reverse' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: '10px', width: isMobile ? '100%' : 'auto' }}>
+          <SortControls sortBy={sortBy} setSortBy={setSortBy} order={order} setOrder={setOrder} />
           <button
             onClick={() => setShowCreate(true)}
             style={{
@@ -156,6 +227,7 @@ export default function MyLists() {
             <Search style={{ width: '16px', color: 'rgba(255,255,255,0.7)', flexShrink: 0 }} />
             <input style={{ background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: '14px', fontFamily: 'inherit', width: '100%', caretColor: 'var(--t-primary)', textShadow: '0 1px 3px rgba(0,0,0,0.4)' }} placeholder="Search lists..." value={query} onChange={e => setQuery(e.target.value)} />
           </div>
+
           <div style={{ display: 'flex', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', overflow: 'hidden' }}>
             <button onClick={() => { setGlobalViewMode('grid'); setListViewModes({}); }} style={{ padding: '10px 12px', background: globalViewMode === 'grid' ? 'var(--t-primary-25)' : 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 0.15s' }}>
               <LayoutGrid style={{ width: '16px', color: globalViewMode === 'grid' ? 'var(--t-primary)' : 'rgba(255,255,255,0.4)' }} />

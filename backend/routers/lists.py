@@ -39,15 +39,40 @@ async def get_user_lists(
 async def get_user_lists_with_movies(
     current_user: User = Depends(get_current_user),
     db_session: Session = Depends(get_db),
-    sort_by: str = Query("date_added", regex="^(date_added|title|updated_at)$"),
-    order: str = Query("desc", regex="^(asc|desc)")
+    sort_by: str = Query("date_added", pattern="^(date_added|name|updated_at)$"),
+    order: str = Query("desc", pattern="^(asc|desc)$"),
+    movie_sort: str = Query("name", pattern="^(name|newest|default)$"),
+    show_sort: str = Query("name", pattern="^(name|newest|default)$")
 ):
-    cached = lists_cache_get(current_user.id)
+    # Include movie_sort and show_sort in the cache key so it refreshes correctly
+    cache_key = f"{current_user.id}_{sort_by}_{order}_{movie_sort}_{show_sort}"
+    
+    cached = lists_cache_get(cache_key)
     if cached is not None:
         return {'lists': cached}
-    user_lists = db_session.query(movielist).filter_by(user_id=current_user.id).all()
-    result = [lst.to_dict(include_movies=True, include_shows=True) for lst in user_lists]
-    lists_cache_set(current_user.id, result)
+
+    # 1. Sort the List Containers (Database level)
+    query = db_session.query(movielist).filter_by(user_id=current_user.id)
+    if sort_by == 'name':
+        query = query.order_by(movielist.name.asc() if order == 'asc' else movielist.name.desc())
+    elif sort_by == 'updated_at':
+        query = query.order_by(movielist.updated_at.desc() if order == 'desc' else movielist.updated_at.asc())
+    else:
+        query = query.order_by(movielist.id.desc())
+    
+    user_lists = query.all()
+
+    # 2. Sort the Content (Application level) by passing parameters to to_dict
+    result = [
+        lst.to_dict(
+            include_movies=True, 
+            include_shows=True, 
+            movie_sort=movie_sort, 
+            show_sort=show_sort
+        ) for lst in user_lists
+    ]
+    
+    lists_cache_set(cache_key, result)
     return {'lists': result}
 
 @router.post('', status_code=201)

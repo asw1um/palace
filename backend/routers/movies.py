@@ -6,6 +6,7 @@ from typing import List
 from deps import get_current_user, get_db
 from models import user as User, movie as Movie, movielist
 from activity import log_event
+from datetime import datetime, timezone
 
 router = APIRouter()
 
@@ -41,6 +42,7 @@ async def add_movie(
         list_obj = db_session.get(movielist, list_id)
         if list_obj and list_obj.can_edit(current_user) and new_movie not in list_obj.movies:
             list_obj.movies.append(new_movie)
+            list_obj.updated_at = datetime.now(timezone.utc)
             added_to.append(list_obj)
 
     if added_to:
@@ -92,6 +94,7 @@ async def remove_movie(
         raise HTTPException(status_code=404, detail='Movie not found in list')
 
     list_obj.movies.remove(movie_obj)
+    list_obj.updated_at = datetime.now(timezone.utc)
     db_session.commit()
 
     if list_obj.is_club_list():

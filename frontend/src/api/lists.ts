@@ -6,8 +6,11 @@ export async function get_lists(): Promise<List[]> {
   return res.data.lists || [];
 }
 
-export async function get_lists_with_movies(): Promise<List[]> {
-  const res = await client.get('/lists/with-movies');
+export async function get_lists_with_movies(
+  params: { sort_by?: string; order?: string } = {}
+): Promise<List[]> {
+  const query = new URLSearchParams(params as Record<string, string>).toString();
+  const res = await client.get(`/lists/with-movies?${query}`);
   return res.data.lists || [];
 }
 
