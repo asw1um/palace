@@ -1,459 +1,292 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useTheme } from '@/data/ThemeContext';
-import { Star, Tv, Plus, List as ListIcon } from 'lucide-react';
-import AnimatedSearchBar from '@/components/AnimatedSearchBar';
-import MediaDetailModal from '@/components/MediaDetailModal';
-import ShowDetailModal from '@/components/ShowDetailModal';
-import QuickAddButton from '@/components/QuickAddButton';
-import Poster from '@/components/Poster';
-import GlassBox from '@/components/GlassBox';
-import { get_pinned_lists, get_lists_with_movies } from '@/api/lists';
-import { getPinnedClubs, getMyClubsWithLists } from '@/api/clubs';
-import { getActivity } from '@/api/activity';
-import { getTrending, get_movie_details } from '@/api/search';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  Activity as ActivityIcon, ArrowRight, CalendarDays, Clapperboard, Flame, ListVideo,
+  PlayCircle, Plus, Star, Timer, Users,
+} from 'lucide-react';
+import { activity as activityApi, clubs as clubsApi, stats as statsApi } from '@/data/api';
+import type { Activity, Club, UserStats } from '@/data/types';
+import { useAuth } from '@/data/AuthContext';
+import { useAppData } from '@/components/AppData';
+import { Poster } from '@/components/Poster';
+import { Heatmap } from '@/components/Heatmap';
+import { Panel, Avatar, Chip, Empty, Skeleton, Stat, ProgressBar } from '@/components/ui/Bits';
+import { Button } from '@/components/ui/Button';
+import { Markdown } from '@/components/Markdown';
+import { useBus } from '@/lib/bus';
+import { percent, titleCase, timeAgo } from '@/lib/format';
+import { staggerIn } from '@/lib/motion';
 
-import { getSettings } from '@/api/settings';
-import { getAllProgress } from '@/api/progress';
-import type { List, Club, Activity, TMDBResult } from '@/types/api';
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 5) return 'Still up';
+  if (h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
+}
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const { lists, loadingLists, progressFor, openCreateList } = useAppData();
   const navigate = useNavigate();
-  const { theme } = useTheme();
-  const [selectedItem, setSelectedItem] = useState<TMDBResult | null>(null);
+  const [feed, setFeed] = useState<Activity[]>([]);
+  const [clubs, setClubs] = useState<Club[]>([]);
+  const [stats, setStats] = useState<UserStats | null>(null);
 
-  const handleItemClick = async (item: TMDBResult) => {
-    if (item.media_type === 'tv') {
-      setSelectedItem(item);
-      return;
-    }
-    const details = await get_movie_details(item.id);
-    if (details) {
-      setSelectedItem({ ...item, ...details });
-    } else {
-      setSelectedItem(item);
-    }
+  const load = () => {
+    activityApi.feed('global', 12).then(setFeed).catch(() => {});
+    clubsApi.all().then((r) => setClubs(r.my_clubs)).catch(() => {});
+    if (user) statsApi.forUser(user.id).then(setStats).catch(() => {});
   };
 
-  const [lists, setLists] = useState<List[]>([]);
-  const [, setClubs] = useState<Club[]>([]);
-  const [myClubsWithLists, setMyClubsWithLists] = useState<Club[]>([]);
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [trending, setTrending] = useState<TMDBResult[]>([]);
-  const [displayedListId, setDisplayedListId] = useState<number | null>(null);
-  const [allLists, setAllLists] = useState<List[]>([]);
-  const [progressTick, setProgressTick] = useState(0);
-  const [allProgress, setAllProgress] = useState<{ shows: Record<number, Record<string, boolean>>; movies: Record<number, { watched_minutes: number; total_minutes: number }> }>({ shows: {}, movies: {} });
-  const [, setLoading] = useState(true);
+  useEffect(load, [user?.id]);
+  useBus(['lists', 'reviews', 'progress'], load);
+
+  const continueWatching = useMemo(() => {
+    const items = lists.flatMap((l) => l.items ?? []);
+    const seen = new Map<number, (typeof items)[number]>();
+    for (const i of items) if (!seen.has(i.tmdb_id)) seen.set(i.tmdb_id, i);
+    return [...seen.values()]
+      .map((i) => ({ item: i, ...progressFor(i) }))
+      .filter((x) => x.pct > 0 && x.pct < 100)
+      .sort((a, b) => b.pct - a.pct)
+      .slice(0, 8);
+  }, [lists, progressFor]);
+
+  const upNext = useMemo(() => {
+    const list = lists.find((l) => /^want to watch$/i.test(l.name)) ?? lists[0];
+    return (list?.items ?? []).slice(0, 8);
+  }, [lists]);
 
   useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const [settingsRes, listsRes, clubsRes, activityRes, trendingRes, allListsRes, progressRes, myClubsRes] = await Promise.all([
-          getSettings().catch(() => null),
-          get_pinned_lists().catch(() => []),
-          getPinnedClubs().catch(() => []),
-          getActivity(50).catch(() => []),
-          getTrending().catch(() => []),
-          get_lists_with_movies().catch(() => []),
-          getAllProgress().catch(() => ({ shows: {}, movies: {} })),
-          getMyClubsWithLists().catch(() => []),
-        ]);
-        if (!cancelled) {
-          setLists(listsRes);
-          setClubs(clubsRes);
-          setMyClubsWithLists(myClubsRes);
-          setActivities(activityRes);
-          setTrending(trendingRes);
-          setDisplayedListId(settingsRes?.displayed_list ?? null);
-          setAllLists(allListsRes);
-          setAllProgress(progressRes);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    load();
-    return () => { cancelled = true; };
-  }, []);
+    staggerIn(document.querySelectorAll('.stat'), { y: 12, each: 60 });
+  }, [stats]);
 
-  // Reload when settings change
-  useEffect(() => {
-    const handleSettingsChange = () => {
-      window.location.reload();
-    };
-    window.addEventListener('settingschange', handleSettingsChange);
-    return () => window.removeEventListener('settingschange', handleSettingsChange);
-  }, []);
-
-  // Poll activity feed every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      getActivity(50).then(data => setActivities(data)).catch(() => {});
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Listen for show/movie progress updates from modals and force re-render
-  useEffect(() => {
-    const handler = () => {
-      setProgressTick(t => t + 1);
-    };
-    window.addEventListener('palace-show-progress', handler);
-    window.addEventListener('palace-movie-progress', handler);
-    return () => {
-      window.removeEventListener('palace-show-progress', handler);
-      window.removeEventListener('palace-movie-progress', handler);
-    };
-  }, []);
-
-  // Re-fetch lists and progress when modal closes or progress changes
-  useEffect(() => {
-    if (progressTick === 0) return;
-    let cancelled = false;
-    async function refresh() {
-      try {
-        const [settingsRes, listsRes, allListsRes, progressRes] = await Promise.all([
-          getSettings().catch(() => null),
-          get_pinned_lists().catch(() => []),
-          get_lists_with_movies().catch(() => []),
-          getAllProgress().catch(() => ({ shows: {}, movies: {} })),
-        ]);
-        if (!cancelled) {
-          setLists(listsRes);
-          setDisplayedListId(settingsRes?.displayed_list ?? null);
-          setAllLists(allListsRes);
-          setAllProgress(progressRes);
-        }
-      } catch { /* ignore */ }
-    }
-    refresh();
-    return () => { cancelled = true; };
-  }, [progressTick]);
-
-  // Re-fetch lists when items are added/removed from lists
-  useEffect(() => {
-    const handler = () => {
-      let cancelled = false;
-      async function refresh() {
-        try {
-          const [settingsRes, listsRes, allListsRes] = await Promise.all([
-            getSettings().catch(() => null),
-            get_pinned_lists().catch(() => []),
-            get_lists_with_movies().catch(() => []),
-          ]);
-          if (!cancelled) {
-            setLists(listsRes);
-            setDisplayedListId(settingsRes?.displayed_list ?? null);
-            setAllLists(allListsRes);
-          }
-        } catch { /* ignore */ }
-      }
-      refresh();
-    };
-    window.addEventListener('palace-lists-changed', handler);
-    return () => window.removeEventListener('palace-lists-changed', handler);
-  }, []);
-
-  const glow = 'var(--t-glow)';
-  const primary = 'var(--t-primary)';
+  const hours = Math.round((stats?.minutes ?? 0) / 60);
 
   return (
-    <div style={{ height: '100%', overflow: 'hidden', paddingRight: '4px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+    <>
+      <header className="page-head">
+        <div>
+          <h1>
+            {greeting()}, {user?.nickname ?? user?.username ?? 'friend'}
+          </h1>
+          <p className="page-head__sub">
+            {continueWatching.length
+              ? `You have ${continueWatching.length} title${continueWatching.length > 1 ? 's' : ''} on the go.`
+              : 'Nothing in progress — pick something new.'}
+          </p>
+        </div>
+        <div className="page-head__actions">
+          <Button icon={<Plus size={15} />} onClick={() => openCreateList()}>
+            New list
+          </Button>
+          <Button variant="primary" icon={<Clapperboard size={15} />} onClick={() => navigate('/discover')}>
+            Discover
+          </Button>
+        </div>
+      </header>
 
-      <div style={{ flexShrink: 0 }}>
-        <AnimatedSearchBar />
+      <div className="grid grid--stats">
+        <Stat label="Titles tracked" value={stats?.titles ?? 0} icon={<ListVideo />} />
+        <Stat label="Episodes watched" value={stats?.episodes ?? 0} icon={<PlayCircle />} />
+        <Stat label="Hours" value={hours} icon={<Timer />} foot={`${(stats?.minutes ?? 0).toLocaleString()} minutes`} />
+        <Stat
+          label="Day streak"
+          value={stats?.streak ?? 0}
+          icon={<Flame />}
+          foot={stats?.avgRating ? `Avg rating ${stats.avgRating.toFixed(1)}/10` : undefined}
+        />
       </div>
 
-      {/* ── DISPLAYED LIST / CURRENTLY WATCHING ── */}
-      {(() => {
-        const allClubLists = myClubsWithLists.flatMap(c => c.lists || []);
-        const displayedList = displayedListId
-          ? (allLists.find(l => l.id === displayedListId) ?? allClubLists.find(l => l.id === displayedListId))
-          : null;
-        const displayedItems: TMDBResult[] = displayedList
-          ? [
-              ...(displayedList.movies || []).map((m) => ({
-                id: m.tmdb_id || m.id,
-                media_type: 'movie' as const,
-                title: m.title,
-                overview: '',
-                poster_url: m.poster_url,
-                backdrop_url: null,
-                release_date: '',
-                rating: 0,
-                popularity: 0,
-                genre_ids: [],
-              })),
-              ...(displayedList.shows || []).map((s) => ({
-                id: s.tmdb_id || s.id,
-                media_type: 'tv' as const,
-                title: s.title,
-                overview: '',
-                poster_url: s.poster_url,
-                backdrop_url: null,
-                release_date: '',
-                rating: 0,
-                popularity: 0,
-                genre_ids: [],
-                number_of_seasons: s.total_seasons,
-                number_of_episodes: s.seasons.reduce((a, se) => a + se.episode_count, 0),
-                seasons: s.seasons,
-              })),
-            ]
-          : [];
-
-        if (displayedList) {
-          if (displayedItems.length > 0) {
-            return (
-              <GlassBox title={displayedList.name} style={{ maxHeight: '450px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px', alignItems: 'start' }}>
-                  {displayedItems.map((item) => {
-                    function get_movie_progress(movie_id: number) {
-                      const backend = allProgress.movies[movie_id];
-                      if (backend) {
-                        const watched = backend.watched_minutes || 0;
-                        const runtime = backend.total_minutes || 1;
-                        return { watched, runtime, pct: runtime > 0 ? Math.round((watched / runtime) * 100) : 0 };
-                      }
-                      const raw = localStorage.getItem(`palace_movie_progress_${movie_id}`);
-                      if (!raw) return null;
-                      try {
-                        const parsed = JSON.parse(raw);
-                        if (typeof parsed === 'object' && parsed !== null && 'watched' in parsed) {
-                          const watched = Number(parsed.watched) || 0;
-                          const runtime = Number(parsed.runtime) || 1;
-                          return { watched, runtime, pct: runtime > 0 ? Math.round((watched / runtime) * 100) : 0 };
-                        }
-                      } catch {
-                        const num = Number(raw);
-                        if (!isNaN(num) && num > 0) return { watched: num, runtime: 0, pct: 0 };
-                      }
-                      return null;
-                    }
-
-                    const isShow = item.media_type === 'tv';
-                    const showData = isShow ? displayedList?.shows?.find(s => (s.tmdb_id || s.id) === item.id) : null;
-                    const movieData = !isShow ? displayedList?.movies?.find(m => (m.tmdb_id || m.id) === item.id) : null;
-
-                    function get_show_progress(show_id: number, seasons: { season_number: number; episode_count: number }[]) {
-                      const map = allProgress.shows[show_id] || {};
-                      const watched = Object.values(map).filter(Boolean).length;
-                      const total = seasons.filter(s => s.season_number > 0).reduce((a, s) => a + (s.episode_count || 0), 0);
-                      const pct = total > 0 ? Math.round((watched / total) * 100) : 0;
-                      return { watched, total, pct };
-                    }
-
-                    let progress: { pct: number; label: string };
-                    if (isShow && showData) {
-                      const progressId = showData.tmdb_id ?? item.id;
-                      const sp = get_show_progress(progressId, showData.seasons || []);
-                      progress = { pct: sp.pct, label: `${sp.watched}/${sp.total}` };
-                    } else if (!isShow) {
-                      const mp = get_movie_progress(item.id) || (movieData ? get_movie_progress(movieData.id) : null);
-                      const watched = mp?.watched || 0;
-                      const label = watched > 0
-                        ? `${Math.floor(watched / 60) > 0 ? `${Math.floor(watched / 60)}h ` : ''}${Math.floor(watched % 60)}m`
-                        : '0m';
-                      progress = { pct: mp?.pct || 0, label };
-                    } else {
-                      progress = { pct: 0, label: '' };
-                    }
-
-                    return (
-                      <div key={`${item.id}-${progressTick}`} style={{ cursor: 'pointer', transition: 'transform 0.15s', minHeight: 0 }} onClick={() => handleItemClick(item)}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.transform = 'translateY(-4px)';
-                          const overlay = e.currentTarget.querySelector('.pct-overlay') as HTMLElement | null;
-                          if (overlay) overlay.style.opacity = '1';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.transform = 'none';
-                          const overlay = e.currentTarget.querySelector('.pct-overlay') as HTMLElement | null;
-                          if (overlay) overlay.style.opacity = '0';
-                        }}
-                      >
-                        <div className="poster-wrap" style={{ position: 'relative', width: '100%' }}>
-                          <Poster poster_url={item.poster_url} progress={progress.pct} style={{ borderRadius: '10px' }} />
-                          <QuickAddButton item={item} />
-                          {/* Bottom-right: label (time or episode count) */}
-                          {progress.label && (
-                            <div style={{ position: 'absolute', bottom: '8px', right: '8px', background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)', borderRadius: '5px', padding: '2px 6px', fontSize: '10px', fontWeight: 700, color: '#fff', pointerEvents: 'none' }}>
-                              {progress.label}
-                            </div>
-                          )}
-                          {/* Center: percentage on hover */}
-                          <div className="pct-overlay" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', borderRadius: '10px', opacity: 0, transition: 'opacity 0.15s', pointerEvents: 'none' }}>
-                            <span style={{ fontSize: '22px', fontWeight: 800, color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>{progress.pct}%</span>
-                          </div>
-                        </div>
-                        <div style={{ marginTop: '8px' }}>
-                          <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>{item.title}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </GlassBox>
-            );
-          }
-
-          // Displayed list is set but empty
-          return (
-            <GlassBox title={displayedList.name} style={{ maxHeight: '450px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', color: 'rgba(255,255,255,0.4)', textAlign: 'center', gap: '12px' }}>
-                <ListIcon style={{ width: '32px', opacity: 0.3 }} />
-                <div style={{ fontSize: '14px', fontWeight: 600 }}>This list is empty</div>
-                <div style={{ fontSize: '12px' }}>Add movies and shows to see them here</div>
-                <button
-                  onClick={() => navigate('/discover')}
-                  style={{ marginTop: '8px', padding: '8px 18px', borderRadius: '6px', background: `linear-gradient(180deg, ${primary}99, ${primary}55)`, border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <Plus style={{ width: '12px' }} /> Browse
-                </button>
+      <div className="grid--dash">
+        <div className="stack gap-6">
+          <section className="reveal">
+            <div className="section-head">
+              <h2>
+                <PlayCircle /> Continue watching
+              </h2>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/lists')}>
+                All lists <ArrowRight size={14} />
+              </Button>
+            </div>
+            {loadingLists ? (
+              <div className="grid grid--posters">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <div key={i} className="skeleton" style={{ aspectRatio: '2/3' }} />
+                ))}
               </div>
-            </GlassBox>
-          );
-        }
-
-        // No displayed list set — prompt user to choose one
-        return (
-          <GlassBox title="Choose a List" style={{ maxHeight: '450px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', color: 'rgba(255,255,255,0.4)', textAlign: 'center', gap: '12px' }}>
-              <ListIcon style={{ width: '32px', opacity: 0.3 }} />
-              <div style={{ fontSize: '14px', fontWeight: 600 }}>No list selected</div>
-              <div style={{ fontSize: '12px' }}>Go to settings to choose a list to display on your dashboard</div>
-              <button
-                onClick={() => navigate('/settings')}
-                style={{ marginTop: '8px', padding: '8px 18px', borderRadius: '6px', background: `linear-gradient(180deg, ${primary}99, ${primary}55)`, border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Plus style={{ width: '12px' }} /> Open Settings
-              </button>
-            </div>
-          </GlassBox>
-        );
-      })()}
-
-      {/* ── ROW 2: My Lists + Club Lists ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-        {/* My Lists */}
-        <GlassBox title="My Lists">
-          {lists.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              {lists.map((list) => (
-                <div key={list.id} onClick={() => navigate('/lists')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.04)', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)'; }} onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: primary, boxShadow: `0 0 5px ${glow}55`, flexShrink: 0 }} />
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>{list.name}</span>
-                  </div>
-                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, background: 'rgba(0,0,0,0.15)', padding: '2px 8px', borderRadius: '6px' }}>{(list.movie_count || 0) + (list.show_count || 0)} titles</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px', color: 'rgba(255,255,255,0.4)', gap: '8px' }}>
-              <div style={{ fontSize: '13px' }}>No pinned lists</div>
-              <button onClick={() => navigate('/lists')} style={{ padding: '6px 14px', borderRadius: '6px', background: `linear-gradient(180deg, ${primary}99, ${primary}55)`, border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                <Plus style={{ width: '11px', display: 'inline', marginRight: '4px' }} />Pin a List
-              </button>
-            </div>
-          )}
-        </GlassBox>
-
-        {/* Club Lists */}
-        <GlassBox title="Club Lists">
-          {myClubsWithLists.length > 0 && myClubsWithLists.some(c => (c.lists || []).length > 0) ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
-              {myClubsWithLists.filter(c => (c.lists || []).length > 0).map(club => (
-                <div key={club.id}>
-                  <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', paddingLeft: '2px' }}>{club.name}</div>
-                  {(club.lists || []).map(list => (
-                    <div key={list.id} onClick={() => navigate(`/lists/${list.id}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', borderRadius: '6px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.04)', marginBottom: '3px', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)'; }} onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: primary, boxShadow: `0 0 5px ${primary}55`, flexShrink: 0 }} />
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>{list.name}</span>
+            ) : continueWatching.length === 0 ? (
+              <Empty icon={<PlayCircle size={22} />} title="Nothing in progress">
+                Start a series or mark a film watched and it will show up here.
+              </Empty>
+            ) : (
+              <div className="grid grid--posters">
+                {continueWatching.map(({ item, pct }) => (
+                  <Poster
+                    key={item.id}
+                    item={item}
+                    progress={pct}
+                    footer={
+                      <div className="stack gap-1">
+                        <div className="truncate" style={{ fontSize: 'var(--fs-12)', fontWeight: 600 }}>
+                          {item.title}
+                        </div>
+                        <ProgressBar value={pct} label={`${item.title} progress`} />
                       </div>
-                      <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', background: 'rgba(0,0,0,0.15)', padding: '1px 7px', borderRadius: '6px' }}>{(list.movie_count || 0) + (list.show_count || 0)}</span>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px', color: 'rgba(255,255,255,0.4)', gap: '8px' }}>
-              <div style={{ fontSize: '13px' }}>No club lists yet</div>
-              <button onClick={() => navigate('/clubs')} style={{ padding: '6px 14px', borderRadius: '6px', background: `linear-gradient(180deg, ${primary}99, ${primary}55)`, border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                <Plus style={{ width: '11px', display: 'inline', marginRight: '4px' }} />Browse Clubs
-              </button>
-            </div>
-          )}
-        </GlassBox>
-      </div>
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </section>
 
-      {/* ── ROW 3: Activity + Trending ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', flex: 1, minHeight: 0 }}>
-        {/* Recent Activity */}
-        <GlassBox title="Recent Activity" style={{ flex: 1, minHeight: 0 }}>
-          {activities.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              {activities.map((act) => (
-                <div key={act.id}
-                  style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)', transition: 'background 0.1s', flexShrink: 0, cursor: 'pointer' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
-                >
-                  <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: `linear-gradient(135deg, ${theme.primary}66, ${theme.primary}22)`, border: '1px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#fff', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
-                    {(act.actor?.nickname ?? 'U').slice(0, 2).toUpperCase()}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.9)' }}>{act.description}</div>
-                  </div>
-                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>{act.time_ago}</span>
-                </div>
-              ))}
+          <section className="reveal">
+            <div className="section-head">
+              <h2>
+                <ListVideo /> Up next
+              </h2>
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', color: 'rgba(255,255,255,0.4)', textAlign: 'center', gap: '8px' }}>
-              <div style={{ fontSize: '13px' }}>No recent activity</div>
-              <div style={{ fontSize: '12px' }}>Activity will appear here as you interact with movies and shows</div>
-            </div>
-          )}
-        </GlassBox>
+            {upNext.length === 0 ? (
+              <Empty icon={<ListVideo size={22} />} title="Your watchlist is empty">
+                Add something from Discover and it will appear here.
+              </Empty>
+            ) : (
+              <div className="grid grid--posters">
+                {upNext.map((item) => {
+                  const p = progressFor(item);
+                  return <Poster key={item.id} item={item} watched={p.watched} progress={p.pct} />;
+                })}
+              </div>
+            )}
+          </section>
 
-        {/* Trending */}
-        <GlassBox title="Trending" style={{ flex: 1, minHeight: 0 }}>
-          {trending.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', alignItems: 'start' }}>
-              {trending.map((item) => (
-                <div key={item.id} style={{ cursor: 'pointer', transition: 'transform 0.15s', minWidth: 0 }} onClick={() => handleItemClick(item)} onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-4px)')} onMouseLeave={e => (e.currentTarget.style.transform = 'none')}>
-                  <div className="poster-wrap" style={{ position: 'relative', width: '100%' }}>
-                    <Poster poster_url={item.poster_url} style={{ borderRadius: '10px' }} />
-                    <div style={{ position: 'absolute', bottom: '6px', right: '6px', background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: '6px', fontSize: '11px', fontWeight: 700, color: '#ffd700', display: 'flex', alignItems: 'center', gap: '3px', border: '1px solid rgba(255,255,255,0.1)', zIndex: 2 }}>
-                      <Star style={{ width: '10px' }} /> {item.rating?.toFixed(1) || '—'}
-                    </div>
-                    <QuickAddButton item={item} />
-                  </div>
-                  <div style={{ marginTop: '8px', height: '20px', display: 'flex', alignItems: 'center', gap: '5px', overflow: 'hidden' }}>
-                    {item.media_type === 'tv' ? <Tv style={{ width: '12px', color: primary, flexShrink: 0 }} /> : <Star style={{ width: '12px', color: 'rgba(255,255,255,0.45)', flexShrink: 0 }} />}
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>{item.title}</span>
-                  </div>
-                </div>
+          <section className="reveal">
+            <div className="section-head">
+              <h2>
+                <CalendarDays /> Watch activity
+              </h2>
+              <Chip tone="accent">
+                <Flame size={12} /> {stats?.streak ?? 0} day streak
+              </Chip>
+            </div>
+            <Panel>
+              <Heatmap events={stats?.heatmap ?? []} />
+            </Panel>
+          </section>
+        </div>
+
+        <div className="stack gap-5">
+          <Panel
+            title="Pinned lists"
+            icon={<ListVideo size={16} />}
+            actions={
+              <Button variant="ghost" size="sm" onClick={() => navigate('/lists')}>
+                Manage
+              </Button>
+            }
+            flush
+          >
+            <div className="stack gap-1" style={{ padding: 'var(--sp-2)' }}>
+              {loadingLists && <Skeleton h={40} />}
+              {!loadingLists && lists.length === 0 && (
+                <Empty title="No lists yet" icon={<ListVideo size={20} />} />
+              )}
+              {lists.slice(0, 6).map((l) => (
+                <Link key={l.id} to={`/lists/${l.id}`} className="list-row">
+                  <span className="grow truncate">{titleCase(l.name)}</span>
+                  <Chip>{(l.movie_count ?? 0) + (l.show_count ?? 0)}</Chip>
+                </Link>
               ))}
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', color: 'rgba(255,255,255,0.4)', textAlign: 'center', gap: '8px' }}>
-              <div style={{ fontSize: '13px' }}>No trending data</div>
-              <div style={{ fontSize: '12px' }}>Check back later for trending movies and shows</div>
+          </Panel>
+
+          <Panel
+            title="Your clubs"
+            icon={<Users size={16} />}
+            actions={
+              <Button variant="ghost" size="sm" onClick={() => navigate('/clubs')}>
+                Browse
+              </Button>
+            }
+            flush
+          >
+            <div className="stack gap-1" style={{ padding: 'var(--sp-2)' }}>
+              {clubs.length === 0 && <Empty title="Not in a club yet" icon={<Users size={20} />} />}
+              {clubs.map((c) => (
+                <Link key={c.id} to={`/clubs/${c.id}`} className="list-row">
+                  <Avatar src={c.image_url} name={c.name} size={28} />
+                  <span className="grow truncate">{c.name}</span>
+                  <span className="faint" style={{ fontSize: 'var(--fs-12)' }}>
+                    {c.member_count}
+                  </span>
+                </Link>
+              ))}
             </div>
+          </Panel>
+
+          <Panel
+            title="Recent activity"
+            icon={<ActivityIcon size={16} />}
+            actions={
+              <Button variant="ghost" size="sm" onClick={() => navigate('/activity')}>
+                All
+              </Button>
+            }
+            flush
+          >
+            <div className="stack" style={{ padding: 'var(--sp-2)' }}>
+              {feed.length === 0 && <Empty title="Quiet around here" icon={<ActivityIcon size={20} />} />}
+              {feed.slice(0, 8).map((a) => (
+                <ActivityRow key={a.id} activity={a} />
+              ))}
+            </div>
+          </Panel>
+
+          {!!stats?.topGenres?.length && (
+            <Panel title="Your genres" icon={<Star size={16} />}>
+              <div className="stack gap-3">
+                {stats.topGenres.map((g) => (
+                  <div key={g.name} className="stack gap-1">
+                    <div className="row between" style={{ fontSize: 'var(--fs-12)' }}>
+                      <span>{g.name}</span>
+                      <span className="faint">{g.count}</span>
+                    </div>
+                    <ProgressBar
+                      value={percent(g.count, stats.topGenres[0].count)}
+                      label={`${g.name} share`}
+                    />
+                  </div>
+                ))}
+              </div>
+            </Panel>
           )}
-        </GlassBox>
+        </div>
       </div>
-      {selectedItem && selectedItem.media_type === 'tv' ? (
-        <ShowDetailModal item={selectedItem} onClose={() => { setSelectedItem(null); setProgressTick(t => t + 1); }} />
-      ) : selectedItem ? (
-        <MediaDetailModal item={selectedItem} onClose={() => { setSelectedItem(null); setProgressTick(t => t + 1); }} />
-      ) : null}
-    </div>
+    </>
+  );
+}
+
+/** Activity rows link through to whatever they are about. — issue #40 */
+export function ActivityRow({ activity }: { activity: Activity }) {
+  const navigate = useNavigate();
+  const target = activity.actor?.username ? `/profile/${activity.actor.username}` : '/activity';
+  return (
+    <button className="activity-item" onClick={() => navigate(target)}>
+      <Avatar
+        src={activity.actor?.profile_picture}
+        name={activity.actor?.nickname ?? activity.actor?.username}
+        size={30}
+      />
+      <div className="grow" style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 'var(--fs-13)' }}>
+          <strong>{activity.actor?.nickname ?? activity.actor?.username ?? 'Someone'}</strong>{' '}
+          <Markdown text={activity.description} className="muted" inline />
+        </div>
+        <div className="faint" style={{ fontSize: 'var(--fs-11)' }}>
+          {activity.time_ago ?? timeAgo(activity.created_at)}
+        </div>
+      </div>
+    </button>
   );
 }

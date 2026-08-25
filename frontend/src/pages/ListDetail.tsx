@@ -1,334 +1,421 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Trash2, Search, LayoutGrid, List as ListIcon, Star, Clock, Tv } from 'lucide-react';
-import { useConfirm } from '@/components/ConfirmDialog';
-import { get_list, remove_movie_from_list } from '@/api/lists';
-import { get_movie_details } from '@/api/search';
-import MediaDetailModal from '@/components/MediaDetailModal';
-import ShowDetailModal from '@/components/ShowDetailModal';
-import Poster from '@/components/Poster';
-import type { List as ListType, TMDBResult, Movie, Show } from '@/types/api';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  ArrowLeft, Check, Eye, GripVertical, LayoutGrid, ListPlus, Pencil, Plus, Rows3, Search,
+  Trash2,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { lists as listsApi } from '@/data/api';
+import type { List, ListItem } from '@/data/types';
+import { useAppData } from '@/components/AppData';
+import { Poster } from '@/components/Poster';
+import { Button } from '@/components/ui/Button';
+import { Input, SearchInput, Segmented, Select } from '@/components/ui/Field';
+import { CheckBox, Chip, Empty, ProgressBar, Skeleton } from '@/components/ui/Bits';
+import { useConfirm } from '@/components/ui/Modal';
+import { emit } from '@/lib/bus';
+import { plural, timeAgo, titleCase, year } from '@/lib/format';
+import { rank } from '@/lib/fuzzy';
+import { flip, staggerIn } from '@/lib/motion';
+import { useLocalState } from '@/lib/hooks';
 
-function get_movie_progress(movie_id: number) {
-  const raw = localStorage.getItem(`palace_movie_progress_${movie_id}`);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    if (typeof parsed === 'object' && parsed !== null && 'watched' in parsed) {
-      const watched = Number(parsed.watched) || 0;
-      const runtime = Number(parsed.runtime) || 1;
-      return { watched, runtime, pct: runtime > 0 ? Math.round((watched / runtime) * 100) : 0 };
-    }
-  } catch {
-    const num = Number(raw);
-    if (!isNaN(num) && num > 0) return { watched: num, runtime: 0, pct: 0 };
-  }
-  return null;
-}
-
-function movieToResult(movie: Movie): TMDBResult {
-  return {
-    id: movie.tmdb_id || movie.id,
-    media_type: 'movie',
-    title: movie.title,
-    poster_url: movie.poster_url,
-    overview: '',
-    release_date: '',
-    backdrop_url: null,
-    rating: 0,
-    popularity: 0,
-    genre_ids: [],
-  };
-}
-
-function showToResult(show: Show): TMDBResult {
-  return {
-    id: show.tmdb_id || show.id,
-    media_type: 'tv',
-    title: show.title,
-    poster_url: show.poster_url,
-    overview: '',
-    release_date: '',
-    backdrop_url: null,
-    rating: 0,
-    popularity: 0,
-    genre_ids: [],
-    number_of_seasons: show.total_seasons,
-    number_of_episodes: show.seasons?.reduce((a, se) => a + (se.episode_count || 0), 0) || 0,
-    seasons: show.seasons,
-  };
-}
-
-function ProgressBar({ movie_id, tick: _tick }: { movie_id: number; tick?: number }) {
-  const progress = get_movie_progress(movie_id);
-  if (!progress) return null;
-  const progressLabel = `${Math.floor(progress.watched / 60) > 0 ? `${Math.floor(progress.watched / 60)}h ` : ''}${Math.floor(progress.watched % 60)}m`;
-  return (
-    <div style={{ marginTop: '6px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: '3px' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}><Clock style={{ width: '10px' }} /> {progressLabel}</span>
-        <span style={{ color: 'var(--t-primary)' }}>{progress.pct}%</span>
-      </div>
-      <div style={{ height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden', boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.4)' }}>
-        <div style={{ width: `${Math.max(3, progress.pct)}%`, height: '100%', background: 'var(--t-primary)', borderRadius: '3px', boxShadow: '0 0 10px var(--t-primary-55)' }} />
-      </div>
-    </div>
-  );
-}
-
-function CompactProgress({ movie_id, tick: _tick }: { movie_id: number; tick?: number }) {
-  const progress = get_movie_progress(movie_id);
-  if (!progress) return <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>Movie</span>;
-  const progressLabel = `${Math.floor(progress.watched / 60) > 0 ? `${Math.floor(progress.watched / 60)}h ` : ''}${Math.floor(progress.watched % 60)}m`;
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-      <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap' }}>{progressLabel}</span>
-      <div style={{ flex: 1, height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
-        <div style={{ width: `${Math.max(3, progress.pct)}%`, height: '100%', background: 'var(--t-primary)', borderRadius: '2px' }} />
-      </div>
-      <span style={{ fontSize: '11px', color: 'var(--t-primary)', fontWeight: 600, whiteSpace: 'nowrap' }}>{progress.pct}%</span>
-    </div>
-  );
-}
+type Sort = 'manual' | 'az' | 'za' | 'added' | 'year' | 'progress';
+type View = 'grid' | 'rows';
 
 export default function ListDetail() {
   const { id } = useParams();
+  const listId = Number(id);
   const navigate = useNavigate();
-  const location = useLocation();
-  const fromClub = (location.state as { fromClub?: number } | null)?.fromClub;
-  const fromUser = (location.state as { fromUser?: number } | null)?.fromUser;
-  const list_id = parseInt(id || '0');
-  const [list, setList] = useState<ListType | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [query, setQuery] = useState('');
-  const [selectedItem, setSelectedItem] = useState<TMDBResult | null>(null);
-  const [progressTick, setProgressTick] = useState(0);
-  const [loading, setLoading] = useState(true);
   const confirm = useConfirm();
+  const { progressFor, openAddTo, openMedia, markWatched } = useAppData();
+
+  const [list, setList] = useState<List | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useLocalState<Sort>('palace.itemSort', 'manual');
+  const [view, setView] = useLocalState<View>('palace.itemView', 'grid');
+  const [editing, setEditing] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [renaming, setRenaming] = useState(false);
+  const [draft, setDraft] = useState('');
+  const dragId = useRef<number | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  const load = () => {
+    setLoading(true);
+    listsApi
+      .one(listId)
+      .then(setList)
+      .catch(() => setList(null))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(load, [listId]);
 
   useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const data = await get_list(list_id);
-        if (!cancelled) setList(data);
-      } catch {
-        if (!cancelled) setList(null);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    if (!loading) staggerIn(gridRef.current?.querySelectorAll('.poster, .list-row'), { y: 14, each: 20 });
+  }, [loading, sort, view, query]);
+
+  const items = useMemo(() => {
+    let rows = [...(list?.items ?? [])];
+    if (query.trim()) rows = rank(rows, query, (i) => i.title);
+    switch (sort) {
+      case 'az': rows.sort((a, b) => a.title.localeCompare(b.title)); break;
+      case 'za': rows.sort((a, b) => b.title.localeCompare(a.title)); break;
+      case 'added': rows.sort((a, b) => (b.added_at ?? '').localeCompare(a.added_at ?? '')); break;
+      case 'year': rows.sort((a, b) => (b.release_date ?? '').localeCompare(a.release_date ?? '')); break;
+      case 'progress':
+        rows.sort((a, b) => progressFor(b).pct - progressFor(a).pct);
+        break;
+      default: break;
     }
-    if (list_id) load();
-    return () => { cancelled = true; };
-  }, [list_id]);
+    return rows;
+  }, [list, query, sort, progressFor]);
 
-  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>Loading...</div>;
-  if (!list) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>List not found</div>;
-
-  const backPath = fromClub ? `/clubs/${fromClub}` : fromUser ? `/profile/${fromUser}` : '/lists';
-  const backLabel = fromClub ? 'Club' : fromUser ? 'User Profile' : 'My Lists';
-
-  const movies = list.movies || [];
-  const shows = list.shows || [];
-  const allItems = [...movies, ...shows];
-  const filtered = query.length > 0
-    ? allItems.filter(m => m.title.toLowerCase().includes(query.toLowerCase()))
-    : allItems;
-
-  const handleItemClick = async (item: TMDBResult) => {
-    if (item.media_type === 'tv') {
-      setSelectedItem(item);
-      return;
-    }
-    const details = await get_movie_details(item.id);
-    if (details) {
-      setSelectedItem({ ...item, ...details });
-    } else {
-      setSelectedItem(item);
-    }
+  const onDrop = (targetId: number) => {
+    const from = dragId.current;
+    dragId.current = null;
+    if (!from || from === targetId || !list) return;
+    const ids = items.map((i) => i.id);
+    const next = ids.filter((x) => x !== from);
+    next.splice(ids.indexOf(targetId), 0, from);
+    // FLIP the tiles into their new positions rather than snapping.
+    flip(view === 'grid' ? '.poster-tile' : '.list-row', () => {
+      listsApi.reorderItems(list.id, next);
+      setSort('manual');
+      load();
+    });
   };
 
-  const handleDelete = async (movie_id: number) => {
-    const movie = movies.find(m => m.id === movie_id);
-    if (!movie) return;
+  /* --- edit mode -------------------------------------------------------- */
+  const toggleSelected = (id: number) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const chosen = items.filter((i) => selected.has(i.id));
+  const allSelected = items.length > 0 && selected.size === items.length;
+
+  const bulkMarkWatched = async () => {
+    const count = chosen.length;
+    for (const item of chosen) await markWatched(item, true, { silent: true });
+    toast.success(`Marked ${plural(count, 'title')} watched`);
+    setSelected(new Set());
+    load();
+  };
+
+  const bulkRemove = async () => {
+    if (!list) return;
     const ok = await confirm({
-      title: 'Remove Movie',
-      message: `Are you sure you want to remove "${movie.title}" from this list?`,
+      title: `Remove ${plural(chosen.length, 'title')}?`,
+      message: `They will be taken out of ${titleCase(list.name)}. Your other lists keep them.`,
       confirmLabel: 'Remove',
-      cancelLabel: 'Cancel',
       danger: true,
     });
-    if (ok) {
-      try {
-        await remove_movie_from_list(list_id, movie_id);
-        setList(prev => prev ? { ...prev, movies: prev.movies?.filter(m => m.id !== movie_id) || [] } : null);
-      } catch {
-        // error handled by interceptor
-      }
-    }
+    if (!ok) return;
+    for (const item of chosen) await listsApi.removeItem(list.id, item.id);
+    toast.success(`Removed ${plural(chosen.length, 'title')}`);
+    setSelected(new Set());
+    load();
+    emit('lists');
   };
 
-  const handleDeleteShow = async (show_id: number) => {
-    const show = shows.find(s => s.id === show_id);
-    if (!show) return;
+  const removeItem = async (item: ListItem) => {
+    if (!list) return;
     const ok = await confirm({
-      title: 'Remove Show',
-      message: `Are you sure you want to remove "${show.title}" from this list?`,
+      title: `Remove “${item.title}”?`,
+      message: `It will be taken out of ${titleCase(list.name)}.`,
       confirmLabel: 'Remove',
-      cancelLabel: 'Cancel',
       danger: true,
     });
-    if (ok) {
-      try {
-        await remove_movie_from_list(list_id, show_id);
-        setList(prev => prev ? { ...prev, shows: prev.shows?.filter(s => s.id !== show_id) || [] } : null);
-      } catch {
-        // error handled by interceptor
-      }
-    }
+    if (!ok) return;
+    await listsApi.removeItem(list.id, item.id);
+    toast.success('Removed');
+    load();
+    emit('lists');
   };
+
+  const rename = async () => {
+    const clean = draft.trim();
+    setRenaming(false);
+    if (!list || !clean || clean === list.name) return;
+    await listsApi.rename(list.id, clean);
+    toast.success('List renamed');
+    load();
+    emit('lists');
+  };
+
+  if (loading && !list) {
+    return (
+      <div className="stack gap-4">
+        <Skeleton h={38} w={260} />
+        <div className="grid grid--posters">
+          {Array.from({ length: 8 }, (_, i) => (
+            <div key={i} className="skeleton" style={{ aspectRatio: '2/3' }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!list) {
+    return (
+      <Empty title="List not found" action={<Button onClick={() => navigate('/lists')}>Back to lists</Button>} />
+    );
+  }
+
+  const total = items.length;
+  const watched = items.filter((i) => progressFor(i).watched).length;
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', paddingRight: '8px' }}>
-      <button style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }} onClick={() => navigate(backPath)} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}>
-        <ArrowLeft style={{ width: '14px' }} /> {backLabel}
-      </button>
-
-      {/* Header */}
-      <div style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.08) 100%)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: '10px', padding: '20px', marginBottom: '16px', boxShadow: '0 6px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2)', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', background: 'linear-gradient(180deg, rgba(255,255,255,0.1) 0%, transparent 100%)', borderRadius: '10px 10px 0 0', pointerEvents: 'none' }} />
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>{list.name}</h1>
-          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginTop: '6px' }}>{allItems.length} titles</p>
-        </div>
-      </div>
-
-      {/* Controls bar: search + view toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', padding: '8px 14px', backdropFilter: 'blur(8px)' }}>
-          <Search style={{ width: '14px', color: 'rgba(255,255,255,0.7)', flexShrink: 0 }} />
-          <input style={{ background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: '13px', fontFamily: 'inherit', width: '100%' }} placeholder="Search in this list..." value={query} onChange={e => setQuery(e.target.value)} />
-        </div>
-
-        <div style={{ display: 'flex', background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', overflow: 'hidden' }}>
-          <button onClick={() => setViewMode('grid')} style={{ padding: '8px 12px', background: viewMode === 'grid' ? 'var(--t-primary-25)' : 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 0.15s' }}>
-            <LayoutGrid style={{ width: '15px', color: viewMode === 'grid' ? 'var(--t-primary)' : 'rgba(255,255,255,0.4)' }} />
+    <>
+      <header className="page-head">
+        <div className="stack gap-2">
+          <button className="row gap-2 faint" style={{ fontSize: 'var(--fs-12)' }} onClick={() => navigate('/lists')}>
+            <ArrowLeft size={14} /> All lists
           </button>
-          <button onClick={() => setViewMode('list')} style={{ padding: '8px 12px', background: viewMode === 'list' ? 'var(--t-primary-25)' : 'transparent', border: 'none', borderLeft: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 0.15s' }}>
-            <ListIcon style={{ width: '15px', color: viewMode === 'list' ? 'var(--t-primary)' : 'rgba(255,255,255,0.4)' }} />
-          </button>
-        </div>
-      </div>
-
-      {/* Grid View */}
-      {viewMode === 'grid' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px', alignItems: 'start' }}>
-          {filtered.map((item) => {
-            const isShowItem = 'total_seasons' in item;
-            const result = isShowItem ? showToResult(item as Show) : movieToResult(item as Movie);
-            return (
-            <div key={item.id} style={{ cursor: 'pointer', transition: 'transform 0.15s', minHeight: 0, minWidth: 0 }} onClick={() => handleItemClick(result)} onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-4px)')} onMouseLeave={e => (e.currentTarget.style.transform = 'none')}>
-              {/* Poster */}
-              <div className="poster-wrap" style={{ position: 'relative', width: '100%' }}>
-                <Poster poster_url={item.poster_url} style={{ borderRadius: '10px' }} />
-              </div>
-
-              {/* Title */}
-              <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                {isShowItem ? <Tv style={{ width: '12px', color: 'var(--t-primary)', flexShrink: 0 }} /> : <Star style={{ width: '12px', color: 'rgba(255,255,255,0.45)' }} />}
-                <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>{item.title}</span>
-              </div>
-              {/* Progress */}
-              {!isShowItem && <ProgressBar movie_id={(item as Movie).tmdb_id || item.id} tick={progressTick} />}
-              {/* Delete */}
-              <button
-                onClick={(e) => { e.stopPropagation(); isShowItem ? handleDeleteShow(item.id) : handleDelete(item.id); }}
-                style={{
-                  marginTop: '4px',
-                  fontSize: '11px',
-                  color: 'rgba(255,255,255,0.35)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#ff5555'; }}
-                onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.35)'; }}
-              >
-                <Trash2 style={{ width: '10px' }} /> Remove
-              </button>
-            </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* List View */}
-      {viewMode === 'list' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {filtered.map((item, i) => {
-            const isShowItem = 'total_seasons' in item;
-            const result = isShowItem ? showToResult(item as Show) : movieToResult(item as Movie);
-            return (
-            <div key={item.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '14px',
-                padding: '10px 14px',
-                borderRadius: '8px',
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                transition: 'all 0.15s',
-                cursor: 'pointer',
+          {renaming ? (
+            <Input
+              autoFocus
+              value={draft}
+              style={{ fontSize: 'var(--fs-22)', height: 44 }}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={rename}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') rename();
+                if (e.key === 'Escape') setRenaming(false);
               }}
-              onClick={() => handleItemClick(result)}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}>
-              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', fontWeight: 700, minWidth: '28px', textAlign: 'center' }}>{i + 1}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  {isShowItem ? <Tv style={{ width: '12px', color: 'var(--t-primary)', flexShrink: 0 }} /> : <Star style={{ width: '12px', color: 'rgba(255,255,255,0.45)', flexShrink: 0 }} />}
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', fontWeight: 500, flexShrink: 0 }}>
-                    {isShowItem ? `TV · ${(item as Show).total_seasons ?? '?'} season${(item as Show).total_seasons !== 1 ? 's' : ''}` : 'Movie'}
-                  </span>
-                  {!isShowItem && <CompactProgress movie_id={(item as Movie).tmdb_id || item.id} tick={progressTick} />}
-                </div>
-              </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); isShowItem ? handleDeleteShow(item.id) : handleDelete(item.id); }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', transition: 'all 0.15s' }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#ff5555'; e.currentTarget.style.background = 'rgba(220,50,50,0.15)'; }}
-                onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; e.currentTarget.style.background = 'none'; }}>
-                <Trash2 style={{ width: '14px' }} />
-              </button>
-            </div>
+            />
+          ) : (
+            <h1 className="row gap-3">
+              {titleCase(list.name)}
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Rename list"
+                onClick={() => { setDraft(list.name); setRenaming(true); }}
+              >
+                <Pencil size={15} />
+              </Button>
+            </h1>
+          )}
+          <div className="row gap-2 wrap">
+            <Chip>{list.movie_count ?? 0} films</Chip>
+            <Chip>{list.show_count ?? 0} series</Chip>
+            {watched > 0 && (
+              <Chip tone="success">
+                <Check size={12} /> {watched} watched
+              </Chip>
+            )}
+          </div>
+        </div>
+
+        <div className="page-head__actions">
+          <Segmented<View>
+            ariaLabel="View"
+            value={view}
+            onChange={setView}
+            options={[
+              { value: 'grid', label: 'Grid', icon: <LayoutGrid /> },
+              { value: 'rows', label: 'Rows', icon: <Rows3 /> },
+            ]}
+          />
+          <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} style={{ width: 165 }}>
+            <option value="manual">Manual order</option>
+            <option value="added">Recently added</option>
+            <option value="az">Title A – Z</option>
+            <option value="za">Title Z – A</option>
+            <option value="year">Release year</option>
+            <option value="progress">Progress</option>
+          </Select>
+          <Button
+            variant={editing ? 'soft' : 'default'}
+            icon={editing ? <Check size={15} /> : <Pencil size={15} />}
+            onClick={() => {
+              setEditing((e) => !e);
+              setSelected(new Set());
+            }}
+          >
+            {editing ? 'Done' : 'Edit'}
+          </Button>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => navigate('/discover')}>
+            Add titles
+          </Button>
+        </div>
+      </header>
+
+      {total > 0 && (
+        <div className="stack gap-2">
+          <div className="row between faint" style={{ fontSize: 'var(--fs-12)' }}>
+            <span>
+              {watched} of {total} watched
+            </span>
+            <span>{Math.round((watched / total) * 100)}%</span>
+          </div>
+          <ProgressBar value={(watched / total) * 100} label="List progress" />
+        </div>
+      )}
+
+      {editing ? (
+        /* Edit mode: pick tiles for bulk actions, or drag them into order. */
+        <div className="bulk-bar">
+          <CheckBox
+            checked={allSelected}
+            label={allSelected ? 'Clear selection' : 'Select all'}
+            onChange={() => setSelected(allSelected ? new Set() : new Set(items.map((i) => i.id)))}
+          />
+          <span className="grow truncate" style={{ fontSize: 'var(--fs-13)' }}>
+            {selected.size ? (
+              <strong>{plural(selected.size, 'title')} selected</strong>
+            ) : (
+              <span className="muted">Tap titles to select them, or drag a poster to reorder.</span>
+            )}
+          </span>
+          <div className="row gap-2 wrap">
+            <Button
+              size="sm"
+              icon={<ListPlus size={14} />}
+              disabled={!selected.size}
+              onClick={() => openAddTo(chosen)}
+            >
+              Add to list
+            </Button>
+            <Button
+              size="sm"
+              icon={<Eye size={14} />}
+              disabled={!selected.size}
+              onClick={bulkMarkWatched}
+            >
+              Mark watched
+            </Button>
+            <Button
+              size="sm"
+              variant="danger"
+              icon={<Trash2 size={14} />}
+              disabled={!selected.size}
+              onClick={bulkRemove}
+            >
+              Remove
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="row gap-3 wrap">
+          <div style={{ flex: '1 1 280px' }}>
+            <SearchInput
+              icon={<Search />}
+              value={query}
+              placeholder={`Search inside ${titleCase(list.name)}…`}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+        </div>
+      )}
+
+      {items.length === 0 ? (
+        <Empty
+          title={query ? 'Nothing matches that' : 'This list is empty'}
+          action={
+            !query ? (
+              <Button variant="primary" icon={<Plus size={15} />} onClick={() => navigate('/discover')}>
+                Find something to add
+              </Button>
+            ) : undefined
+          }
+        />
+      ) : view === 'grid' ? (
+        <div className="grid grid--posters" ref={gridRef}>
+          {items.map((item) => {
+            const p = progressFor(item);
+            return (
+              <Poster
+                key={item.id}
+                item={item}
+                progress={p.pct}
+                watched={p.watched}
+                onRemove={() => removeItem(item)}
+                selectable={editing}
+                selected={selected.has(item.id)}
+                onSelect={() => toggleSelected(item.id)}
+                draggable={editing}
+                onDragStart={() => { dragId.current = item.id; }}
+                onDragOver={(e) => editing && e.preventDefault()}
+                onDrop={() => onDrop(item.id)}
+                footer={
+                  <div className="stack gap-1">
+                    <div className="truncate" style={{ fontSize: 'var(--fs-12)', fontWeight: 600 }}>
+                      {item.title}
+                    </div>
+                    <div className="faint" style={{ fontSize: 'var(--fs-11)' }}>
+                      {item.media_type === 'tv' ? 'Series' : 'Film'}
+                      {item.added_at ? ` · added ${timeAgo(item.added_at)}` : ''}
+                    </div>
+                  </div>
+                }
+              />
             );
           })}
         </div>
-      )}
-
-      {filtered.length === 0 && query.length > 0 && (
-        <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>No results for &ldquo;{query}&rdquo;</div>
-      )}
-
-      {allItems.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '60px', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>
-          This list is empty. Go to Discover to add movies and shows.
+      ) : (
+        <div className="panel" ref={gridRef}>
+          <div className="stack" style={{ padding: 'var(--sp-2)' }}>
+            {items.map((item) => {
+              const p = progressFor(item);
+              return (
+                <div
+                  key={item.id}
+                  className="list-row sortable-item"
+                  draggable={editing}
+                  onDragStart={() => { dragId.current = item.id; }}
+                  onDragOver={(e) => editing && e.preventDefault()}
+                  onDrop={() => onDrop(item.id)}
+                >
+                  {editing && <GripVertical size={15} className="drag-handle" />}
+                  <div
+                    style={{
+                      width: 34, height: 50, borderRadius: 'var(--r-xs)', overflow: 'hidden',
+                      background: 'var(--surface-3)', flexShrink: 0,
+                    }}
+                  >
+                    {item.poster_url && (
+                      <img src={item.poster_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    )}
+                  </div>
+                  <div className="grow" style={{ minWidth: 0 }}>
+                    <div className="truncate" style={{ fontWeight: 600, fontSize: 'var(--fs-13)' }}>
+                      {item.title}
+                    </div>
+                    <div className="faint" style={{ fontSize: 'var(--fs-11)' }}>
+                      {item.media_type === 'tv' ? 'Series' : 'Film'}
+                      {year(item.release_date) ? ` · ${year(item.release_date)}` : ''}
+                    </div>
+                  </div>
+                  {p.pct > 0 && (
+                    <div style={{ width: 90 }}>
+                      <ProgressBar value={p.pct} label={`${item.title} progress`} />
+                    </div>
+                  )}
+                  <div className="list-row__actions">
+                    <Button variant="ghost" size="sm" aria-label="Add to another list" onClick={() => openAddTo(item)}>
+                      <Plus size={14} />
+                    </Button>
+                    <Button variant="ghost" size="sm" aria-label="Details" onClick={() => openMedia(item)}>
+                      <Eye size={14} />
+                    </Button>
+                    <Button variant="ghost" size="sm" aria-label="Remove" onClick={() => removeItem(item)}>
+                      <Trash2 size={14} />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
-
-      {selectedItem && selectedItem.media_type === 'tv' ? (
-        <ShowDetailModal item={selectedItem} onClose={() => { setSelectedItem(null); setProgressTick(t => t + 1); }} />
-      ) : selectedItem ? (
-        <MediaDetailModal item={selectedItem} onClose={() => { setSelectedItem(null); setProgressTick(t => t + 1); }} />
-      ) : null}
-    </div>
+    </>
   );
 }
+

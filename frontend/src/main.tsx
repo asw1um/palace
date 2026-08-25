@@ -1,16 +1,13 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { Toaster } from 'sonner'
-import './index.css'
-import App from './App.tsx'
-import { themeStore } from './data/themeStore'
-
-// Apply saved theme on load
-themeStore.apply(themeStore.get());
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App';
+import './styles/tokens.css';
+import './styles/base.css';
+import './styles/components.css';
+import './styles/app.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
-    <Toaster position="top-right" richColors />
   </StrictMode>,
-)
+);
