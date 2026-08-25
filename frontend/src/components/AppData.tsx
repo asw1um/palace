@@ -3,7 +3,7 @@ import {
   type ReactNode,
 } from 'react';
 import { toast } from 'sonner';
-import { AlertTriangle, Check, FolderPlus, Plus } from 'lucide-react';
+import { AlertTriangle, Check, FolderPlus, Plus } from '@/lib/icons';
 import { lists as listsApi, progress as progressApi, type ProgressEntry } from '@/data/api';
 import type { List, MediaType } from '@/data/types';
 import { emit, useBus } from '@/lib/bus';

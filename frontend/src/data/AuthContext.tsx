@@ -1,6 +1,7 @@
 import {
   createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode,
 } from 'react';
+import { useRouter } from 'next/navigation';
 import { auth } from './api';
 import { currentMode, detectMode, TOKEN_KEY, type RunMode } from './client';
 import type { User } from './types';
@@ -23,6 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<RunMode>(currentMode());
+  const router = useRouter();
 
   useEffect(() => {
     let alive = true;
@@ -60,8 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     auth.logout();
     setUser(null);
-    window.location.hash = '#/login';
-  }, []);
+    router.push('/login');
+  }, [router]);
 
   const refresh = useCallback(async () => {
     try { setUser(await auth.me()); } catch { /* keep the current user */ }

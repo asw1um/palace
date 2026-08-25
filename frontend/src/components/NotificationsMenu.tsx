@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Bell, BellOff, CheckCheck, Trash2, UserPlus, Users, Star, ArrowRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Bell, BellOff, CheckCheck, Trash2, UserPlus, Users, Star, ArrowRight } from '@/lib/icons';
 import { notifications as notificationsApi } from '@/data/api';
 import type { Notification } from '@/data/types';
 import { emit } from '@/lib/bus';
@@ -28,7 +28,7 @@ export function NotificationsMenu({
   rows: Notification[];
   onChanged: () => void;
 }) {
-  const navigate = useNavigate();
+  const router = useRouter();
   const unread = rows.filter((n) => !n.is_read);
   const shown = [...rows]
     .sort((a, b) => Number(a.is_read) - Number(b.is_read) || +new Date(b.created_at) - +new Date(a.created_at))
@@ -114,7 +114,7 @@ export function NotificationsMenu({
             block
             onClick={() => {
               onClose();
-              navigate('/notifications');
+              router.push('/notifications');
             }}
           >
             View all notifications

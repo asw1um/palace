@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { animate, reducedMotion, stagger, utils } from '@/lib/motion';
 import { isoDay, plural } from '@/lib/format';
 import type { WatchEvent } from '@/data/types';
 
@@ -89,22 +88,7 @@ export function Heatmap({ events, weeks = 26 }: { events: WatchEvent[]; weeks?: 
     if (el) el.scrollLeft = el.scrollWidth;
   }, [columns]);
 
-  useEffect(() => {
-    const nodes = ref.current?.querySelectorAll('.heat-cell');
-    if (!nodes?.length) return;
-    if (reducedMotion() || document.hidden) {
-      utils.set(nodes, { opacity: 1, scale: 1 });
-      return;
-    }
-    utils.set(nodes, { opacity: 0, scale: 0.4 });
-    animate(nodes, {
-      opacity: 1,
-      scale: 1,
-      duration: 420,
-      ease: 'out(3)',
-      delay: stagger(2),
-    });
-  }, [columns]);
+  // Staggered entrance removed — "calm motion" keeps gsap/animejs out of the bundle.
 
   const level = (count: number) => {
     if (!count) return 0;
@@ -175,7 +159,7 @@ export function Heatmap({ events, weeks = 26 }: { events: WatchEvent[]; weeks?: 
         </div>
       </div>
 
-      <div className="row gap-3 between faint" style={{ fontSize: 'var(--fs-11)' }}>
+      <div className="row gap-3 between heatmap__legend" style={{ fontSize: 'var(--fs-11)' }}>
         <span>
           {plural(total, 'title')} in the last {weeks} weeks
         </span>

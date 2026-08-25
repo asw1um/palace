@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import {
   Check, Clock, Eye, ExternalLink, HelpCircle, ListPlus, Plus, Star, ThumbsDown,
   ThumbsUp, Trash2, Users,
-} from 'lucide-react';
+} from '@/lib/icons';
 import { toast } from 'sonner';
 import { discover, progress as progressApi, reviews as reviewsApi } from '@/data/api';
 import type { Review, TMDBResult } from '@/data/types';
 import { percent, runtime as fmtRuntime, timeAgo, year } from '@/lib/format';
 import { emit } from '@/lib/bus';
-import { pop, staggerIn } from '@/lib/motion';
 import { useAuth } from '@/data/AuthContext';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
@@ -108,14 +108,14 @@ export function MediaModal({
   return (
     <Modal open={open} onClose={onClose} hideHeader className="media-modal" width={940}>
       {loading && !details ? (
-        <div className="stack gap-4" style={{ padding: 'var(--sp-6)' }}>
+        <div className="stack gap-4" style={{ padding: 'var(--space-6)' }}>
           <Skeleton h={180} r="var(--r-md)" />
           <Skeleton h={24} w="50%" />
           <Skeleton h={80} />
         </div>
       ) : (
         <>
-          <div className="media-hero shine">
+          <div className="media-hero">
             {(details?.backdrop_url || target?.poster_url) && (
               <div
                 className="media-hero__bg"
@@ -125,7 +125,15 @@ export function MediaModal({
             <div className="media-hero__scrim" />
 
             <div className="media-hero__poster">
-              {target?.poster_url && <img src={target.poster_url} alt="" />}
+              {target?.poster_url && (
+                <Image
+                  src={target.poster_url}
+                  alt=""
+                  width={130}
+                  height={195}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              )}
             </div>
 
             <div className="media-hero__meta stack gap-3 grow">
@@ -144,10 +152,9 @@ export function MediaModal({
                     <Star size={12} /> {details.rating.toFixed(1)} TMDB
                   </Chip>
                 ) : null}
-                {/* Palace member average sits right next to the TMDB score — issue #111 */}
                 {userScore !== null && (
                   <Chip tone="accent">
-                    <Users size={12} /> {userScore.toFixed(1)} Palace · {rows.length}
+                    <Users size={12} /> {(userScore / 2).toFixed(1)} Palace · {rows.length}
                   </Chip>
                 )}
                 {!isTv && details?.runtime ? (
@@ -175,7 +182,6 @@ export function MediaModal({
                   Want to watch
                 </Button>
                 {!isTv && (
-                  // Movies get the same one-click "watched" shows have — issue #33
                   <Button
                     variant={movieWatched ? 'soft' : 'default'}
                     icon={movieWatched ? <Check size={15} /> : <Eye size={15} />}
@@ -197,7 +203,7 @@ export function MediaModal({
                 {pct > 0 && (
                   <div className="row gap-2" style={{ marginLeft: 'auto' }}>
                     <Ring value={pct} size={38} />
-                    <span className="muted" style={{ fontSize: 'var(--fs-12)' }}>
+                    <span className="muted" style={{ fontSize: 'var(--text-xs)' }}>
                       {pct}% watched
                     </span>
                   </div>
@@ -206,11 +212,11 @@ export function MediaModal({
             </div>
           </div>
 
-          <div style={{ padding: '0 var(--sp-6)' }}>
+          <div style={{ padding: '0 var(--space-6)' }}>
             <Tabs tabs={tabs} value={tab} onChange={setTab} />
           </div>
 
-          <div style={{ padding: 'var(--sp-5) var(--sp-6) var(--sp-6)' }}>
+          <div style={{ padding: 'var(--space-5) var(--space-6) var(--space-6)' }}>
             {tab === 'overview' && <Overview details={details} />}
 
             {tab === 'episodes' && isTv && (
@@ -261,16 +267,16 @@ function Overview({ details }: { details: TMDBResult | null }) {
 
       {!!details.cast?.length && (
         <div>
-          <div className="eyebrow" style={{ marginBottom: 'var(--sp-3)' }}>
+          <div className="eyebrow" style={{ marginBottom: 'var(--space-3)' }}>
             Cast
           </div>
           <div className="row gap-4 wrap">
-            {details.cast.slice(0, 8).map((c) => (
+            {details.cast.slice(0, 15).map((c) => (
               <div key={c.id} className="row gap-2">
                 <Avatar src={c.profile_url} name={c.name} size={34} />
                 <div>
-                  <div style={{ fontSize: 'var(--fs-13)', fontWeight: 600 }}>{c.name}</div>
-                  <div className="faint" style={{ fontSize: 'var(--fs-11)' }}>
+                  <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>{c.name}</div>
+                  <div className="faint" style={{ fontSize: 'var(--text-xs)' }}>
                     {c.character}
                   </div>
                 </div>
@@ -296,10 +302,6 @@ function Episodes({
 }) {
   const { cascadeEpisodes, setCascadeEpisodes } = useAppData();
   const current = seasons.find((s) => s.season_number === season) ?? seasons[0];
-
-  useEffect(() => {
-    staggerIn(document.querySelectorAll('.episode-row'), { y: 8, each: 12 });
-  }, [season]);
 
   if (!seasons.length) return <Empty title="No episode data" />;
 
@@ -337,7 +339,7 @@ function Episodes({
         </Button>
       </div>
 
-      <div className="row gap-3 between panel panel--inset" style={{ padding: 'var(--sp-3)' }}>
+      <div className="row gap-3 between panel panel--inset" style={{ padding: 'var(--space-3)' }}>
         <div className="setting-row__text">
           <div className="setting-row__title">Fill in earlier episodes</div>
           <div className="setting-row__desc">
@@ -360,11 +362,11 @@ function Episodes({
                   label={`Season ${current.season_number} episode ${num}`}
                   onChange={(v) => onToggle(current.season_number, num, v)}
                 />
-                <span className="mono faint" style={{ fontSize: 'var(--fs-12)', width: 54 }}>
+                <span className="mono faint" style={{ fontSize: 'var(--text-xs)', width: 54 }}>
                   S{String(current.season_number).padStart(2, '0')}E{String(num).padStart(2, '0')}
                 </span>
                 <span className="episode-row__title grow truncate">Episode {num}</span>
-                <span className="faint" style={{ fontSize: 'var(--fs-12)' }}>
+                <span className="faint" style={{ fontSize: 'var(--text-xs)' }}>
                   45m
                 </span>
               </div>
@@ -419,7 +421,7 @@ function Reviews({
         <div className="stack gap-3">
           <div className="row gap-3 wrap">
             <Stars value={rating} onChange={setRating} size={20} />
-            <span className="faint">{rating ? `${rating}/10` : 'No rating yet'}</span>
+            <span className="faint">{rating ? `${(rating / 2).toFixed(1).replace(/\.0$/, '')} / 5` : 'No rating yet'}</span>
             <div className="grow" />
             <button className="chip" onClick={() => setShowHelp((s) => !s)}>
               <HelpCircle size={13} /> Formatting
@@ -427,10 +429,10 @@ function Reviews({
           </div>
 
           {showHelp && (
-            <div className="panel panel--inset" style={{ padding: 'var(--sp-3)' }}>
-              <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 'var(--sp-2)' }}>
+            <div className="panel panel--inset" style={{ padding: 'var(--space-3)' }}>
+              <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 'var(--space-2)' }}>
                 {MARKDOWN_HELP.map(([syntax, meaning]) => (
-                  <div key={syntax} className="row gap-2" style={{ fontSize: 'var(--fs-12)' }}>
+                  <div key={syntax} className="row gap-2" style={{ fontSize: 'var(--text-xs)' }}>
                     <code className="mono">{syntax}</code>
                     <span className="faint">{meaning}</span>
                   </div>
@@ -446,8 +448,8 @@ function Reviews({
           />
 
           {body.trim() && (
-            <div className="panel panel--inset" style={{ padding: 'var(--sp-3)' }}>
-              <div className="eyebrow" style={{ marginBottom: 'var(--sp-2)' }}>
+            <div className="panel panel--inset" style={{ padding: 'var(--space-3)' }}>
+              <div className="eyebrow" style={{ marginBottom: 'var(--space-2)' }}>
                 Preview
               </div>
               <Markdown text={body} />
@@ -455,7 +457,7 @@ function Reviews({
           )}
 
           <div className="row gap-3 between wrap">
-            <label className="row gap-2" style={{ fontSize: 'var(--fs-12)' }}>
+            <label className="row gap-2" style={{ fontSize: 'var(--text-xs)' }}>
               <Switch checked={spoilers} onChange={setSpoilers} label="Contains spoilers" />
               Contains spoilers
             </label>
@@ -503,19 +505,19 @@ export function ReviewCard({ review, onChanged }: { review: Review; onChanged: (
   const [revealed, setRevealed] = useState(!review.contains_spoilers);
   return (
     <article className="card" style={{ cursor: 'default' }}>
-      <div className="row gap-3" style={{ marginBottom: 'var(--sp-3)' }}>
+      <div className="row gap-3" style={{ marginBottom: 'var(--space-3)' }}>
         <Avatar src={review.user?.profile_picture} name={review.user?.nickname ?? review.user?.username} size={34} />
         <div className="grow">
           <div className="row gap-2">
-            <strong style={{ fontSize: 'var(--fs-13)' }}>
+            <strong style={{ fontSize: 'var(--text-sm)' }}>
               {review.user?.nickname ?? review.user?.username ?? 'Someone'}
             </strong>
             <Stars value={review.rating} size={13} />
-            <span className="faint" style={{ fontSize: 'var(--fs-11)' }}>
-              {review.rating}/10
+            <span className="faint" style={{ fontSize: 'var(--text-xs)' }}>
+              {(review.rating / 2).toFixed(1).replace(/\.0$/, '')} / 5
             </span>
           </div>
-          <div className="faint" style={{ fontSize: 'var(--fs-11)' }}>
+          <div className="faint" style={{ fontSize: 'var(--text-xs)' }}>
             {timeAgo(review.created_at)}
           </div>
         </div>
@@ -529,12 +531,11 @@ export function ReviewCard({ review, onChanged }: { review: Review; onChanged: (
         <Markdown text={review.body} className="muted" />
       )}
 
-      <div className="row gap-2" style={{ marginTop: 'var(--sp-3)' }}>
+      <div className="row gap-2" style={{ marginTop: 'var(--space-3)' }}>
         <button
           className="chip"
           aria-pressed={review.my_reaction === 'like'}
-          onClick={async (e) => {
-            pop(e.currentTarget);
+          onClick={async () => {
             await reviewsApi.react(review.id, 'like');
             onChanged();
           }}
@@ -544,8 +545,7 @@ export function ReviewCard({ review, onChanged }: { review: Review; onChanged: (
         <button
           className="chip"
           aria-pressed={review.my_reaction === 'dislike'}
-          onClick={async (e) => {
-            pop(e.currentTarget);
+          onClick={async () => {
             await reviewsApi.react(review.id, 'dislike');
             onChanged();
           }}

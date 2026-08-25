@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Check, FileUp, Loader2, X } from 'lucide-react';
+import { Check, FileUp, Loader2, X } from '@/lib/icons';
 import { toast } from 'sonner';
 import { discover, lists as listsApi } from '@/data/api';
 import { emit } from '@/lib/bus';

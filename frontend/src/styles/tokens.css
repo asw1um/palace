@@ -1,212 +1,177 @@
 /* ============================================================================
-   Palace design tokens
-   ----------------------------------------------------------------------------
-   One source of truth for colour, space, type, radius, elevation and motion.
-   Everything user-customisable is a variable on :root so the theme engine can
-   swap it live without a re-render.
-
-   Runtime switches (set on <html> by ThemeProvider):
-     data-mode     = dark | light
-     data-surface  = glass | solid | flat
-     data-density  = comfortable | compact
-     data-motion   = full | reduced
+   Design tokens — early-2010s forum aesthetic
+   All values feed components.css and app.css; nothing is hardcoded there.
    ========================================================================== */
 
 :root {
-  /* -- Accent (user configurable, overwritten by the theme engine) --------- */
-  --accent: #6ea8fe;
-  --accent-2: #a855f7;
+  /* -- Accent (all follow --accent so the whole UI matches the theme) --------- */
+  --accent:        #2563EB;
+  --accent-hover:  color-mix(in srgb, var(--accent) 82%, #000);
+  --accent-soft:   color-mix(in srgb, var(--accent) 16%, #1a1f2e);
+  --accent-softer: color-mix(in srgb, var(--accent) 9%, #1a1f2e);
+  --accent-text:   color-mix(in srgb, var(--accent) 62%, #fff);
+  --accent-line:   color-mix(in srgb, var(--accent) 55%, #1a1f2e);
+  --accent-2:      color-mix(in srgb, var(--accent) 42%, #000);   /* avatar gradient pair */
+  --on-accent:     #ffffff;
 
-  /* -- Derived accent ramp (color-mix keeps it in sync with any hex) ------- */
-  --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
-  --accent-softer: color-mix(in oklab, var(--accent) 8%, transparent);
-  --accent-line: color-mix(in oklab, var(--accent) 42%, transparent);
-  --accent-hover: color-mix(in oklab, var(--accent) 82%, white 18%);
-  --accent-press: color-mix(in oklab, var(--accent) 88%, black 12%);
-  --on-accent: #06080f;
+  /* -- Surfaces (dark — applyTheme() overrides with JS-derived tints) */
+  --bg:            #1a1f2e;
+  --bg-subtle:     #22283a;
+  --surface-1:     #252c3d;
+  --surface-2:     #2d3447;
+  --surface-3:     #333a50;
+  --surface-inset: #1e2438;
 
-  /* -- Spacing (4px base) -------------------------------------------------- */
-  --sp-0: 0;
-  --sp-1: 4px;
-  --sp-2: 8px;
-  --sp-3: 12px;
-  --sp-4: 16px;
-  --sp-5: 20px;
-  --sp-6: 24px;
-  --sp-8: 32px;
-  --sp-10: 40px;
-  --sp-12: 48px;
-  --sp-16: 64px;
+  /* -- Borders --------------------------------------------------------------- */
+  --border:      #3a4460;
+  --line:        #3a4460;
+  --line-strong: #4a5570;
 
-  /* -- Radius (scaled by user preference) ---------------------------------- */
-  --radius-scale: 1;
-  --r-xs: calc(4px * var(--radius-scale));
-  --r-sm: calc(8px * var(--radius-scale));
-  --r-md: calc(12px * var(--radius-scale));
-  --r-lg: calc(16px * var(--radius-scale));
-  --r-xl: calc(22px * var(--radius-scale));
+  /* -- Text ------------------------------------------------------------------ */
+  --text:          #e2e8f0;
+  --text-muted:    #94a3b8;
+  --text-faint:    #64748b;
+
+  /* -- Status ---------------------------------------------------------------- */
+  --danger:  #DC2626;
+  --success: #16A34A;
+  --warning: #D97706;
+
+  /* -- Radius (minimal — forums barely round corners) ------------------------ */
+  --r-xs:   2px;
+  --r-sm:   3px;
+  --r-md:   4px;
+  --r-lg:   6px;
+  --r-xl:   8px;
   --r-full: 999px;
 
-  /* -- Type ---------------------------------------------------------------- */
-  --font-scale: 1;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  --fs-11: calc(0.6875rem * var(--font-scale));
-  --fs-12: calc(0.75rem * var(--font-scale));
-  --fs-13: calc(0.8125rem * var(--font-scale));
-  --fs-14: calc(0.875rem * var(--font-scale));
-  --fs-16: calc(1rem * var(--font-scale));
-  --fs-18: calc(1.125rem * var(--font-scale));
-  --fs-22: calc(1.375rem * var(--font-scale));
-  --fs-28: calc(1.75rem * var(--font-scale));
-  --fs-36: calc(2.25rem * var(--font-scale));
-  --tracking-caps: 0.08em;
+  /* -- Spacing (old --sp-N names, used by components.css) ------------------- */
+  --sp-1:  2px;
+  --sp-2:  4px;
+  --sp-3:  6px;
+  --sp-4:  8px;
+  --sp-5:  10px;
+  --sp-6:  14px;
+  --sp-7:  18px;
+  --sp-8:  24px;
+  --sp-9:  28px;
+  --sp-10: 32px;
+  --sp-11: 40px;
+  --sp-12: 48px;
 
-  /* -- Motion -------------------------------------------------------------- */
-  --dur-1: 120ms;
-  --dur-2: 200ms;
-  --dur-3: 320ms;
-  --dur-4: 520ms;
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* -- Spacing (new --space-N names) ---------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 28px;
+  --space-7: 40px;
 
-  /* -- Layout -------------------------------------------------------------- */
-  --sidebar-w: 248px;
-  --sidebar-w-collapsed: 68px;
-  --topbar-h: 60px;
-  --page-max: 1440px;
-  --content-pad: var(--sp-6);
+  /* -- Typography (old --fs-N names — small, dense, forum-like) ------------- */
+  --fs-11: 10px;
+  --fs-12: 11px;
+  --fs-13: 12px;
+  --fs-14: 12px;
+  --fs-16: 13px;
+  --fs-18: 14px;
+  --fs-22: 16px;
+  --fs-28: 18px;
 
-  /* -- Z layers ------------------------------------------------------------ */
-  --z-bg: 0;
+  /* -- Typography (new --text-* names) --------------------------------------- */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-lg: 15px;
+  --text-xl: 18px;
+
+  /* -- Fonts — classic forum stack ------------------------------------------- */
+  --font-sans: Tahoma, Verdana, Arial, system-ui, sans-serif;
+  --font-mono: 'Courier New', Courier, monospace;
+
+  /* -- Layout ---------------------------------------------------------------- */
+  --topbar-h:            44px;
+  --sidebar-w:           0px;
+  --sidebar-w-collapsed: 0px;
+  --row-h:               30px;
+  --control-h:           28px;
+  --content-pad:         16px;
+  --card-pad:            12px;
+  --page-max:            1440px;
+  --poster-min:          150px;
+
+  /* -- Z-index ladder -------------------------------------------------------- */
   --z-content: 1;
-  --z-sticky: 20;
-  --z-sidebar: 40;
-  --z-overlay: 60;
-  --z-modal: 70;
-  --z-toast: 90;
+  --z-sidebar: 10;
+  --z-sticky:  20;
+  --z-overlay: 100;
+  --z-modal:   200;
+  --z-toast:   300;
+
+  /* -- Durations — minimal, fast like a 2010-era site ----------------------- */
+  --dur-1: 60ms;
+  --dur-2: 80ms;
+  --dur-3: 100ms;
+  --dur-4: 140ms;
+  --ease-out:    ease-out;
+  --ease-spring: ease-out;
+
+  /* -- Shadows — flat, no glow ----------------------------------------------- */
+  --shadow-1:       0 1px 2px rgba(0,0,0,.08);
+  --shadow-2:       0 2px 4px rgba(0,0,0,.1);
+  --shadow-3:       0 3px 8px rgba(0,0,0,.12);
+  --shadow-accent:  0 1px 4px rgba(37,99,235,.18);
+  --shadow-overlay: 0 6px 24px rgba(0,0,0,.22);
+
+  /* -- Misc ------------------------------------------------------------------ */
+  --scrim:        rgba(0,0,0,.5);
+  --panel-blur:   none;          /* no blurs — forums were fast */
+  --panel-alpha:  1;
+  --panel-border: var(--line);
+  --tracking-caps: 0.06em;
+
+  /* -- Header gradient base color (follows accent so the chrome matches the theme) --
+  --header: color-mix(in srgb, var(--accent) 45%, #1a1f2e);
+
+  /* -- Heatmap levels (dark mode) ------------------------------------------ */
+  --hm-0: var(--surface-3);   /* no activity */
+  --hm-1: color-mix(in srgb, var(--accent) 16%, var(--surface-3));
+  --hm-2: color-mix(in srgb, var(--accent) 38%, var(--surface-3));
+  --hm-3: color-mix(in srgb, var(--accent) 62%, var(--surface-3));
+  --hm-4: color-mix(in srgb, var(--accent) 88%, var(--surface-3));
+
+  color-scheme: dark;
 }
 
 /* ---------------------------------------------------------------------------
-   Dark mode (default)
-   ------------------------------------------------------------------------ */
-:root,
-:root[data-mode='dark'] {
+   Dark mode — keeps readability, swaps to dark-forum palette
+   ------------------------------------------------------------------------- */
+[data-mode="dark"] {
   color-scheme: dark;
 
-  --bg-base: #080b13;
-  --bg-deep: #05070d;
-  --surface-1: #10141f;
-  --surface-2: #161c2b;
-  --surface-3: #1e2637;
-  --surface-inset: #0b0f18;
+  --bg:            #1a1f2e;
+  --bg-subtle:     #22283a;
+  --surface-1:     #252c3d;
+  --surface-2:     #2d3447;
+  --surface-3:     #333a50;
+  --surface-inset: #1e2438;
 
-  --panel: color-mix(in oklab, var(--surface-1) 82%, transparent);
-  --panel-strong: color-mix(in oklab, var(--surface-2) 92%, transparent);
+  --border:      #3a4460;
+  --line:        #3a4460;
+  --line-strong: #4a5570;
 
-  --line: color-mix(in oklab, white 10%, transparent);
-  --line-strong: color-mix(in oklab, white 18%, transparent);
+  --text:       #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-faint: #64748b;
 
-  --text: #eef2f8;
-  --text-muted: #a4aec2;
-  --text-faint: #6f7a90;
-  --on-accent: #05070d;
+  --accent-soft:   color-mix(in srgb, var(--accent) 16%, #1a1f2e);
+  --accent-softer: color-mix(in srgb, var(--accent) 9%, #1a1f2e);
+  --accent-line:   color-mix(in srgb, var(--accent) 55%, #1a1f2e);
 
-  --success: #46d18a;
-  --warning: #f0b34a;
-  --danger: #ff6b6b;
-  --info: #63b3ff;
-
-  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
-  --shadow-2: 0 6px 20px -6px rgb(0 0 0 / 0.55);
-  --shadow-3: 0 18px 48px -12px rgb(0 0 0 / 0.65);
-  --shadow-accent: 0 8px 30px -8px color-mix(in oklab, var(--accent) 55%, transparent);
-
-  --scrim: rgb(4 6 12 / 0.66);
-}
-
-/* ---------------------------------------------------------------------------
-   Light mode
-   ------------------------------------------------------------------------ */
-:root[data-mode='light'] {
-  color-scheme: light;
-
-  --bg-base: #eef1f7;
-  --bg-deep: #e4e9f2;
-  --surface-1: #ffffff;
-  --surface-2: #f6f8fc;
-  --surface-3: #eceff6;
-  --surface-inset: #f2f4f9;
-
-  --panel: color-mix(in oklab, white 86%, transparent);
-  --panel-strong: color-mix(in oklab, white 95%, transparent);
-
-  --line: color-mix(in oklab, #0b1020 12%, transparent);
-  --line-strong: color-mix(in oklab, #0b1020 20%, transparent);
-
-  --text: #10141f;
-  --text-muted: #4e5871;
-  --text-faint: #7b849b;
-  --on-accent: #ffffff;
-
-  --success: #12915c;
-  --warning: #a86612;
-  --danger: #d33a3a;
-  --info: #1d6fd0;
-
-  --shadow-1: 0 1px 2px rgb(16 20 31 / 0.08);
-  --shadow-2: 0 8px 24px -10px rgb(16 20 31 / 0.22);
-  --shadow-3: 0 22px 50px -18px rgb(16 20 31 / 0.28);
-  --shadow-accent: 0 10px 32px -12px color-mix(in oklab, var(--accent) 55%, transparent);
-
-  --scrim: rgb(20 26 40 / 0.42);
-}
-
-/* ---------------------------------------------------------------------------
-   Surface styles — how "material" the panels feel
-   ------------------------------------------------------------------------ */
-:root[data-surface='glass'] {
-  --panel-blur: blur(18px) saturate(140%);
-  --panel-alpha: 0.72;
-  --panel-border: var(--line);
-}
-:root[data-surface='solid'] {
-  --panel-blur: none;
-  --panel-alpha: 1;
-  --panel-border: var(--line);
-}
-:root[data-surface='flat'] {
-  --panel-blur: none;
-  --panel-alpha: 1;
-  --panel-border: transparent;
-  --shadow-1: none;
-  --shadow-2: none;
-  --shadow-3: 0 10px 30px -18px rgb(0 0 0 / 0.5);
-}
-
-/* ---------------------------------------------------------------------------
-   Density
-   ------------------------------------------------------------------------ */
-:root[data-density='compact'] {
-  --content-pad: var(--sp-4);
-  --row-h: 34px;
-  --control-h: 32px;
-  --card-pad: var(--sp-3);
-}
-:root,
-:root[data-density='comfortable'] {
-  --row-h: 42px;
-  --control-h: 38px;
-  --card-pad: var(--sp-5);
-}
-
-/* ---------------------------------------------------------------------------
-   Motion preference — one switch that every transition respects
-   ------------------------------------------------------------------------ */
-:root[data-motion='reduced'] * {
-  animation-duration: 0.001ms !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: 0.001ms !important;
-  scroll-behavior: auto !important;
+  /* -- Heatmap levels (dark mode) ------------------------------------------- */
+  --hm-0: var(--surface-3);   /* no activity */
+  --hm-1: color-mix(in srgb, var(--accent) 16%, var(--surface-3));
+  --hm-2: color-mix(in srgb, var(--accent) 38%, var(--surface-3));
+  --hm-3: color-mix(in srgb, var(--accent) 62%, var(--surface-3));
+  --hm-4: color-mix(in srgb, var(--accent) 88%, var(--surface-3));
 }

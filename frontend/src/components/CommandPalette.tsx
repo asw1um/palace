@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import {
-  Bell, Compass, Film, Home, ListVideo, Moon, Palette, Search, Settings as Cog,
-  Sun, Users, Activity as ActivityIcon, CornerDownLeft,
-} from 'lucide-react';
+  Activity as ActivityIcon, Bell, Compass, CornerDownLeft, Film, Home, ListVideo,
+  Palette, Search, Settings as Cog, Users,
+} from '@/lib/icons';
 import { discover } from '@/data/api';
 import type { TMDBResult } from '@/data/types';
 import { rank } from '@/lib/fuzzy';
 import { titleCase } from '@/lib/format';
 import { useDebounced } from '@/lib/hooks';
-import { gsap, reducedMotion } from '@/lib/motion';
 import { useTheme } from '@/theme/ThemeProvider';
 import { PRESETS } from '@/theme/themeConfig';
 import { useAppData } from './AppData';
@@ -25,9 +24,9 @@ interface Cmd {
 }
 
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { lists, openMedia, openCreateList } = useAppData();
-  const { theme, set, applyPreset } = useTheme();
+  const { set } = useTheme();
   const [query, setQuery] = useState('');
   const [cursor, setCursor] = useState(0);
   const [results, setResults] = useState<TMDBResult[]>([]);
@@ -39,13 +38,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     if (!open) return;
     setQuery('');
     setCursor(0);
-    if (panelRef.current && !reducedMotion()) {
-      gsap.fromTo(
-        panelRef.current,
-        { opacity: 0, y: -14, scale: 0.98 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.26, ease: 'power3.out' },
-      );
-    }
   }, [open]);
 
   useEffect(() => {
@@ -59,7 +51,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   }, [debounced]);
 
   const commands = useMemo<Cmd[]>(() => {
-    const go = (path: string) => () => { navigate(path); onClose(); };
+    const go = (path: string) => () => { router.push(path); onClose(); };
     const base: Cmd[] = [
       { id: 'home', label: 'Dashboard', group: 'Go to', icon: <Home size={15} />, run: go('/') },
       { id: 'lists', label: 'My lists', group: 'Go to', icon: <ListVideo size={15} />, run: go('/lists') },
@@ -76,20 +68,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         icon: <ListVideo size={15} />,
         run: () => { openCreateList(); onClose(); },
       },
-      {
-        id: 'mode',
-        label: theme.mode === 'light' ? 'Switch to dark mode' : 'Switch to light mode',
-        group: 'Appearance',
-        icon: theme.mode === 'light' ? <Moon size={15} /> : <Sun size={15} />,
-        run: () => { set({ mode: theme.mode === 'light' ? 'dark' : 'light' }); onClose(); },
-      },
       ...PRESETS.map((p) => ({
         id: `theme-${p.id}`,
         label: `Theme: ${p.name}`,
-        hint: p.mode,
         group: 'Appearance',
-        icon: <Palette size={15} color={p.accent} />,
-        run: () => { applyPreset(p.id); onClose(); },
+        icon: <Palette size={15} style={{ color: p.accent }} />,
+        run: () => { set({ accent: p.accent, header: p.header }); onClose(); },
       })),
       ...lists.map((l) => ({
         id: `list-${l.id}`,
@@ -97,11 +81,11 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         hint: `${(l.movie_count ?? 0) + (l.show_count ?? 0)} titles`,
         group: 'Your lists',
         icon: <ListVideo size={15} />,
-        run: () => { navigate(`/lists/${l.id}`); onClose(); },
+        run: () => { router.push(`/lists/${l.id}`); onClose(); },
       })),
     ];
     return base;
-  }, [navigate, onClose, lists, theme.mode, set, applyPreset, openCreateList]);
+  }, [router, onClose, lists, set, openCreateList]);
 
   const filtered = useMemo(() => {
     const cmds = rank(commands, query, (c) => `${c.group} ${c.label}`);
@@ -175,7 +159,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
         <div className="cmdk__list" ref={listRef}>
           {filtered.length === 0 && (
-            <div className="empty" style={{ padding: 'var(--sp-8)' }}>
+            <div className="empty" style={{ padding: 'var(--space-7)' }}>
               <p>Nothing matches “{query}”.</p>
             </div>
           )}
@@ -194,7 +178,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                 >
                   {c.icon}
                   <span className="grow truncate">{c.label}</span>
-                  {c.hint && <span className="faint" style={{ fontSize: 'var(--fs-11)' }}>{c.hint}</span>}
+                  {c.hint && <span className="faint" style={{ fontSize: 'var(--text-xs)' }}>{c.hint}</span>}
                   {i === cursor && <CornerDownLeft size={13} />}
                 </button>
               </div>

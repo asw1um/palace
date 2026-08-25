@@ -3,8 +3,7 @@ import {
   useState, type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
-import { gsap, reducedMotion } from '@/lib/motion';
+import { X } from '@/lib/icons';
 import { useDialog } from '@/lib/hooks';
 import { Button } from './Button';
 
@@ -35,35 +34,21 @@ export function Modal({
     if (!overlay || !panel) return;
 
     if (open) {
-      if (reducedMotion()) {
-        gsap.set([overlay, panel], { opacity: 1, y: 0, scale: 1 });
-        return;
-      }
-      const tl = gsap.timeline();
-      tl.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.18, ease: 'power2.out' })
-        .fromTo(
-          panel,
-          { opacity: 0, y: 18, scale: 0.97 },
-          { opacity: 1, y: 0, scale: 1, duration: 0.34, ease: 'back.out(1.4)' },
-          '-=0.08',
-        );
-      return () => { tl.kill(); };
-    }
-
-    // Closing: unmount immediately when no frames will run (hidden tab, reduced
-    // motion) — otherwise onComplete never fires and the dialog is stuck open.
-    if (reducedMotion() || document.hidden) {
-      setMounted(false);
+      // Flush layout so the transition fires from the initial hidden state.
+      void overlay.offsetHeight;
+      overlay.setAttribute('data-open', '');
+      panel.setAttribute('data-open', '');
       return;
     }
 
-    const tl = gsap.timeline({ onComplete: () => setMounted(false) });
-    tl.to(panel, { opacity: 0, y: 10, scale: 0.98, duration: 0.16, ease: 'power2.in' })
-      .to(overlay, { opacity: 0, duration: 0.14 }, '-=0.08');
-    // Belt and braces: never let a failed tween trap the dialog on screen.
+    // Closing: remove attribute to trigger out-transition, then unmount.
+    overlay.removeAttribute('data-open');
+    panel.removeAttribute('data-open');
+    const t = window.setTimeout(() => setMounted(false), 160);
+    // Belt and braces: never let a failed transition trap the dialog on screen.
     const failsafe = window.setTimeout(() => setMounted(false), 600);
     return () => {
-      tl.kill();
+      clearTimeout(t);
       clearTimeout(failsafe);
     };
   }, [open, mounted, dialogRef]);
