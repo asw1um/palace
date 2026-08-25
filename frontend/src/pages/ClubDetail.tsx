@@ -104,61 +104,7 @@ export default function ClubDetail() {
               <Chip>created {timeAgo(club.created_at)}</Chip>
             </div>
           </div>
-<<<<<<< Updated upstream
 
-          {/* Members */}
-          <GlassBox title="Members" collapsible defaultCollapsed={false} rightAction={<span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0', textTransform: 'none' }}>{members.length}</span>}>
-            {members.length > 0 ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px' }}>
-                {members.map(m => {
-                  const display_name = (m.nickname ?? m.username) || 'User';
-                  const isSelected = selectedMember?.id === m.id;
-                  return (
-                    <div
-                      key={m.id}
-                      onClick={e => {
-                        if (isSelected) { setSelectedMember(null); return; }
-                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                        const popupW = 340, popupH = 320;
-                        const MARGIN = 16;
-                        // Position to the right of the card, top-aligned with the card
-                        let x = rect.right + MARGIN;
-                        if (x + popupW > window.innerWidth - MARGIN) x = rect.left - popupW - MARGIN;
-                        if (x < MARGIN) x = MARGIN;
-                        let y = rect.top;
-                        if (y < MARGIN) y = MARGIN;
-                        if (y + popupH > window.innerHeight - MARGIN) y = window.innerHeight - popupH - MARGIN;
-                        setPopupPos({ x, y });
-                        setSelectedMember(m);
-                      }}
-                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', cursor: 'pointer', padding: '6px', borderRadius: '10px', border: `1px solid ${isSelected ? 'var(--t-primary-50)' : 'transparent'}`, background: isSelected ? 'var(--t-primary-12)' : 'transparent', transition: 'all 0.15s' }}
-                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
-                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
-                    >
-                      {m.profile_picture ? (
-                        <div className="avatar-circle" style={{ width: '52px', height: '52px', borderRadius: '50%', overflow: 'hidden', boxShadow: isSelected ? 'inset 0 0 0 2px var(--t-primary), 0 0 0 3px var(--t-primary-30)' : 'inset 0 0 0 2px rgba(255,255,255,0.2)', transition: 'all 0.15s' }}>
-                          <img src={m.profile_picture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                        </div>
-                      ) : (
-                        <div className="avatar-circle" style={{ width: '52px', height: '52px', background: userGradient(display_name), borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#fff', boxShadow: isSelected ? 'inset 0 0 0 2px var(--t-primary), 0 0 0 3px var(--t-primary-30)' : 'inset 0 0 0 2px rgba(255,255,255,0.2)', transition: 'all 0.15s' }}>
-                          {display_name.slice(0, 2).toUpperCase()}
-                        </div>
-                      )}
-                      <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', maxWidth: '64px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center' }}>{display_name}</div>
-                      {m.id === club.admin_id
-                        ? <div style={{ fontSize: '8px', color: 'var(--t-primary)', fontWeight: 700, letterSpacing: '0.5px', marginTop: '-2px' }}>ADMIN</div>
-                        : (club.mod_ids || []).includes(m.id)
-                          ? <div style={{ fontSize: '8px', color: '#f0a500', fontWeight: 700, letterSpacing: '0.5px', marginTop: '-2px' }}>MOD</div>
-                          : (club.helper_ids || []).includes(m.id)
-                            ? <div style={{ fontSize: '8px', color: '#63b3ed', fontWeight: 700, letterSpacing: '0.5px', marginTop: '-2px' }}>HELPER</div>
-                            : null}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '20px', color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>No members yet</div>
-=======
           <div className="row gap-2">
             <Button
               variant={joined ? 'ghost' : 'primary'}
@@ -175,7 +121,6 @@ export default function ClubDetail() {
               <Button icon={<ListPlus size={15} />} onClick={() => setCreating(true)}>
                 New list
               </Button>
->>>>>>> Stashed changes
             )}
           </div>
         </div>
