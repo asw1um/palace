@@ -1,6 +1,6 @@
-import { useLayoutEffect, useRef, type HTMLAttributes, type ReactNode } from 'react';
-import { Star } from 'lucide-react';
-import { countUp, moveInk } from '@/lib/motion';
+import { useState, useLayoutEffect, useRef, type HTMLAttributes, type ReactNode } from 'react';
+import Image from 'next/image';
+import { Star } from '@/lib/icons';
 import { initials } from '@/lib/format';
 
 /* ------------------------------------------------------------------ Panel -- */
@@ -32,7 +32,9 @@ export function Avatar({
 }: { src?: string | null; name?: string | null; size?: number; className?: string }) {
   return (
     <div className={`avatar ${className}`} style={{ ['--size' as string]: `${size}px` }}>
-      {src ? <img src={src} alt="" loading="lazy" /> : <span>{initials(name)}</span>}
+      {src
+        ? <Image src={src} alt="" width={size} height={size} unoptimized={src.startsWith('data:')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : <span>{initials(name)}</span>}
     </div>
   );
 }
@@ -107,18 +109,15 @@ export function Ring({ value, size = 44 }: { value: number; size?: number }) {
 export function Stat({
   label, value, icon, foot, suffix,
 }: { label: string; value: number; icon?: ReactNode; foot?: ReactNode; suffix?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  // Layout effect so the placeholder never paints before the counter starts.
-  useLayoutEffect(() => {
-    countUp(ref.current, value, { suffix });
-  }, [value, suffix]);
   return (
     <div className="stat">
       <div className="stat__label">
         {icon}
         {label}
       </div>
-      <div className="stat__value" ref={ref}>0</div>
+      <div className="stat__value">
+        {value.toLocaleString()}{suffix}
+      </div>
       {foot && <div className="stat__foot">{foot}</div>}
     </div>
   );
@@ -135,19 +134,13 @@ export function Tabs<T extends string>({
   tabs, value, onChange,
 }: { tabs: TabDef<T>[]; value: T; onChange: (v: T) => void }) {
   const wrap = useRef<HTMLDivElement>(null);
-  const ink = useRef<HTMLDivElement>(null);
-  const first = useRef(true);
 
   useLayoutEffect(() => {
-    const active = wrap.current?.querySelector<HTMLElement>(`[data-tab="${value}"]`);
-    moveInk(ink.current, active ?? null, first.current);
-    first.current = false;
-    active?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    wrap.current?.querySelector<HTMLElement>(`[data-tab="${value}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }, [value, tabs.length]);
 
   return (
     <div className="tabs" role="tablist" ref={wrap}>
-      <div className="tabs__ink" ref={ink} style={{ opacity: 0 }} />
       {tabs.map((t) => (
         <button
           key={t.value}
@@ -166,33 +159,91 @@ export function Tabs<T extends string>({
 }
 
 /* ----------------------------------------------------------------- Stars ---- */
+
+/* Renders one star: full fill, left-half fill (for N.5 ratings), or empty. */
+function StarIcon({ size, fill, idx }: { size: number; fill: 'full' | 'half' | 'none'; idx: number }) {
+  const clipId = `star-half-${idx}`;
+  const pts = '12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26';
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: 'block', flexShrink: 0 }} aria-hidden="true">
+      {fill === 'half' && (
+        <defs>
+          <clipPath id={clipId}><rect x="0" y="0" width="12" height="24" /></clipPath>
+        </defs>
+      )}
+      <polygon points={pts} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      {fill !== 'none' && (
+        <polygon
+          points={pts}
+          fill="currentColor"
+          stroke="none"
+          clipPath={fill === 'half' ? `url(#${clipId})` : undefined}
+        />
+      )}
+    </svg>
+  );
+}
+
+/**
+ * 5-star display with half-star precision.
+ * Internal scale: 1–10 (stored in DB). Display: 0.5–5 stars.
+ *   1 = ½★  2 = 1★  3 = 1½★  … 10 = 5★
+ */
 export function Stars({
-  value, onChange, size = 16, max = 10,
-}: { value: number; onChange?: (v: number) => void; size?: number; max?: number }) {
-  const filled = Math.round((value / max) * 5);
+  value, onChange, size = 16,
+}: { value: number; onChange?: (v: number) => void; size?: number }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const display = hover ?? value;
+
+  const fillFor = (i: number): 'full' | 'half' | 'none' => {
+    const full = (i + 1) * 2;   // 2,4,6,8,10
+    const half = full - 1;       // 1,3,5,7,9
+    if (display >= full) return 'full';
+    if (display >= half) return 'half';
+    return 'none';
+  };
+
   if (!onChange) {
     return (
-      <span className="stars" aria-label={`${value} out of ${max}`}>
+      <span className="stars" aria-label={`${value / 2} out of 5`}>
         {Array.from({ length: 5 }, (_, i) => (
-          <Star key={i} size={size} fill={i < filled ? 'currentColor' : 'none'} strokeWidth={1.6} />
+          <StarIcon key={i} size={size} fill={fillFor(i)} idx={i} />
         ))}
       </span>
     );
   }
+
   return (
-    <span className="stars" role="radiogroup" aria-label="Your rating">
-      {Array.from({ length: max }, (_, i) => (
-        <button
-          key={i}
-          type="button"
-          role="radio"
-          aria-checked={value === i + 1}
-          aria-label={`${i + 1} of ${max}`}
-          onClick={() => onChange(i + 1)}
-        >
-          <Star size={size} fill={i < value ? 'currentColor' : 'none'} strokeWidth={1.6} />
-        </button>
-      ))}
+    <span className="stars" role="radiogroup" aria-label="Your rating" onMouseLeave={() => setHover(null)}>
+      {Array.from({ length: 5 }, (_, i) => {
+        const fullVal = (i + 1) * 2;
+        const halfVal = fullVal - 1;
+        return (
+          <span key={i} style={{ position: 'relative', display: 'inline-flex', width: size, height: size }}>
+            <StarIcon size={size} fill={fillFor(i)} idx={i} />
+            {/* Left half click → half-star */}
+            <button
+              type="button"
+              role="radio"
+              aria-checked={value === halfVal}
+              aria-label={`${halfVal / 2} stars`}
+              style={{ position: 'absolute', inset: 0, right: '50%', opacity: 0, cursor: 'pointer', border: 'none', background: 'none', padding: 0 }}
+              onMouseEnter={() => setHover(halfVal)}
+              onClick={() => onChange(halfVal)}
+            />
+            {/* Right half click → full star */}
+            <button
+              type="button"
+              role="radio"
+              aria-checked={value === fullVal}
+              aria-label={`${fullVal / 2} stars`}
+              style={{ position: 'absolute', inset: 0, left: '50%', opacity: 0, cursor: 'pointer', border: 'none', background: 'none', padding: 0 }}
+              onMouseEnter={() => setHover(fullVal)}
+              onClick={() => onChange(fullVal)}
+            />
+          </span>
+        );
+      })}
     </span>
   );
 }

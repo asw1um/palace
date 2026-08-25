@@ -1,5 +1,4 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
-import { pop } from '@/lib/motion';
 
 type Variant = 'default' | 'primary' | 'ghost' | 'soft' | 'danger';
 type Size = 'sm' | 'md' | 'lg';
@@ -33,7 +32,6 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       className={classes}
       onClick={(e) => {
-        if (bounce) pop(e.currentTarget);
         onClick?.(e);
       }}
       {...rest}

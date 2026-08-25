@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import axios from 'axios';
-import { Bug, Check, Code2, ExternalLink, GitBranch, Server, X } from 'lucide-react';
+import { Bug, Check, Code2, ExternalLink, GitBranch, Server, X } from '@/lib/icons';
 import { currentMode, modePreference, setModePreference } from '@/data/client';
 import { timeAgo } from '@/lib/format';
 import { Chip, Panel, Skeleton } from './ui/Bits';
@@ -97,7 +97,7 @@ export function SiteStatus() {
     [
       'Build',
       <span className="mono faint" key="build" style={{ fontSize: 'var(--fs-12)' }}>
-        {__BUILD_COMMIT__} · {timeAgo(__BUILD_TIME__)}
+        {process.env.NEXT_PUBLIC_BUILD_COMMIT ?? 'local'} · {timeAgo(process.env.NEXT_PUBLIC_BUILD_TIME ?? '')}
       </span>,
     ],
     [

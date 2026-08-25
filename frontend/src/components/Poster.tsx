@@ -1,11 +1,11 @@
 import { useState, type DragEvent as ReactDragEvent, type ReactNode } from 'react';
+import Image from 'next/image';
 import {
   Check, Eye, Film, FolderPlus, GripVertical, Info, ListPlus, Plus, Star, Trash2, Tv,
-} from 'lucide-react';
+} from '@/lib/icons';
 import { Menu, MenuItem, MenuLabel, MenuSep, useContextMenu } from './ui/Menu';
 import { IconButton } from './ui/Button';
 import { useAppData } from './AppData';
-import { pop } from '@/lib/motion';
 import { year } from '@/lib/format';
 import type { MediaType } from '@/data/types';
 
@@ -21,6 +21,7 @@ export interface PosterRef {
 export function Poster({
   item, progress, watched, onRemove, footer, className = '',
   selectable, selected, onSelect, draggable, onDragStart, onDragOver, onDrop,
+  priority,
 }: {
   item: PosterRef;
   /** 0–100; draws the thin bar along the bottom. */
@@ -37,6 +38,8 @@ export function Poster({
   onDragStart?: () => void;
   onDragOver?: (e: ReactDragEvent) => void;
   onDrop?: () => void;
+  /** Marks the img as high-priority (LCP) so next/image loads it eagerly. */
+  priority?: boolean;
 }) {
   const { openMedia, openAddTo, quickAdd, markWatched, openCreateList } = useAppData();
   const menu = useContextMenu();
@@ -66,21 +69,39 @@ export function Poster({
         {...menu.triggerProps}
       >
         {item.poster_url && !failed ? (
-          <img src={item.poster_url} alt="" loading="lazy" onError={() => setFailed(true)} />
+          <Image
+            src={item.poster_url}
+            alt=""
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1280px) 25vw, 220px"
+            priority={priority}
+            style={{ objectFit: 'cover' }}
+            onError={() => setFailed(true)}
+          />
         ) : (
           <div className="poster__fallback">{item.title}</div>
+        )}
+
+        {/* Rating badge — top left */}
+        {!selectable && item.rating ? (
+          <div className="poster__rating">
+            <Star size={10} />
+            {item.rating.toFixed(1)}
+          </div>
+        ) : null}
+
+        {/* Media type — top right */}
+        {!selectable && (
+          <div className="poster__type">
+            {item.media_type === 'tv' ? <Tv size={11} /> : <Film size={11} />}
+          </div>
         )}
 
         {selectable ? (
           <div className="poster__check" aria-hidden="true">
             {selected && <Check size={14} />}
           </div>
-        ) : (
-          <div className="poster__badge">
-            {item.media_type === 'tv' ? <Tv size={11} /> : <Film size={11} />}
-            {item.rating ? item.rating.toFixed(1) : item.media_type === 'tv' ? 'Series' : 'Film'}
-          </div>
-        )}
+        ) : null}
 
         {draggable && (
           <div className="poster__grip" aria-hidden="true">
@@ -88,14 +109,13 @@ export function Poster({
           </div>
         )}
 
-        {/* Hover actions get out of the way while picking tiles. */}
+        {/* Hover actions — hidden while picking tiles */}
         {!selectable && (
           <div className="poster__actions">
             <IconButton
               label="Add to list"
               onClick={(e) => {
                 e.stopPropagation();
-                pop(e.currentTarget);
                 openAddTo(item);
               }}
             >
@@ -105,7 +125,6 @@ export function Poster({
               label={watched ? 'Watched' : 'Mark watched'}
               onClick={(e) => {
                 e.stopPropagation();
-                pop(e.currentTarget);
                 markWatched(item, !watched);
               }}
             >
@@ -114,25 +133,22 @@ export function Poster({
           </div>
         )}
 
-        <div className="poster__veil">
-          <div className="poster__title">{item.title}</div>
-          <div className="poster__row faint" style={{ fontSize: 11, color: 'rgba(255,255,255,.72)' }}>
-            {year(item.release_date) && <span>{year(item.release_date)}</span>}
-            {item.rating ? (
-              <>
-                <span>·</span>
-                <Star size={11} /> {item.rating.toFixed(1)}
-              </>
-            ) : null}
-          </div>
-        </div>
-
         {progress !== undefined && progress > 0 && (
           <div className="poster__progress">
             <span style={{ width: `${Math.min(100, progress)}%` }} />
           </div>
         )}
       </div>
+
+      {/* Title + year: only when no footer is supplying its own title */}
+      {!footer && (
+        <div className="poster__info">
+          <div className="poster__name truncate">{item.title}</div>
+          {year(item.release_date) && (
+            <div className="poster__meta faint">{year(item.release_date)}</div>
+          )}
+        </div>
+      )}
 
       {footer}
 
@@ -147,7 +163,6 @@ export function Poster({
         <MenuItem icon={<Plus size={15} />} onClick={() => { menu.close(); quickAdd(item); }}>
           Quick add to Want to watch
         </MenuItem>
-        {/* Create a brand new list straight from a poster — issue #116 */}
         <MenuItem icon={<FolderPlus size={15} />} onClick={() => { menu.close(); openCreateList(item); }}>
           New list with this title…
         </MenuItem>

@@ -3,7 +3,6 @@ import {
   type MouseEvent as ReactMouseEvent, type ReactNode, type TouchEvent as ReactTouchEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { gsap, reducedMotion } from '@/lib/motion';
 
 export interface MenuPoint { x: number; y: number }
 
@@ -35,14 +34,6 @@ export function Menu({
     x = Math.max(pad, Math.min(x, window.innerWidth - rect.width - pad));
     if (y + rect.height > window.innerHeight - pad) y = Math.max(pad, at.y - rect.height);
     setPos({ x, y });
-
-    if (!reducedMotion()) {
-      gsap.fromTo(
-        ref.current,
-        { opacity: 0, y: -6, scale: 0.97 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.18, ease: 'power3.out' },
-      );
-    }
   }, [open, at, align]);
 
   useEffect(() => {

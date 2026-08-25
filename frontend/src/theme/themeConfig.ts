@@ -1,72 +1,38 @@
-/**
- * The full shape of what a user can customise, plus the presets that ship
- * with Palace. Everything here is serialised to localStorage and mirrored to
- * the backend user settings when a session is available.
- */
-
-export type Mode = 'dark' | 'light' | 'system';
-export type Surface = 'glass' | 'solid' | 'flat';
 export type Density = 'comfortable' | 'compact';
-export type MotionPref = 'full' | 'reduced' | 'system';
-export type Backdrop = 'mesh' | 'gradient' | 'solid' | 'video' | 'image';
 
 export interface ThemeState {
-  preset: string;
-  mode: Mode;
   accent: string;
-  accent2: string;
-  surface: Surface;
+  header: string;    // panel / section header gradient base color
   density: Density;
-  radius: number;      // 0.4 – 1.5 multiplier
-  fontScale: number;   // 0.9 – 1.2 multiplier
-  motion: MotionPref;
-  backdrop: Backdrop;
-  /** Data URL or remote URL for backdrop: 'image' (issue #4). */
-  backdropImage: string | null;
-  /** How dense the poster grids are — min tile width in px. */
-  posterSize: number;
-  /** 12h vs 24h clock. */
-  timeFormat: '12' | '24';
+  radius: number;    // 0.4–1.5 multiplier
+  textSize: number;  // 0.9–1.2 multiplier
 }
 
 export interface Preset {
   id: string;
   name: string;
   accent: string;
-  accent2: string;
-  mode: Exclude<Mode, 'system'>;
+  header: string;
 }
 
 export const PRESETS: Preset[] = [
-  { id: 'midnight',  name: 'Midnight',   accent: '#6ea8fe', accent2: '#a855f7', mode: 'dark' },
-  { id: 'abyss',     name: 'Abyss',      accent: '#38bdf8', accent2: '#0ea5e9', mode: 'dark' },
-  { id: 'orchid',    name: 'Orchid',     accent: '#c084fc', accent2: '#f472b6', mode: 'dark' },
-  { id: 'ember',     name: 'Ember',      accent: '#fb7185', accent2: '#f59e0b', mode: 'dark' },
-  { id: 'matcha',    name: 'Matcha',     accent: '#4ade80', accent2: '#22d3ee', mode: 'dark' },
-  { id: 'mango',     name: 'Mango',      accent: '#fbbf24', accent2: '#fb923c', mode: 'dark' },
-  { id: 'noir',      name: 'Noir',       accent: '#d4d4d8', accent2: '#71717a', mode: 'dark' },
-  { id: 'daylight',  name: 'Daylight',   accent: '#2563eb', accent2: '#7c3aed', mode: 'light' },
-  { id: 'linen',     name: 'Linen',      accent: '#b45309', accent2: '#0d9488', mode: 'light' },
-  { id: 'meadow',    name: 'Meadow',     accent: '#15803d', accent2: '#0891b2', mode: 'light' },
+  { id: 'default',  name: 'Default',  accent: '#2563EB', header: '#1e4c80' },
+  { id: 'midnight', name: 'Midnight', accent: '#6ea8fe', header: '#1e3a6e' },
+  { id: 'orchid',   name: 'Orchid',   accent: '#c084fc', header: '#4a1d96' },
+  { id: 'ember',    name: 'Ember',    accent: '#fb7185', header: '#881337' },
+  { id: 'matcha',   name: 'Matcha',   accent: '#4ade80', header: '#14532d' },
+  { id: 'slate',    name: 'Slate',    accent: '#94a3b8', header: '#1e293b' },
 ];
 
 export const DEFAULT_THEME: ThemeState = {
-  preset: 'midnight',
-  mode: 'dark',
-  accent: '#6ea8fe',
-  accent2: '#a855f7',
-  surface: 'glass',
+  accent: '#2563EB',
+  header: '#1e4c80',
   density: 'comfortable',
   radius: 1,
-  fontScale: 1,
-  motion: 'system',
-  backdrop: 'mesh',
-  backdropImage: null,
-  posterSize: 150,
-  timeFormat: '24',
+  textSize: 1,
 };
 
-export const THEME_KEY = 'palace.theme.v1';
+export const THEME_KEY = 'palace.theme.v2';
 
 export function loadTheme(): ThemeState {
   try {
@@ -82,40 +48,51 @@ export function saveTheme(t: ThemeState) {
   try {
     localStorage.setItem(THEME_KEY, JSON.stringify(t));
   } catch {
-    /* quota — non fatal, the theme just will not persist */
+    /* quota — non fatal */
   }
 }
 
-/** Resolves `system` into a concrete mode. */
-export function resolveMode(mode: Mode): 'dark' | 'light' {
-  if (mode !== 'system') return mode;
-  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+/** Mixes two hex colors. ratio=1 → all c1, ratio=0 → all c2. */
+function mixHex(c1: string, c2: string, ratio: number): string {
+  const a = hexToRgb(c1), b = hexToRgb(c2);
+  const r = Math.round(a.r * ratio + b.r * (1 - ratio));
+  const g = Math.round(a.g * ratio + b.g * (1 - ratio));
+  const bv = Math.round(a.b * ratio + b.b * (1 - ratio));
+  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${bv.toString(16).padStart(2,'0')}`;
 }
 
-export function resolveMotion(pref: MotionPref): 'full' | 'reduced' {
-  if (pref !== 'system') return pref;
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduced' : 'full';
-}
-
-/** Writes the whole theme onto the document element. */
+/** Writes the theme onto the document element. Always dark mode. */
 export function applyTheme(t: ThemeState) {
   const el = document.documentElement;
-  el.dataset.mode = resolveMode(t.mode);
-  el.dataset.surface = t.surface;
+  el.dataset.mode = 'dark';
   el.dataset.density = t.density;
-  el.dataset.motion = resolveMotion(t.motion);
   el.style.setProperty('--accent', t.accent);
-  el.style.setProperty('--accent-2', t.accent2);
-  el.style.setProperty('--radius-scale', String(t.radius));
-  el.style.setProperty('--font-scale', String(t.fontScale));
-  el.style.setProperty('--poster-min', `${t.posterSize}px`);
   el.style.setProperty('--on-accent', readableOn(t.accent));
+  // Use the chosen header color only when the user customised it; otherwise let
+  // the chrome (top bar, panels, heatmap) follow the accent so the whole UI
+  // matches the theme you picked instead of staying the default blue.
+  const h = t.header && t.header !== DEFAULT_THEME.header ? t.header : t.accent;
+  el.style.setProperty('--header', h);
+
+  el.style.setProperty('--bg',            mixHex(h, '#0f1118', 0.22));
+  el.style.setProperty('--bg-subtle',     mixHex(h, '#141820', 0.28));
+  el.style.setProperty('--surface-1',     mixHex(h, '#1e2230', 0.24));
+  el.style.setProperty('--surface-2',     mixHex(h, '#222838', 0.30));
+  el.style.setProperty('--surface-3',     mixHex(h, '#282e40', 0.34));
+  el.style.setProperty('--surface-inset', mixHex(h, '#181e2a', 0.25));
+  el.style.setProperty('--border',        mixHex(h, '#2a3040', 0.36));
+  el.style.setProperty('--line',          mixHex(h, '#2a3040', 0.36));
+  el.style.setProperty('--line-strong',   mixHex(h, '#3a4050', 0.46));
+
+  el.style.setProperty('--radius-scale', String(t.radius));
+  el.style.setProperty('--font-scale', String(t.textSize));
+  el.style.setProperty('--poster-min', '150px');
 
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', resolveMode(t.mode) === 'light' ? '#eef1f7' : '#080b13');
+  if (meta) meta.setAttribute('content', '#0B1220');
 }
 
-/** Picks black or white text for a given background colour (WCAG-ish). */
+/** Picks black or white text for a given background color (WCAG-ish). */
 export function readableOn(hex: string): string {
   const { r, g, b } = hexToRgb(hex);
   const lum = (c: number) => {

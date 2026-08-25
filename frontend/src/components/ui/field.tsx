@@ -2,7 +2,6 @@ import {
   forwardRef, useEffect, useLayoutEffect, useRef, type InputHTMLAttributes,
   type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes,
 } from 'react';
-import { moveThumb } from '@/lib/motion';
 
 export function Field({
   label, hint, children, htmlFor,
@@ -97,7 +96,7 @@ export interface SegmentOption<T extends string> {
   icon?: ReactNode;
 }
 
-/** Segmented control with a GSAP-driven thumb. */
+/** Segmented control with a CSS-transition-driven thumb. */
 export function Segmented<T extends string>({
   options, value, onChange, ariaLabel,
 }: { options: SegmentOption<T>[]; value: T; onChange: (v: T) => void; ariaLabel: string }) {
@@ -107,14 +106,22 @@ export function Segmented<T extends string>({
 
   useLayoutEffect(() => {
     const active = wrap.current?.querySelector<HTMLElement>(`[data-val="${value}"]`);
-    moveThumb(thumb.current, active ?? null, first.current);
+    if (!thumb.current || !active) return;
+    const isFirst = first.current;
+    thumb.current.style.transition = isFirst ? 'none' : 'left 150ms ease, width 150ms ease';
+    thumb.current.style.left = `${active.offsetLeft}px`;
+    thumb.current.style.width = `${active.offsetWidth}px`;
+    thumb.current.style.opacity = '1';
     first.current = false;
   }, [value, options.length]);
 
   useEffect(() => {
     const onResize = () => {
       const active = wrap.current?.querySelector<HTMLElement>(`[data-val="${value}"]`);
-      moveThumb(thumb.current, active ?? null, true);
+      if (!thumb.current || !active) return;
+      thumb.current.style.transition = 'none';
+      thumb.current.style.left = `${active.offsetLeft}px`;
+      thumb.current.style.width = `${active.offsetWidth}px`;
     };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);

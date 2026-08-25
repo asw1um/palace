@@ -1,0 +1,71 @@
+// Central lucide icon re-exports.
+//
+// Importing from the 'lucide-react' barrel makes Turbopack trace every icon
+// (and it crashes on a file like moon.js). Importing each icon from its own
+// dist subpath — via a default re-export — only pulls in the icons actually
+// used. Add new icons here + import from '@/lib/icons' instead of 'lucide-react'.
+export { default as Activity } from 'lucide-react/dist/esm/icons/activity.js';
+export { default as AlertTriangle } from 'lucide-react/dist/esm/icons/alert-triangle.js';
+export { default as ArrowDownUp } from 'lucide-react/dist/esm/icons/arrow-down-up.js';
+export { default as ArrowLeft } from 'lucide-react/dist/esm/icons/arrow-left.js';
+export { default as ArrowRight } from 'lucide-react/dist/esm/icons/arrow-right.js';
+export { default as Bell } from 'lucide-react/dist/esm/icons/bell.js';
+export { default as BellOff } from 'lucide-react/dist/esm/icons/bell-off.js';
+export { default as Bug } from 'lucide-react/dist/esm/icons/bug.js';
+export { default as CalendarDays } from 'lucide-react/dist/esm/icons/calendar-days.js';
+export { default as Camera } from 'lucide-react/dist/esm/icons/camera.js';
+export { default as Check } from 'lucide-react/dist/esm/icons/check.js';
+export { default as CheckCheck } from 'lucide-react/dist/esm/icons/check-check.js';
+export { default as Clapperboard } from 'lucide-react/dist/esm/icons/clapperboard.js';
+export { default as Clock } from 'lucide-react/dist/esm/icons/clock.js';
+export { default as Code2 } from 'lucide-react/dist/esm/icons/code-2.js';
+export { default as Compass } from 'lucide-react/dist/esm/icons/compass.js';
+export { default as CornerDownLeft } from 'lucide-react/dist/esm/icons/corner-down-left.js';
+export { default as Crown } from 'lucide-react/dist/esm/icons/crown.js';
+export { default as Database } from 'lucide-react/dist/esm/icons/database.js';
+export { default as ExternalLink } from 'lucide-react/dist/esm/icons/external-link.js';
+export { default as Eye } from 'lucide-react/dist/esm/icons/eye.js';
+export { default as FileUp } from 'lucide-react/dist/esm/icons/file-up.js';
+export { default as Film } from 'lucide-react/dist/esm/icons/film.js';
+export { default as Flame } from 'lucide-react/dist/esm/icons/flame.js';
+export { default as FolderPlus } from 'lucide-react/dist/esm/icons/folder-plus.js';
+export { default as GitBranch } from 'lucide-react/dist/esm/icons/git-branch.js';
+export { default as GripVertical } from 'lucide-react/dist/esm/icons/grip-vertical.js';
+export { default as Home } from 'lucide-react/dist/esm/icons/home.js';
+export { default as HelpCircle } from 'lucide-react/dist/esm/icons/help-circle.js';
+export { default as Info } from 'lucide-react/dist/esm/icons/info.js';
+export { default as Keyboard } from 'lucide-react/dist/esm/icons/keyboard.js';
+export { default as LayoutGrid } from 'lucide-react/dist/esm/icons/layout-grid.js';
+export { default as ListPlus } from 'lucide-react/dist/esm/icons/list-plus.js';
+export { default as ListVideo } from 'lucide-react/dist/esm/icons/list-video.js';
+export { default as Loader2 } from 'lucide-react/dist/esm/icons/loader-2.js';
+export { default as LogIn } from 'lucide-react/dist/esm/icons/log-in.js';
+export { default as LogOut } from 'lucide-react/dist/esm/icons/log-out.js';
+export { default as Palette } from 'lucide-react/dist/esm/icons/palette.js';
+export { default as Pencil } from 'lucide-react/dist/esm/icons/pencil.js';
+export { default as Pin } from 'lucide-react/dist/esm/icons/pin.js';
+export { default as PinOff } from 'lucide-react/dist/esm/icons/pin-off.js';
+export { default as PlayCircle } from 'lucide-react/dist/esm/icons/play-circle.js';
+export { default as Plus } from 'lucide-react/dist/esm/icons/plus.js';
+export { default as RefreshCcw } from 'lucide-react/dist/esm/icons/refresh-ccw.js';
+export { default as RotateCcw } from 'lucide-react/dist/esm/icons/rotate-ccw.js';
+export { default as Rows3 } from 'lucide-react/dist/esm/icons/rows-3.js';
+export { default as Search } from 'lucide-react/dist/esm/icons/search.js';
+export { default as Settings } from 'lucide-react/dist/esm/icons/settings.js';
+export { default as Server } from 'lucide-react/dist/esm/icons/server.js';
+export { default as Shield } from 'lucide-react/dist/esm/icons/shield.js';
+export { default as SlidersHorizontal } from 'lucide-react/dist/esm/icons/sliders-horizontal.js';
+export { default as Sparkles } from 'lucide-react/dist/esm/icons/sparkles.js';
+export { default as Star } from 'lucide-react/dist/esm/icons/star.js';
+export { default as ThumbsDown } from 'lucide-react/dist/esm/icons/thumbs-down.js';
+export { default as ThumbsUp } from 'lucide-react/dist/esm/icons/thumbs-up.js';
+export { default as Timer } from 'lucide-react/dist/esm/icons/timer.js';
+export { default as Trash2 } from 'lucide-react/dist/esm/icons/trash-2.js';
+export { default as Tv } from 'lucide-react/dist/esm/icons/tv.js';
+export { default as Upload } from 'lucide-react/dist/esm/icons/upload.js';
+export { default as User } from 'lucide-react/dist/esm/icons/user.js';
+export { default as UserPlus } from 'lucide-react/dist/esm/icons/user-plus.js';
+export { default as Users } from 'lucide-react/dist/esm/icons/users.js';
+export { default as UserX } from 'lucide-react/dist/esm/icons/user-x.js';
+export { default as Wand2 } from 'lucide-react/dist/esm/icons/wand-2.js';
+export { default as X } from 'lucide-react/dist/esm/icons/x.js';

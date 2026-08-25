@@ -1,56 +1,43 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import {
-  Activity as ActivityIcon, Bell, Compass, Home, ListVideo, LogOut, Menu as MenuIcon,
-  Moon, PanelLeftClose, PanelLeftOpen, Palette, Search, Settings as Cog, Sun, User,
-  Users, X,
-} from 'lucide-react';
-import { notifications as notificationsApi } from '@/data/api';
+  Activity as ActivityIcon, Bell, Compass, Home, ListVideo, LogOut,
+  Palette, Search, Settings as Cog, User, Users,
+} from '@/lib/icons';
+import { notifications as notificationsApi, discover } from '@/data/api';
 import type { Notification } from '@/data/types';
 import { useAuth } from '@/data/AuthContext';
 import { isDemo } from '@/data/client';
-import { useTheme } from '@/theme/ThemeProvider';
 import { useBus } from '@/lib/bus';
-import { useLocalState, useMediaQuery } from '@/lib/hooks';
-import { clockString } from '@/lib/format';
-import { moveRail, pageIn, revealOnScroll } from '@/lib/motion';
+import { useMediaQuery } from '@/lib/hooks';
 import { Avatar, Chip } from './ui/Bits';
-import { Button } from './ui/Button';
 import { Menu, MenuItem, MenuLabel, MenuSep, useContextMenu } from './ui/Menu';
 import { CommandPalette } from './CommandPalette';
 import { NotificationsMenu } from './NotificationsMenu';
 import { ThemeQuickPanel } from './ThemeStudio';
+import { SearchBar, type SearchResult } from './SearchBar';
+import { useAppData } from './AppData';
 
-interface NavDef {
-  to: string;
-  label: string;
-  icon: ReactNode;
-  group: string;
-  badge?: number;
-}
-
-export function AppShell() {
+export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
-  const { theme, set, mode } = useTheme();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const isMobile = useMediaQuery('(max-width: 860px)');
+  const { openMedia } = useAppData();
+  const router = useRouter();
+  const pathname = usePathname();
 
-  const [collapsed, setCollapsed] = useLocalState('palace.sidebarCollapsed', false);
-  const [drawer, setDrawer] = useState(false);
   const [palette, setPalette] = useState(false);
   const [unread, setUnread] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [clock, setClock] = useState(() => clockString(new Date(), theme.timeFormat));
   const [themePanel, setThemePanel] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const isMobile = useMediaQuery('(max-width: 860px)');
 
-  const railRef = useRef<HTMLDivElement>(null);
-  const navRef = useRef<HTMLElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const pageRef = useRef<HTMLDivElement>(null);
-  const firstRail = useRef(true);
   const userMenu = useContextMenu();
   const notifMenu = useContextMenu();
+
+  /** Active-tab detection: exact for `end` routes, prefix match for the rest. */
+  const isActive = (to: string, end?: boolean): boolean =>
+    end ? pathname === to : pathname === to || pathname.startsWith(`${to}/`);
 
   /* --- notifications -------------------------------------------------- */
   const loadNotifications = useCallback(() => {
@@ -64,14 +51,6 @@ export function AppShell() {
   }, []);
   useEffect(loadNotifications, [loadNotifications]);
   useBus(['notifications'], loadNotifications);
-
-  /* --- clock ---------------------------------------------------------- */
-  useEffect(() => {
-    const tick = () => setClock(clockString(new Date(), theme.timeFormat));
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [theme.timeFormat]);
 
   /* --- ⌘K ------------------------------------------------------------- */
   useEffect(() => {
@@ -89,221 +68,162 @@ export function AppShell() {
     return () => document.removeEventListener('keydown', onKey);
   }, []);
 
-  const nav: NavDef[] = [
-    { to: '/', label: 'Dashboard', icon: <Home size={18} />, group: 'Library' },
-    { to: '/lists', label: 'My lists', icon: <ListVideo size={18} />, group: 'Library' },
-    { to: '/discover', label: 'Discover', icon: <Compass size={18} />, group: 'Library' },
-    { to: '/activity', label: 'Activity', icon: <ActivityIcon size={18} />, group: 'Library' },
-    { to: '/clubs', label: 'Clubs', icon: <Users size={18} />, group: 'Social' },
-    { to: '/people', label: 'People', icon: <User size={18} />, group: 'Social' },
-    { to: '/notifications', label: 'Notifications', icon: <Bell size={18} />, group: 'Social', badge: unread },
+  /* --- search --------------------------------------------------------- */
+  const handleSearch = useCallback(async (q: string) => {
+    if (!q.trim()) { setSearchResults([]); return; }
+    const res = await discover.search(q).catch(() => []);
+    setSearchResults(
+      res.slice(0, 10).map((r) => ({
+        id: r.id,
+        title: r.title,
+        type: (r.media_type === 'tv' ? 'Series' : 'Film') as 'Film' | 'Series',
+        thumb: r.poster_url ?? null,
+      })),
+    );
+  }, []);
+
+  const handleSearchOpen = useCallback((r: SearchResult) => {
+    openMedia({
+      tmdb_id: r.id,
+      media_type: r.type === 'Series' ? 'tv' : 'movie',
+      title: r.title,
+      poster_url: r.thumb ?? null,
+    });
+  }, [openMedia]);
+
+  const nav = [
+    { to: '/', label: 'Home', icon: <Home size={16} />, end: true },
+    { to: '/discover', label: 'Discover', icon: <Compass size={16} />, end: false },
+    { to: '/lists', label: 'My Lists', icon: <ListVideo size={16} />, end: false },
+    { to: '/clubs', label: 'Clubs', icon: <Users size={16} />, end: false },
+    { to: '/people', label: 'People', icon: <User size={16} />, end: false },
+    { to: '/activity', label: 'Activity', icon: <ActivityIcon size={16} />, end: false },
+    { to: '/notifications', label: 'Notifications', icon: <Bell size={16} />, end: false, badge: unread },
+    { to: '/settings', label: 'Settings', icon: <Cog size={16} />, end: false },
   ];
-
-  /* --- animated rail + page transition -------------------------------- */
-  useLayoutEffect(() => {
-    const active = navRef.current?.querySelector<HTMLElement>('.nav-item.is-active');
-    moveRail(railRef.current, active ?? null, firstRail.current);
-    firstRail.current = false;
-  }, [location.pathname, collapsed, unread]);
-
-  useEffect(() => {
-    pageIn(pageRef.current);
-    scrollRef.current?.scrollTo({ top: 0 });
-    const cleanup = revealOnScroll(scrollRef.current, pageRef.current);
-    return cleanup;
-  }, [location.pathname]);
-
-  useEffect(() => setDrawer(false), [location.pathname]);
-
-  const sidebarBody = (
-    <>
-      <div className="sidebar__brand">
-        <div className="brand__mark">
-          <svg width="18" height="18" viewBox="0 0 64 64" fill="none">
-            <path d="M14 44V26l9 7 9-13 9 13 9-7v18a3 3 0 0 1-3 3H17a3 3 0 0 1-3-3Z" fill="currentColor" />
-          </svg>
-        </div>
-        <div className="brand__text">
-          <div className="brand__word">Palace</div>
-          <div className="brand__sub">{isDemo() ? 'demo mode' : 'connected'}</div>
-        </div>
-        {!isMobile && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="sidebar__label"
-            style={{ marginLeft: 'auto' }}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            <PanelLeftClose size={16} />
-          </Button>
-        )}
-      </div>
-
-      <nav className="sidebar__nav" ref={navRef} style={{ position: 'relative' }}>
-        <div className="nav-rail" ref={railRef} style={{ opacity: 0 }} />
-        {['Library', 'Social'].map((group) => (
-          <div key={group}>
-            <div className="nav-group__label">{group}</div>
-            {nav
-              .filter((n) => n.group === group)
-              .map((n) => (
-                <NavLink
-                  key={n.to}
-                  to={n.to}
-                  end={n.to === '/'}
-                  className={({ isActive }) => `nav-item ${isActive ? 'is-active' : ''}`}
-                  title={collapsed ? n.label : undefined}
-                >
-                  {n.icon}
-                  <span className="sidebar__label grow">{n.label}</span>
-                  {!!n.badge && <span className="nav-item__badge">{n.badge}</span>}
-                </NavLink>
-              ))}
-          </div>
-        ))}
-      </nav>
-
-      <div className="sidebar__foot">
-        {collapsed && !isMobile && (
-          <Button variant="ghost" size="sm" aria-label="Expand sidebar" onClick={() => setCollapsed(false)}>
-            <PanelLeftOpen size={16} />
-          </Button>
-        )}
-        <button
-          className="user-chip"
-          onClick={(e) => userMenu.openFrom(e.currentTarget)}
-          aria-label="Account menu"
-        >
-          <Avatar src={user?.profile_picture} name={user?.nickname ?? user?.username} size={32} />
-          <div className="user-chip__text grow" style={{ textAlign: 'left', minWidth: 0 }}>
-            <div className="user-chip__name">{user?.nickname ?? user?.username ?? 'Guest'}</div>
-            <div className="user-chip__meta">@{user?.username ?? 'guest'}</div>
-          </div>
-        </button>
-      </div>
-    </>
-  );
 
   return (
     <>
-      <div className="shell" data-collapsed={collapsed && !isMobile}>
-        {!isMobile && <aside className="sidebar">{sidebarBody}</aside>}
-
-        <div className="main">
-          <header className="topbar">
-            {isMobile && (
-              <Button variant="ghost" aria-label="Open menu" onClick={() => setDrawer(true)}>
-                <MenuIcon size={18} />
-              </Button>
-            )}
-
-            <button className="searchbar grow" onClick={() => setPalette(true)}>
-              <Search size={16} />
-              <span className="truncate">Search titles, lists, people…</span>
-              <span className="searchbar__kbd sidebar__label">
-                <kbd className="key">⌘</kbd>
-                <kbd className="key">K</kbd>
-              </span>
+      <div className="shell">
+        <header className="topbar">
+          <div className="topbar__inner">
+            {/* Logo */}
+            <button
+              className="brand"
+              onClick={() => router.push('/')}
+              aria-label="Go to home"
+            >
+              <div className="brand__mark">
+                <svg width="16" height="16" viewBox="0 0 64 64" fill="none">
+                  <path d="M14 44V26l9 7 9-13 9 13 9-7v18a3 3 0 0 1-3 3H17a3 3 0 0 1-3-3Z" fill="currentColor" />
+                </svg>
+              </div>
+              <span className="brand__word">Palace</span>
+              {isDemo() && <Chip tone="warning" style={{ fontSize: 'var(--text-xs)' }}>Demo</Chip>}
             </button>
 
-            <div className="row gap-2" style={{ marginLeft: 'auto' }}>
-              {isDemo() && (
-                <Chip tone="warning" className="sidebar__label">
-                  Demo data
-                </Chip>
+            {/* Desktop top tabs */}
+            {!isMobile && (
+              <nav className="topbar__nav" aria-label="Main navigation">
+                {nav.map((n) => (
+                  <Link
+                    key={n.to}
+                    href={n.to}
+                    className={`topbar__tab ${isActive(n.to, n.end) ? 'is-active' : ''}`}
+                  >
+                    {n.label}
+                    {!!n.badge && <span className="nav-item__badge">{n.badge}</span>}
+                  </Link>
+                ))}
+              </nav>
+            )}
+
+            {/* Right side */}
+            <div className="topbar__right">
+              {!isMobile && (
+                <SearchBar
+                  results={searchResults}
+                  onSearch={handleSearch}
+                  onOpen={handleSearchOpen}
+                />
               )}
-              <span className="mono faint sidebar__label" style={{ fontSize: 'var(--fs-12)' }}>
-                {clock}
-              </span>
-              <Button
-                variant="ghost"
-                aria-label="Toggle colour mode"
-                onClick={() => set({ mode: mode === 'light' ? 'dark' : 'light' })}
+
+              <button
+                className="topbar__icon-btn"
+                aria-label="Theme options"
+                onClick={() => setThemePanel(true)}
               >
-                {mode === 'light' ? <Moon size={17} /> : <Sun size={17} />}
-              </Button>
-              <Button variant="ghost" aria-label="Theme options" onClick={() => setThemePanel(true)}>
-                <Palette size={17} />
-              </Button>
-              <Button
-                variant="ghost"
+                <Palette size={16} />
+              </button>
+
+              <button
+                className="topbar__icon-btn"
                 aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
                 aria-haspopup="menu"
                 aria-expanded={notifMenu.open}
-                onClick={(e) => notifMenu.openFrom(e.currentTarget, 'end')}
                 style={{ position: 'relative' }}
+                onClick={(e) => notifMenu.openFrom(e.currentTarget, 'end')}
               >
-                <Bell size={17} />
-                {unread > 0 && (
-                  <span
-                    className="dot dot--pulse"
-                    style={{ position: 'absolute', top: 8, right: 8, color: 'var(--accent)' }}
-                  />
-                )}
-              </Button>
-            </div>
-          </header>
+                <Bell size={16} />
+                {unread > 0 && <span className="dot" aria-hidden="true" />}
+              </button>
 
-          <div className="scroller" ref={scrollRef}>
-            <div className="page" ref={pageRef}>
-              <Outlet />
+              <button
+                className="topbar__avatar-btn"
+                onClick={(e) => userMenu.openFrom(e.currentTarget, 'end')}
+                aria-label="Account menu"
+                aria-haspopup="menu"
+                aria-expanded={userMenu.open}
+              >
+                <Avatar src={user?.profile_picture} name={user?.nickname ?? user?.username} size={28} />
+              </button>
             </div>
           </div>
-        </div>
+        </header>
+
+        <main className="main">
+          <div className="page-wrap">
+            {children}
+          </div>
+        </main>
       </div>
 
-      {/* Mobile: bottom tab bar + slide-in drawer (#118) */}
+      {/* Mobile: fixed bottom tab bar */}
       {isMobile && (
-        <nav className="mobile-bar">
+        <nav className="mobile-bar" aria-label="Mobile navigation">
           <div className="mobile-bar__inner">
-            {[nav[0], nav[1], nav[2], nav[4], nav[6]].map((n) => (
-              <NavLink
+            {[nav[0], nav[1], nav[2], nav[3]].map((n) => (
+              <Link
                 key={n.to}
-                to={n.to}
-                end={n.to === '/'}
-                className={({ isActive }) => `mobile-tab ${isActive ? 'is-active' : ''}`}
+                href={n.to}
+                className={`mobile-tab ${isActive(n.to, n.end) ? 'is-active' : ''}`}
               >
                 {n.icon}
-                {n.label.split(' ')[0]}
-              </NavLink>
+                <span>{n.label.split(' ')[0]}</span>
+              </Link>
             ))}
+            <button
+              className="mobile-tab"
+              aria-label="Search"
+              onClick={() => setPalette(true)}
+            >
+              <Search size={18} />
+              <span>Search</span>
+            </button>
           </div>
         </nav>
       )}
 
-      {isMobile && drawer && (
-        <>
-          <div
-            className="overlay"
-            style={{ background: 'var(--scrim)', display: 'block', padding: 0 }}
-            onClick={() => setDrawer(false)}
-          />
-          <aside className="drawer anim-slide-left" style={{ padding: 'var(--sp-4) var(--sp-3)' }}>
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label="Close menu"
-              style={{ position: 'absolute', top: 10, right: 10 }}
-              onClick={() => setDrawer(false)}
-            >
-              <X size={16} />
-            </Button>
-            {sidebarBody}
-          </aside>
-        </>
-      )}
-
+      {/* User menu */}
       <Menu open={userMenu.open} at={userMenu.at} onClose={userMenu.close} width={210}>
         <MenuLabel>{user?.nickname ?? 'Account'}</MenuLabel>
         <MenuItem
           icon={<User size={15} />}
-          onClick={() => { userMenu.close(); navigate(`/profile/${user?.username}`); }}
+          onClick={() => { userMenu.close(); router.push(`/profile/${user?.username}`); }}
         >
           My profile
         </MenuItem>
-        <MenuItem icon={<Cog size={15} />} onClick={() => { userMenu.close(); navigate('/settings'); }}>
+        <MenuItem icon={<Cog size={15} />} onClick={() => { userMenu.close(); router.push('/settings'); }}>
           Settings
         </MenuItem>
         <MenuItem icon={<Palette size={15} />} onClick={() => { userMenu.close(); setThemePanel(true); }}>
