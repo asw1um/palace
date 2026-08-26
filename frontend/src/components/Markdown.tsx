@@ -83,8 +83,8 @@ function parse(input: string, keyOffset = 0): ReactNode[] {
 
 export function Markdown({
   text, className = '', inline,
-}: { text: string; className?: string; inline?: boolean }) {
-  const lines = text.split('\n');
+}: { text?: string | null; className?: string; inline?: boolean }) {
+  const lines = (text ?? '').split('\n');
   const Tag = inline ? 'span' : 'div';
   return (
     <Tag className={className} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
