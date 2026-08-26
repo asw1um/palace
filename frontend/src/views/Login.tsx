@@ -1,12 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Sparkles } from '@/lib/icons';
+import { ArrowRight } from '@/lib/icons';
 import { toast } from 'sonner';
 import { useAuth } from '@/data/AuthContext';
-import { isDemo } from '@/data/client';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
-import { Chip } from '@/components/ui/Bits';
 
 export default function Login() {
   const { isAuthenticated, login, register, loading } = useAuth();
@@ -42,15 +40,6 @@ export default function Login() {
       else await register(username.trim(), password, nickname.trim() || undefined);
     } catch {
       /* errors surfaced by auth context */
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const enterDemo = async () => {
-    setBusy(true);
-    try {
-      await login('you', 'demo');
     } finally {
       setBusy(false);
     }
@@ -93,7 +82,6 @@ export default function Login() {
             <h1 style={{ fontSize: 'var(--text-lg)', fontWeight: 600 }}>
               {mode === 'login' ? 'Welcome back' : 'Create your account'}
             </h1>
-            {isDemo() && <Chip tone="warning">Demo</Chip>}
           </div>
 
           <form className="stack gap-4" onSubmit={submit}>
@@ -127,23 +115,6 @@ export default function Login() {
               <ArrowRight size={16} />
             </Button>
           </form>
-
-          {isDemo() && (
-            <>
-              <div className="row gap-3 faint" style={{ fontSize: 'var(--text-xs)' }}>
-                <span style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-                or
-                <span style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-              </div>
-              <Button variant="soft" block icon={<Sparkles size={16} />} onClick={enterDemo} disabled={busy}>
-                Explore with demo data
-              </Button>
-              <p className="faint" style={{ fontSize: 'var(--text-xs)' }}>
-                The Palace API is not answering on this machine, so Palace is running on a full set of
-                sample data stored in your browser. Start the backend and reload to use real data.
-              </p>
-            </>
-          )}
 
           <button
             className="btn btn--ghost"

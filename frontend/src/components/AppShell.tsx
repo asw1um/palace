@@ -8,10 +8,9 @@ import {
 import { notifications as notificationsApi, discover } from '@/data/api';
 import type { Notification } from '@/data/types';
 import { useAuth } from '@/data/AuthContext';
-import { isDemo } from '@/data/client';
 import { useBus } from '@/lib/bus';
 import { useMediaQuery } from '@/lib/hooks';
-import { Avatar, Chip } from './ui/Bits';
+import { Avatar } from './ui/Bits';
 import { Menu, MenuItem, MenuLabel, MenuSep, useContextMenu } from './ui/Menu';
 import { CommandPalette } from './CommandPalette';
 import { NotificationsMenu } from './NotificationsMenu';
@@ -119,7 +118,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </svg>
               </div>
               <span className="brand__word">Palace</span>
-              {isDemo() && <Chip tone="warning" style={{ fontSize: 'var(--text-xs)' }}>Demo</Chip>}
             </button>
 
             {/* Desktop top tabs */}

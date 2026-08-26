@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import axios from 'axios';
 import { Bug, Check, Code2, ExternalLink, GitBranch, Server, X } from '@/lib/icons';
-import { currentMode, modePreference, setModePreference } from '@/data/client';
+import { currentMode } from '@/data/client';
 import { timeAgo } from '@/lib/format';
 import { Chip, Panel, Skeleton } from './ui/Bits';
 import { Button } from './ui/Button';
@@ -90,7 +90,7 @@ export function SiteStatus() {
       ) : health.db === 'down' ? (
         <Chip tone="danger">Unavailable</Chip>
       ) : (
-        <Chip>{currentMode() === 'demo' ? 'Browser storage' : 'Unknown'}</Chip>
+        <Chip>Backend</Chip>
       ),
     ],
     ['Frontend', <Chip tone="accent" key="fe">Running</Chip>],
@@ -132,20 +132,9 @@ export function SiteStatus() {
           <div className="setting-row">
             <div className="setting-row__text">
               <div className="setting-row__title">Data source</div>
-              <div className="setting-row__desc">
-                Auto uses the backend when it answers, otherwise the in-browser demo data.
-              </div>
+              <div className="setting-row__desc">Always the live backend.</div>
             </div>
-            <Segmented
-              ariaLabel="Data source"
-              value={modePreference()}
-              onChange={(v) => setModePreference(v)}
-              options={[
-                { value: 'auto', label: 'Auto' },
-                { value: 'live', label: 'Backend' },
-                { value: 'demo', label: 'Demo' },
-              ]}
-            />
+            <Chip tone="success">Backend</Chip>
           </div>
         </div>
       </Panel>
