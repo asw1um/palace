@@ -52,6 +52,7 @@ export default function Profile() {
           setRows(await reviewsApi.byUser(u.id).catch(() => []));
         }
       })
+      .catch(() => setProfile(null))
       .finally(() => setLoading(false));
   };
 
