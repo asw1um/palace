@@ -349,20 +349,48 @@ export const discover = {
 /* Reviews                                                                     */
 /* -------------------------------------------------------------------------- */
 
+/** FastAPI review → frontend shape (body/contains_spoilers/user/likes). */
+function normaliseReview(r: any): Review {
+  return {
+    id: r.id,
+    user_id: r.user_id,
+    tmdb_id: r.tmdb_id,
+    media_type: r.media_type,
+    title: r.title ?? '',
+    poster_url: r.poster_url ?? '',
+    rating: r.rating ?? 0,
+    body: r.content ?? '',
+    contains_spoilers: r.is_spoiler ?? false,
+    created_at: r.created_at ?? '',
+    user: r.author
+      ? { id: r.author.id, username: r.author.username, nickname: r.author.nickname, profile_picture: r.author.profile_picture }
+      : undefined,
+    likes: r.reactions?.likes ?? 0,
+    dislikes: r.reactions?.dislikes ?? 0,
+    my_reaction: r.reactions?.my_reaction ?? null,
+  };
+}
+
 export const reviews = {
   async forTitle(tmdbId: number, mediaType: MediaType): Promise<Review[]> {
     if (isDemo()) return demo.reviewsFor(tmdbId);
     const res = await client.get(`/reviews/title/${tmdbId}/${mediaType}`);
-    return res.data.reviews ?? res.data;
+    return (res.data.reviews ?? res.data).map(normaliseReview);
   },
   async byUser(userId: number): Promise<Review[]> {
     if (isDemo()) return demo.reviewsBy(userId);
     const res = await client.get(`/reviews/user/${userId}`);
-    return res.data.reviews ?? res.data;
+    return (res.data.reviews ?? res.data).map(normaliseReview);
   },
   async upsert(input: { tmdb_id: number; media_type: MediaType; rating: number; body: string; contains_spoilers?: boolean }) {
     if (isDemo()) return demo.upsertReview(input);
-    const res = await client.post('/reviews', input);
+    const res = await client.post('/reviews', {
+      tmdb_id: input.tmdb_id,
+      media_type: input.media_type,
+      rating: input.rating,
+      content: input.body,
+      is_spoiler: input.contains_spoilers ?? false,
+    });
     return res.data;
   },
   async remove(id: number) {
