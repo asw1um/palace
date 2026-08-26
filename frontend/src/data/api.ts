@@ -171,7 +171,7 @@ export const lists = {
 
   async create(name: string): Promise<List> {
     if (isDemo()) return demo.createList(name);
-    const res = await client.post('/lists', { name });
+    const res = await client.post('/lists/', { name });
     return normaliseList(res.data);
   },
 

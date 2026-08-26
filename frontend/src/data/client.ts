@@ -69,7 +69,7 @@ export async function detectMode(): Promise<RunMode> {
   const pref = modePreference();
   if (pref === 'demo') { mode = 'demo'; return mode; }
   try {
-    await axios.get('/api/', { timeout: 1000, headers: { Accept: 'application/json' } });
+    await axios.get('/api/', { timeout: 4000, headers: { Accept: 'application/json' } });
     mode = 'live';
   } catch {
     mode = pref === 'live' ? 'live' : 'demo';
