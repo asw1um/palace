@@ -3,8 +3,7 @@ import {
   Database, Info, Keyboard, ListVideo, Palette, RefreshCcw, Server, Trash2, User as UserIcon,
 } from '@/lib/icons';
 import { toast } from 'sonner';
-import { auth as authApi, resetDemo, settings as settingsApi } from '@/data/api';
-import { isDemo } from '@/data/client';
+import { auth as authApi, settings as settingsApi } from '@/data/api';
 import { useAuth } from '@/data/AuthContext';
 import { useAppData } from '@/components/AppData';
 import { ThemeControls } from '@/components/ThemeStudio';
@@ -67,7 +66,6 @@ export default function Settings() {
           <h1>Settings</h1>
           <p className="page-head__sub">Palace should look and behave the way you want it to.</p>
         </div>
-        {isDemo() && <Chip tone="warning">Demo mode — data lives in this browser</Chip>}
       </header>
 
       <div className="settings-layout">
@@ -210,46 +208,11 @@ export default function Settings() {
           )}
 
           {section === 'data' && (
-            <>
-              <Panel title="Data source" icon={<Server size={16} />}>
-                <p className="muted" style={{ fontSize: 'var(--text-sm)' }}>
-                  Palace talks to the Flask API when it is running on port 5000. If it is not, the app
-                  falls back to a full set of demo data stored in this browser so nothing is broken
-                  while you work on the backend.
-                </p>
-              </Panel>
-
-              {isDemo() && (
-                <Panel title="Demo data" icon={<Database size={16} />}>
-                  <div className="row gap-3 wrap between">
-                    <p className="muted" style={{ fontSize: 'var(--text-sm)', maxWidth: '60ch' }}>
-                      Reset the sample library back to its starting state — lists, clubs, reviews and
-                      watch history all go back to how they shipped.
-                    </p>
-                    <Button
-                      variant="danger"
-                      icon={<Trash2 size={15} />}
-                      onClick={async () => {
-                        const ok = await confirm({
-                          title: 'Reset demo data?',
-                          message: 'Everything you changed in demo mode will be wiped.',
-                          confirmLabel: 'Reset',
-                          danger: true,
-                        });
-                        if (!ok) return;
-                        resetDemo();
-                        emit('lists');
-                        emit('progress');
-                        toast.success('Demo data reset');
-                        setTimeout(() => window.location.reload(), 400);
-                      }}
-                    >
-                      Reset demo data
-                    </Button>
-                  </div>
-                </Panel>
-              )}
-            </>
+            <Panel title="Data source" icon={<Server size={16} />}>
+              <p className="muted" style={{ fontSize: 'var(--text-sm)' }}>
+                Palace talks to the live Palace API backend.
+              </p>
+            </Panel>
           )}
 
           {section === 'about' && <SiteStatus />}

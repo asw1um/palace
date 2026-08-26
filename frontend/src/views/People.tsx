@@ -5,7 +5,6 @@ import { toast } from 'sonner';
 import { people as peopleApi } from '@/data/api';
 import type { Friendship, User } from '@/data/types';
 import { useAuth } from '@/data/AuthContext';
-import { isDemo } from '@/data/client';
 import { Button } from '@/components/ui/Button';
 import { SearchInput } from '@/components/ui/Field';
 import { Avatar, Chip, Empty, Panel, Skeleton, Tabs } from '@/components/ui/Bits';
@@ -72,14 +71,12 @@ export default function People() {
         ]}
       />
 
-      {!isDemo() && (
-        <Panel>
-          <p className="muted" style={{ fontSize: 'var(--text-sm)' }}>
-            Friends are a front-end preview — the backend does not expose friendship endpoints yet
-            (issue #113). Everything else on this page is live.
-          </p>
-        </Panel>
-      )}
+      <Panel>
+        <p className="muted" style={{ fontSize: 'var(--text-sm)' }}>
+          Friends are a front-end preview — the backend does not expose friendship endpoints yet
+          (issue #113). Everything else on this page is live.
+        </p>
+      </Panel>
 
       <div style={{ maxWidth: 380 }}>
         <SearchInput

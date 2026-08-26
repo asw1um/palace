@@ -3,7 +3,7 @@ import {
 } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth } from './api';
-import { currentMode, detectMode, TOKEN_KEY, type RunMode } from './client';
+import { TOKEN_KEY, type RunMode } from './client';
 import type { User } from './types';
 
 interface AuthCtx {
@@ -23,15 +23,11 @@ const Ctx = createContext<AuthCtx | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState<RunMode>(currentMode());
   const router = useRouter();
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      const m = await detectMode();
-      if (!alive) return;
-      setMode(m);
       const token = localStorage.getItem(TOKEN_KEY);
       if (!token) {
         setLoading(false);
@@ -75,11 +71,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthCtx>(
     () => ({
-      user, loading, mode,
+      user, loading, mode: 'live' as RunMode,
       isAuthenticated: !!user,
       login, register, logout, refresh, patchUser,
     }),
-    [user, loading, mode, login, register, logout, refresh, patchUser],
+    [user, loading, login, register, logout, refresh, patchUser],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

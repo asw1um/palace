@@ -2,7 +2,6 @@ import axios from 'axios';
 import { toast } from 'sonner';
 
 export const TOKEN_KEY = 'palace.token';
-export const MODE_KEY = 'palace.mode'; // 'auto' | 'demo' | 'live'
 
 export const client = axios.create({
   baseURL: '/api',
@@ -24,7 +23,6 @@ client.interceptors.response.use(
       localStorage.removeItem(TOKEN_KEY);
       window.location.assign('/login');
     }
-    // Silence the probe and expected 404s; surface everything else once.
     if (!err.config?.silent) {
       const msg = err.response?.data?.error || err.response?.data?.msg || err.message;
       if (msg && err.response?.status !== 404) toast.error(String(msg));
@@ -34,47 +32,21 @@ client.interceptors.response.use(
 );
 
 /* -------------------------------------------------------------------------- */
-/* Run mode                                                                    */
+/* Run mode — the app always talks to the real (FastAPI) backend. No demo.     */
 /* -------------------------------------------------------------------------- */
 
-export type RunMode = 'live' | 'demo';
-
-let mode: RunMode = 'demo';
-let detected = false;
+export type RunMode = 'live';
 
 export function currentMode(): RunMode {
-  return mode;
+  return 'live';
 }
 
 export function isDemo(): boolean {
-  return mode === 'demo';
+  return false;
 }
 
-export function modePreference(): 'auto' | 'demo' | 'live' {
-  return (localStorage.getItem(MODE_KEY) as 'auto' | 'demo' | 'live') ?? 'auto';
-}
-
-export function setModePreference(pref: 'auto' | 'demo' | 'live') {
-  localStorage.setItem(MODE_KEY, pref);
-  window.location.reload();
-}
-
-/**
- * Decides whether to talk to the Flask backend or run entirely in the browser.
- * `auto` (the default) pings the API once and falls back to Demo Mode.
- */
 export async function detectMode(): Promise<RunMode> {
-  if (detected) return mode;
-  detected = true;
-  const pref = modePreference();
-  if (pref === 'demo') { mode = 'demo'; return mode; }
-  try {
-    await axios.get('/api/', { timeout: 4000, headers: { Accept: 'application/json' } });
-    mode = 'live';
-  } catch {
-    mode = pref === 'live' ? 'live' : 'demo';
-  }
-  return mode;
+  return 'live';
 }
 
 /** Reads a File into a data URL (used for avatars, banners, backdrops). */
