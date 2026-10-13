@@ -41,11 +41,12 @@ async def add_show(
     if existing:
         new_show = existing
     else:
+        # fetch first, flushing before this locks sqlite for the cache write
+        show_details = fetch_show_details(body.tmdb_id)
         new_show = Show(title=body.title, poster_url=body.poster, tmdb_id=body.tmdb_id, user_id=current_user.id)
         db_session.add(new_show)
         db_session.flush()
 
-        show_details = fetch_show_details(body.tmdb_id)
         if show_details:
             new_show.total_seasons = show_details.get('number_of_seasons') or 0
             for season in show_details.get('seasons', []):

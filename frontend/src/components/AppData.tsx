@@ -4,7 +4,11 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 import { AlertTriangle, Check, FolderPlus, Plus } from '@/lib/icons';
-import { lists as listsApi, progress as progressApi, type ProgressEntry } from '@/data/api';
+import {
+  customMedia, lists as listsApi, progress as progressApi, type CustomMeta, type ProgressEntry,
+  type WatchPosition,
+} from '@/data/api';
+import { countEpisodes, episodeKey, nextEpisode, type SeasonInfo } from '@/lib/episodes';
 import type { List, MediaType } from '@/data/types';
 import { emit, useBus } from '@/lib/bus';
 import { titleCase } from '@/lib/format';
@@ -30,6 +34,12 @@ interface AppDataCtx {
   refreshLists: () => void;
   progress: Record<string, ProgressEntry>;
   progressFor: (ref: { tmdb_id: number; media_type: MediaType }) => { watched: boolean; pct: number };
+  /** Runtimes and season counts the user set themselves, keyed `"movie:123"` / `"tv:456"`. */
+  custom: Record<string, CustomMeta>;
+  /** Seasons for a series: the user's own counts when set, otherwise what the list item carries. */
+  seasonsFor: (ref: { tmdb_id: number; seasons?: SeasonInfo[] }) => SeasonInfo[];
+  /** Where to resume a series, with minutes when they stopped partway. Null when caught up or unknown. */
+  nextFor: (ref: { tmdb_id: number; seasons?: SeasonInfo[] }) => WatchPosition | null;
   openMedia: (ref: TitleRef) => void;
   /** Accepts one title or a whole selection. */
   openAddTo: (ref: TitleRef | TitleRef[]) => void;
@@ -48,6 +58,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [lists, setLists] = useState<List[]>([]);
   const [loadingLists, setLoading] = useState(true);
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
+  const [custom, setCustom] = useState<Record<string, CustomMeta>>({});
   const [media, setMedia] = useState<TitleRef | null>(null);
   const [addTargets, setAddTargets] = useState<TitleRef[] | null>(null);
   const [createFor, setCreateFor] = useState<TitleRef | null | undefined>(undefined);
@@ -71,27 +82,62 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     progressApi.summary().then(setProgress).catch(() => {});
   }, []);
 
+  const refreshCustom = useCallback(() => {
+    customMedia.all().then(setCustom).catch(() => {});
+  }, []);
+
   useEffect(() => {
     refreshLists();
     refreshProgress();
-  }, [refreshLists, refreshProgress]);
+    refreshCustom();
+  }, [refreshLists, refreshProgress, refreshCustom]);
 
   useBus(['lists'], refreshLists);
   useBus(['progress'], refreshProgress);
+  useBus(['custom'], refreshCustom);
+
+  const seasonsFor = useCallback(
+    (ref: { tmdb_id: number; seasons?: SeasonInfo[] }) =>
+      custom[`tv:${ref.tmdb_id}`]?.seasons ??
+      ref.seasons ??
+      lists.flatMap((l) => l.items ?? []).find((i) => i.tmdb_id === ref.tmdb_id && i.media_type === 'tv')?.seasons ??
+      [],
+    [custom, lists],
+  );
+
+  const nextFor = useCallback(
+    (ref: { tmdb_id: number; seasons?: SeasonInfo[] }): WatchPosition | null => {
+      const entry = progress[`tv:${ref.tmdb_id}`];
+      const watched = new Set(entry?.episodes ?? []);
+      const saved = entry?.position;
+      if (saved && !watched.has(episodeKey(saved.season, saved.episode))) return saved;
+      const next = nextEpisode(seasonsFor(ref), watched);
+      return next ? { ...next, minutes: 0 } : null;
+    },
+    [progress, seasonsFor],
+  );
 
   const progressFor = useCallback(
     (ref: { tmdb_id: number; media_type: MediaType }) => {
       const entry = progress[`${ref.media_type}:${ref.tmdb_id}`];
       if (!entry) return { watched: false, pct: 0 };
-      if (ref.media_type === 'movie') return { watched: entry.watched, pct: entry.watched ? 100 : 0 };
-      const total =
-        lists
-          .flatMap((l) => l.items ?? [])
-          .find((i) => i.tmdb_id === ref.tmdb_id)?.total_episodes ?? 0;
-      const pct = total ? Math.round((entry.episodes.length / total) * 100) : 0;
+      if (ref.media_type === 'movie') {
+        // Partway through a film shows as a partial bar, not as watched.
+        const pct = entry.total
+          ? Math.min(100, Math.round((entry.minutes / entry.total) * 100))
+          : entry.watched ? 100 : 0;
+        return { watched: entry.watched, pct };
+      }
+      const mine = custom[`tv:${ref.tmdb_id}`]?.seasons;
+      const total = mine
+        ? countEpisodes(mine)
+        : lists
+            .flatMap((l) => l.items ?? [])
+            .find((i) => i.tmdb_id === ref.tmdb_id)?.total_episodes ?? 0;
+      const pct = total ? Math.min(100, Math.round((entry.episodes.length / total) * 100)) : 0;
       return { watched: entry.watched || pct >= 100, pct };
     },
-    [progress, lists],
+    [progress, lists, custom],
   );
 
   const quickAdd = useCallback(
@@ -111,22 +157,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const markWatched = useCallback(async (ref: TitleRef, watched: boolean, opts?: { silent?: boolean }) => {
     if (ref.media_type === 'movie') {
-      await progressApi.setMovieWatched(ref.tmdb_id, watched);
+      await progressApi.setMovieWatched(ref.tmdb_id, watched, custom[`movie:${ref.tmdb_id}`]?.runtime);
     } else {
       // Marking a whole series watched fills in every episode.
-      const seasons =
-        lists.flatMap((l) => l.items ?? []).find((i) => i.tmdb_id === ref.tmdb_id)?.seasons ?? [];
-      const last = seasons[seasons.length - 1];
-      if (last) {
-        await progressApi.setEpisode(ref.tmdb_id, last.season_number, last.episode_count, watched, true);
-      }
+      const seasons = seasonsFor(ref);
+      if (seasons.length) await progressApi.setSeasons(ref.tmdb_id, seasons, watched);
     }
     if (!opts?.silent) {
       toast.success(watched ? `Marked ${ref.title} watched` : `Marked ${ref.title} unwatched`);
     }
     emit('progress');
     emit('lists');
-  }, [lists]);
+  }, [custom, seasonsFor]);
 
   const value = useMemo<AppDataCtx>(
     () => ({
@@ -135,6 +177,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       refreshLists,
       progress,
       progressFor,
+      custom,
+      seasonsFor,
+      nextFor,
       openMedia: setMedia,
       openAddTo: (ref: TitleRef | TitleRef[]) =>
         setAddTargets(Array.isArray(ref) ? (ref.length ? ref : null) : [ref]),
@@ -144,7 +189,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       cascadeEpisodes,
       setCascadeEpisodes,
     }),
-    [lists, loadingLists, refreshLists, progress, progressFor, quickAdd, markWatched, cascadeEpisodes, setCascadeEpisodes],
+    [lists, loadingLists, refreshLists, progress, progressFor, custom, seasonsFor, nextFor, quickAdd, markWatched, cascadeEpisodes, setCascadeEpisodes],
   );
 
   return (

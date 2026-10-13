@@ -40,6 +40,7 @@ _TTL_DETAILS  = 7 * 24   # celeb credits: 7 days
 _TTL_SEASON   = 7 * 24   # season episode lists: 7 days 
 _TTL_POPULAR  = 24       # trending: 1 day
 _TTL_SEARCH   = 30 * 24  # search results: 30 days
+_TTL_UPCOMING = 6        # next episode air dates: 6 hours
 
 _ENDED_STATUSES = {'Ended', 'Canceled', 'Cancelled'}
 
@@ -132,6 +133,38 @@ def format_multi(item):
     return base
 
 
+def _format_providers(data, region):
+    # where to watch, tmdb gets this from justwatch
+    entry = (data.get('watch/providers') or {}).get('results', {}).get(region)
+    if not entry:
+        return None
+
+    def names(kind):
+        return [
+            {'name': p.get('provider_name'), 'logo_url': f"{image_base_url}/w92{p.get('logo_path')}" if p.get('logo_path') else None}
+            for p in entry.get(kind, [])
+        ]
+
+    stream = names('flatrate') + [p for p in names('free') + names('ads')]
+    return {'region': region, 'link': entry.get('link'), 'stream': stream, 'rent': names('rent'), 'buy': names('buy')}
+
+
+def _format_similar(data, media_type):
+    picks = (data.get('recommendations') or {}).get('results') or (data.get('similar') or {}).get('results') or []
+    return [
+        {
+            'id': item.get('id'),
+            'media_type': item.get('media_type') or media_type,
+            'title': item.get('title') or item.get('name'),
+            'poster_url': get_poster_url(item.get('poster_path')),
+            'release_date': item.get('release_date') or item.get('first_air_date'),
+            'rating': item.get('vote_average'),
+        }
+        for item in picks
+        if item.get('poster_path') and (item.get('media_type') or media_type) in ('movie', 'tv')
+    ][:12]
+
+
 def format_movie(movie):
     result = format_multi(movie)
     result['media_type'] = 'movie'
@@ -200,16 +233,21 @@ def search_multi(query):
 _APPEND = "credits,videos,similar,recommendations,images,watch/providers"
 
 
-def get_movie(movie_id):
+def get_movie(movie_id, region='US'):
     data = _cached_tmdb_request(
         f"{base_url}/movie/{movie_id}",
         {"append_to_response": _APPEND},
         ttl_hours=_TTL_FOREVER,
     )
-    return format_movie(data) if data else None
+    if not data:
+        return None
+    result = format_movie(data)
+    result['providers'] = _format_providers(data, region)
+    result['similar'] = _format_similar(data, 'movie')
+    return result
 
 
-def getShow(show_id):
+def getShow(show_id, region='US'):
     url = f"{base_url}/tv/{show_id}"
     params = {"append_to_response": _APPEND}
     key = _cache_key(url, params)
@@ -228,7 +266,34 @@ def getShow(show_id):
         for s in data.get('seasons', [])
         if s.get('episode_count', 0) > 0
     ]
+    result['providers'] = _format_providers(data, region)
+    result['similar'] = _format_similar(data, 'tv')
     return result
+
+
+def get_next_episode(show_id):
+    url = f"{base_url}/tv/{show_id}"
+    # finished shows are cached for good, no point asking again
+    if cache_get(_cache_key(url, {"append_to_response": _APPEND})) is not None:
+        return None
+    data = _cached_tmdb_request(url, ttl_hours=_TTL_UPCOMING)
+    ep = (data or {}).get('next_episode_to_air')
+    if not ep or not ep.get('air_date'):
+        return None
+    return {
+        'air_date': ep.get('air_date'),
+        'season_number': ep.get('season_number'),
+        'episode_number': ep.get('episode_number'),
+        'name': ep.get('name') or '',
+    }
+
+
+def cached_episode_runtimes(show_id, season_number):
+    # only what is already cached, used for stats so it never waits on tmdb
+    data = cache_get(_cache_key(f"{base_url}/tv/{show_id}/season/{season_number}", None))
+    if not data:
+        return {}
+    return {ep.get('episode_number'): ep.get('runtime') for ep in data.get('episodes', []) if ep.get('runtime')}
 
 
 def get_season_details(show_id, season_number):
@@ -254,6 +319,8 @@ def get_season_details(show_id, season_number):
 
 
 _MIN_PERSON_POPULARITY = 1.0
+# talk, news
+_MINOR_GENRES = {10767, 10763}
 
 def search_person(query):
     data = _cached_tmdb_request(f"{base_url}/search/person", {"query": query, "page": 1}, ttl_hours=_TTL_SEARCH)
@@ -313,9 +380,12 @@ def get_person_credits(person_id):
             'rating': entry.get('vote_average'),
             'popularity': entry.get('popularity', 0),
             'role': role,
+            'minor': bool(_MINOR_GENRES & set(entry.get('genre_ids') or []))
+                     or role.lower().startswith(('self', 'himself', 'herself', 'themselves')),
         })
 
-    items.sort(key=lambda x: x.get('popularity') or 0, reverse=True)
+    # talk show and "self" appearances go last so real roles come first
+    items.sort(key=lambda x: (x.pop('minor'), -(x.get('popularity') or 0)))
 
     return {
         'id': person_id,

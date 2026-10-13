@@ -24,6 +24,8 @@ jobs:
 
       - name: Check imports
         working-directory: backend
+        env:
+          JWT_SECRET_KEY: ci
         run: python -c "import main"
 
   frontend:
@@ -46,10 +48,21 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build images
+        run: |
+          cp .env.example .env
+          docker compose build
+
   deploy:
     name: Deploy to VPS (dev)
     runs-on: ubuntu-latest
-    needs: [backend, frontend]
+    needs: [backend, frontend, docker]
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
@@ -59,18 +72,9 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -e
-            cd /var/www/palace-dev
-            git checkout -- .
-            git pull origin dev
-            source venv/bin/activate
-            pip install -r requirements.txt -q
-            cd frontend
-            npm ci --silent
-            npm run build
-            cd ..
-            cd backend
-            python -c "from models.database import Base, init_db; import os; e = init_db('sqlite:///instance/users.db'); Base.metadata.create_all(bind=e)"
-            python migrate.py
-            cd ..
-            sudo systemctl restart palace-dev
+            cd /var/www/palace-docker
+            git fetch origin dev
+            git reset --hard origin/dev
+            docker compose up -d --build --wait --remove-orphans
+            docker compose ps
             echo "Deploy complete"

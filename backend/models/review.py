@@ -52,3 +52,30 @@ class ReviewReaction(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (db.UniqueConstraint('user_id', 'review_id', name='uid_rid_unique_reaction'),)
+
+
+class ReviewComment(db.Model):
+    __tablename__ = 'review_comments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    review_id = db.Column(db.Integer, db.ForeignKey('reviews.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    author = db.relationship('user')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'review_id': self.review_id,
+            'user_id': self.user_id,
+            'content': self.content,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'author': {
+                'id': self.author.id,
+                'username': self.author.username,
+                'nickname': self.author.nickname,
+                'profile_picture': self.author.profile_picture,
+            } if self.author else None,
+        }

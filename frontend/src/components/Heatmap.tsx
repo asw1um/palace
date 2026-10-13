@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { isoDay, plural } from '@/lib/format';
 import type { WatchEvent } from '@/data/types';
@@ -30,10 +30,40 @@ interface Tip {
   sub: string;
 }
 
-export function Heatmap({ events, weeks = 26 }: { events: WatchEvent[]; weeks?: number }) {
+const GAP = 3;
+const MIN_CELL = 13;
+const MAX_CELL = 22;
+const MIN_WEEKS = 8;
+const MAX_WEEKS = 52;
+
+/**
+ * Sizes itself to the space it's given: as many weeks as fit (up to a year),
+ * then the cells stretch so the grid spans the full width. Pass `weeks` to pin
+ * the range instead.
+ */
+export function Heatmap({ events, weeks: fixedWeeks }: { events: WatchEvent[]; weeks?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [tip, setTip] = useState<Tip | null>(null);
+  const [width, setWidth] = useState(0);
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setWidth(el.clientWidth);
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const weeks =
+    fixedWeeks ??
+    (width
+      ? Math.max(MIN_WEEKS, Math.min(MAX_WEEKS, Math.floor((width + GAP) / (MIN_CELL + GAP)) - 1))
+      : 26);
+  const cell = width
+    ? Math.max(MIN_CELL, Math.min(MAX_CELL, (width - GAP * weeks) / (weeks + 1)))
+    : 11;
 
   const { columns, max, total, monthLabels } = useMemo(() => {
     const byDay = new Map(events.map((e) => [e.date, e]));
@@ -65,10 +95,12 @@ export function Heatmap({ events, weeks = 26 }: { events: WatchEvent[]; weeks?: 
     }
 
     // A month label sits above the first week that contains that month's 1st.
+    // A year-long range shows the current month twice, so compare against the
+    // previous label rather than every label so far.
     const labels: { col: number; label: string }[] = [];
     cols.forEach((week, i) => {
       const first = week.find((d) => d.dayOfMonth <= 7);
-      if (first && !labels.some((l) => l.label === MONTHS[first.month])) {
+      if (first && labels[labels.length - 1]?.label !== MONTHS[first.month]) {
         labels.push({ col: i, label: MONTHS[first.month] });
       }
     });
@@ -115,7 +147,10 @@ export function Heatmap({ events, weeks = 26 }: { events: WatchEvent[]; weeks?: 
 
   return (
     <div className="stack gap-3">
-      <div className="heatmap">
+      <div
+        className="heatmap"
+        style={{ ['--cell' as string]: `${cell}px`, ['--cell-gap' as string]: `${GAP}px` }}
+      >
         <div className="heatmap__weekdays" aria-hidden="true">
           {WEEKDAYS.map((d, i) => (
             <span key={i}>{d}</span>
@@ -129,7 +164,7 @@ export function Heatmap({ events, weeks = 26 }: { events: WatchEvent[]; weeks?: 
             aria-hidden="true"
           >
             {monthLabels.map((m) => (
-              <span key={m.label} style={{ gridColumn: m.col + 1 }}>
+              <span key={m.col} style={{ gridColumn: m.col + 1 }}>
                 {m.label}
               </span>
             ))}
@@ -163,7 +198,7 @@ export function Heatmap({ events, weeks = 26 }: { events: WatchEvent[]; weeks?: 
         <span>
           {plural(total, 'title')} in the last {weeks} weeks
         </span>
-        <span className="row gap-1">
+        <span className="row gap-1" style={{ ['--cell' as string]: '11px' }}>
           Less
           {[0, 1, 2, 3, 4].map((l) => (
             <span key={l} className="heat-cell" data-level={l} style={{ opacity: 1 }} />

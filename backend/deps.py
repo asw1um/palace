@@ -1,6 +1,8 @@
 import os
+from datetime import datetime, timedelta
 from typing import Generator
 
+from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -8,8 +10,13 @@ from sqlalchemy.orm import Session
 
 from models import user as User
 
-SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'dev-secret-key-change-in-production')
+load_dotenv()
+
+SECRET_KEY = os.getenv('JWT_SECRET_KEY')
+if not SECRET_KEY:
+    raise RuntimeError('JWT_SECRET_KEY is not set, add it to .env')
 ALGORITHM = 'HS256'
+TOKEN_DAYS = int(os.getenv('JWT_EXPIRE_DAYS', '30'))
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/api/auth/login')
 
@@ -28,7 +35,11 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def create_access_token(user_id: int, session_token: str) -> str:
-    payload = {'sub': str(user_id), 'st': session_token}
+    payload = {
+        'sub': str(user_id),
+        'st': session_token,
+        'exp': datetime.utcnow() + timedelta(days=TOKEN_DAYS),
+    }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -45,7 +56,8 @@ def get_current_user(
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = int(payload['sub'])
         session_token: str = payload.get('st')
-        if not session_token:
+        # old tokens had no expiry, make those log in again
+        if not session_token or 'exp' not in payload:
             raise credentials_error
     except (JWTError, ValueError, KeyError):
         raise credentials_error

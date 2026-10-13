@@ -1,7 +1,11 @@
+import os
+import re
+import time
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -10,6 +14,28 @@ from models import db, user as User, movielist
 from activity import log_event
 
 router = APIRouter()
+
+USERNAME_RE = re.compile(r'^[A-Za-z0-9_.-]{1,32}$')
+
+# failed logins per ip + username
+_fails = {}
+FAIL_LIMIT = 10
+FAIL_WINDOW = 15 * 60
+
+
+def _recent_fails(key):
+    now = time.time()
+    hits = [t for t in _fails.get(key, []) if now - t < FAIL_WINDOW]
+    if hits:
+        _fails[key] = hits
+    else:
+        _fails.pop(key, None)
+    return hits
+
+
+# new accounts per ip per hour
+SIGNUP_LIMIT = int(os.getenv('SIGNUP_LIMIT_PER_HOUR', '10'))
+_signups = {}
 
 
 class signup_request(BaseModel):
@@ -24,12 +50,8 @@ class login_request(BaseModel):
 
 
 def _abs_url(path: str | None, request: Request) -> str | None:
-    if not path:
-        return None
-    if path.startswith('http'):
-        return path
-    base = str(request.base_url).rstrip('/')
-    return f"{base}{path}"
+    # keep it relative, the frontend proxies /uploads
+    return path or None
 
 
 @router.post('/register', status_code=201)
@@ -41,10 +63,25 @@ async def signup(body: signup_request, request: Request, db_session: Session = D
 
     if not username or len(username) < 1 or len(username) > 32:
         raise HTTPException(status_code=400, detail='Username must be 1-32 characters')
+    if not USERNAME_RE.match(username):
+        raise HTTPException(status_code=400, detail='Username can only use letters, numbers, dots, dashes and underscores')
     if not password or len(password) < 6:
         raise HTTPException(status_code=400, detail='Password must be at least 6 characters')
-    if db_session.query(User).filter_by(username=username).first():
+    if len(password) > 128:
+        raise HTTPException(status_code=400, detail='Password must be 128 characters or fewer')
+    if nickname and len(nickname) > 16:
+        raise HTTPException(status_code=400, detail='Nickname must be 16 characters or fewer')
+    if db_session.query(User).filter(func.lower(User.username) == username.lower()).first():
         raise HTTPException(status_code=409, detail='Username already exists')
+
+    ip = request.client.host if request.client else ''
+    now = time.time()
+    recent = [t for t in _signups.get(ip, []) if now - t < 3600]
+    if len(recent) >= SIGNUP_LIMIT:
+        raise HTTPException(status_code=429, detail='Too many accounts created from here, try again later')
+    if len(_signups) > 10000:
+        _signups.clear()
+    _signups[ip] = recent + [now]
 
     new_user = User(
         username=username,
@@ -81,9 +118,18 @@ async def login(body: login_request, request: Request, db_session: Session = Dep
     if not password:
         raise HTTPException(status_code=400, detail='Password is required')
 
+    ip = request.client.host if request.client else ''
+    key = f'{ip}:{username.lower()}'
+    if len(_recent_fails(key)) >= FAIL_LIMIT:
+        raise HTTPException(status_code=429, detail='Too many failed logins, try again later')
+
     log_user = db_session.query(User).filter_by(username=username).first()
-    if not log_user or not check_password_hash(log_user.password_hash, password):
+    if not log_user or len(password) > 128 or not check_password_hash(log_user.password_hash, password):
+        if len(_fails) > 10000:
+            _fails.clear()
+        _fails.setdefault(key, []).append(time.time())
         raise HTTPException(status_code=401, detail='Invalid username or password')
+    _fails.pop(key, None)
 
     token = create_access_token(log_user.id, log_user.session_token)
     user_data = log_user.to_dict()

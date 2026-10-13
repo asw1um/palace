@@ -70,25 +70,34 @@ export function AppShell({ children }: { children: ReactNode }) {
   /* --- search --------------------------------------------------------- */
   const handleSearch = useCallback(async (q: string) => {
     if (!q.trim()) { setSearchResults([]); return; }
-    const res = await discover.search(q).catch(() => []);
-    setSearchResults(
-      res.slice(0, 10).map((r) => ({
-        id: r.id,
-        title: r.title,
-        type: (r.media_type === 'tv' ? 'Series' : 'Film') as 'Film' | 'Series',
-        thumb: r.poster_url ?? null,
-      })),
-    );
+    const [res, people] = await Promise.all([
+      discover.search(q).catch(() => []),
+      discover.people(q).catch(() => []),
+    ]);
+    const titles: SearchResult[] = res.slice(0, 7).map((r) => ({
+      id: r.id,
+      title: r.title,
+      type: (r.media_type === 'tv' ? 'Series' : 'Film') as 'Film' | 'Series',
+      thumb: r.poster_url ?? null,
+    }));
+    const actors: SearchResult[] = people.slice(0, 3).map((p) => ({
+      id: p.id, title: p.name, type: 'Person', thumb: p.profile_url ?? null,
+    }));
+    setSearchResults([...titles, ...actors]);
   }, []);
 
   const handleSearchOpen = useCallback((r: SearchResult) => {
+    if (r.type === 'Person') {
+      router.push(`/person/${r.id}`);
+      return;
+    }
     openMedia({
       tmdb_id: r.id,
       media_type: r.type === 'Series' ? 'tv' : 'movie',
       title: r.title,
       poster_url: r.thumb ?? null,
     });
-  }, [openMedia]);
+  }, [openMedia, router]);
 
   const nav = [
     { to: '/', label: 'Home', icon: <Home size={16} />, end: true },

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 /** Tiny app-wide event bus so unrelated views can refresh each other. */
-type Topic = 'lists' | 'clubs' | 'notifications' | 'reviews' | 'progress' | 'theme';
+type Topic = 'lists' | 'clubs' | 'notifications' | 'reviews' | 'progress' | 'custom' | 'theme';
 
 const target = new EventTarget();
 

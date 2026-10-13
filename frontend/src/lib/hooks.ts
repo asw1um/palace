@@ -31,9 +31,9 @@ export function useLocalState<T>(key: string, initial: T) {
 }
 
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(() =>
-    typeof window === 'undefined' ? false : window.matchMedia(query).matches,
-  );
+  // Starts false on purpose: reading the real value here makes the first client
+  // render differ from the server's and React throws a hydration error.
+  const [matches, setMatches] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia(query);
     const on = () => setMatches(mq.matches);

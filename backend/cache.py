@@ -1,6 +1,7 @@
 import time
 from threading import RLock
 from datetime import datetime, timedelta
+from sqlalchemy.exc import IntegrityError
 from models import db
 
 
@@ -41,6 +42,9 @@ class tmdb_cache(db.Model):
             else:
                 sess.add(cls(cache_key=key, data=data, expires_at=expires))
             sess.commit()
+        except IntegrityError:
+            # another request cached the same key first
+            sess.rollback()
         finally:
             sess.close()
 

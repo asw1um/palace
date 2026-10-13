@@ -2,6 +2,7 @@ import { useState, useLayoutEffect, useRef, type HTMLAttributes, type ReactNode 
 import Image from 'next/image';
 import { Star } from '@/lib/icons';
 import { initials } from '@/lib/format';
+import { uploadUrl } from '@/data/client';
 
 /* ------------------------------------------------------------------ Panel -- */
 export function Panel({
@@ -30,6 +31,7 @@ export function Panel({
 export function Avatar({
   src, name, size = 36, className = '',
 }: { src?: string | null; name?: string | null; size?: number; className?: string }) {
+  src = uploadUrl(src);
   return (
     <div className={`avatar ${className}`} style={{ ['--size' as string]: `${size}px` }}>
       {src

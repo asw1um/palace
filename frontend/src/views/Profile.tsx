@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
@@ -9,9 +9,11 @@ import { toast } from 'sonner';
 import { auth as authApi, people as peopleApi, reviews as reviewsApi, stats as statsApi } from '@/data/api';
 import type { Review, User, UserStats } from '@/data/types';
 import { useAuth } from '@/data/AuthContext';
+import { uploadUrl } from '@/data/client';
 import { useAppData } from '@/components/AppData';
 const Heatmap = dynamic(() => import('@/components/Heatmap').then(m => ({ default: m.Heatmap })), { ssr: false });
 import { ReviewCard } from '@/components/MediaModal';
+import { ImageCropDialog, type CropKind } from '@/components/ImageCropDialog';
 import { Poster } from '@/components/Poster';
 import { Button } from '@/components/ui/Button';
 import { Field, Input, Textarea } from '@/components/ui/Field';
@@ -38,6 +40,7 @@ export default function Profile() {
   const [pinnedLists] = useLocalState<number[]>('palace.pinnedLists', []);
   const avatarInput = useRef<HTMLInputElement>(null);
   const bannerInput = useRef<HTMLInputElement>(null);
+  const [crop, setCrop] = useState<{ file: File; kind: CropKind } | null>(null);
 
   const isMe = !!me && (me.username === username || !username);
 
@@ -48,7 +51,7 @@ export default function Profile() {
       .then(async (u) => {
         setProfile(u);
         if (u) {
-          setStats(await statsApi.forUser(u.id).catch(() => null));
+          setStats(await statsApi.forUser(u.id, u.lists).catch(() => null));
           setRows(await reviewsApi.byUser(u.id).catch(() => []));
         }
       })
@@ -87,8 +90,7 @@ export default function Profile() {
     toast.success('Profile updated');
   };
 
-  const upload = async (file: File | undefined, kind: 'avatar' | 'banner') => {
-    if (!file) return;
+  const upload = async (file: File, kind: CropKind) => {
     const url = kind === 'avatar' ? await authApi.uploadPicture(file) : await authApi.uploadBanner(file);
     patchUser(kind === 'avatar' ? { profile_picture: url } : { banner: url });
     setProfile((p) =>
@@ -97,17 +99,23 @@ export default function Profile() {
     toast.success(kind === 'avatar' ? 'Avatar updated' : 'Banner updated');
   };
 
+  // Picking a file opens the cropper; nothing is uploaded until it's saved there.
+  const pick = (e: ChangeEvent<HTMLInputElement>, kind: CropKind) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (file) setCrop({ file, kind });
+  };
+
   const hours = Math.round((stats?.minutes ?? 0) / 60);
 
   return (
     <>
       <section className="panel" style={{ overflow: 'hidden' }}>
         <div
+          className="profile-cover"
           style={{
-            position: 'relative',
-            height: 168,
             background: profile.banner
-              ? `url(${profile.banner}) center/cover`
+              ? `url(${uploadUrl(profile.banner)}) center/cover`
               : 'var(--accent-soft)',
           }}
         >
@@ -170,8 +178,18 @@ export default function Profile() {
           )}
         </div>
 
-        <input ref={avatarInput} type="file" accept="image/*" hidden onChange={(e) => upload(e.target.files?.[0], 'avatar')} />
-        <input ref={bannerInput} type="file" accept="image/*" hidden onChange={(e) => upload(e.target.files?.[0], 'banner')} />
+        <input ref={avatarInput} type="file" accept="image/*" hidden onChange={(e) => pick(e, 'avatar')} />
+        <input ref={bannerInput} type="file" accept="image/*" hidden onChange={(e) => pick(e, 'banner')} />
+
+        <ImageCropDialog
+          file={crop?.file ?? null}
+          kind={crop?.kind ?? 'avatar'}
+          name={profile.nickname ?? profile.username}
+          avatarUrl={uploadUrl(profile.profile_picture)}
+          bannerUrl={uploadUrl(profile.banner)}
+          onClose={() => setCrop(null)}
+          onSave={(cropped) => upload(cropped, crop?.kind ?? 'avatar')}
+        />
       </section>
 
       <div className="grid grid--stats">

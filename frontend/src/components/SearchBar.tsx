@@ -84,7 +84,7 @@ export function SearchBar({
         <div className="searchbar-results" role="listbox" aria-label="Search results">
           {results.slice(0, 10).map((r, i) => (
             <button
-              key={r.id}
+              key={`${r.type}-${r.id}`}
               role="option"
               aria-selected={i === cursor}
               className="searchbar-result"

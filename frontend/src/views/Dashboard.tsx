@@ -6,8 +6,8 @@ import {
   Activity as ActivityIcon, ArrowRight, CalendarDays, Clapperboard, Flame, ListVideo,
   PlayCircle, Plus, Star, Timer, Users,
 } from '@/lib/icons';
-import { activity as activityApi, clubs as clubsApi, stats as statsApi } from '@/data/api';
-import type { Activity, Club, UserStats } from '@/data/types';
+import { activity as activityApi, clubs as clubsApi, progress as progressApi, stats as statsApi } from '@/data/api';
+import type { Activity, Club, UpcomingEpisode, UserStats } from '@/data/types';
 import { useAuth } from '@/data/AuthContext';
 import { useAppData } from '@/components/AppData';
 import { Poster } from '@/components/Poster';
@@ -16,7 +16,20 @@ import { Panel, Avatar, Chip, Empty, Skeleton, Stat, ProgressBar } from '@/compo
 import { Button } from '@/components/ui/Button';
 import { Markdown } from '@/components/Markdown';
 import { useBus } from '@/lib/bus';
-import { percent, titleCase, timeAgo } from '@/lib/format';
+import { percent, runtime as fmtRuntime, titleCase, timeAgo } from '@/lib/format';
+import { episodeLabel, type SeasonInfo } from '@/lib/episodes';
+/** "Today", "Tomorrow", "in 4 days", then a date once it's more than a week out. */
+function airsIn(iso: string): string {
+  const day = new Date(`${iso}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Math.round((day.getTime() - today.getTime()) / 86_400_000);
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  if (days <= 7) return `in ${days} days`;
+  return day.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
 function greeting(): string {
   const h = new Date().getHours();
   if (h < 5) return 'Still up';
@@ -27,11 +40,12 @@ function greeting(): string {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { lists, loadingLists, progressFor, openCreateList } = useAppData();
+  const { lists, loadingLists, progress, progressFor, nextFor, openCreateList, openMedia } = useAppData();
   const router = useRouter();
   const [feed, setFeed] = useState<Activity[]>([]);
   const [clubs, setClubs] = useState<Club[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
+  const [upcoming, setUpcoming] = useState<UpcomingEpisode[]>([]);
 
   const load = () => {
     activityApi.feed('global', 12).then(setFeed).catch(() => {});
@@ -40,6 +54,11 @@ export default function Dashboard() {
   };
 
   useEffect(load, [user?.id]);
+
+  // Air dates only depend on which series are in the lists, so reload with those.
+  useEffect(() => {
+    if (user) progressApi.upcoming().then(setUpcoming).catch(() => {});
+  }, [user?.id, lists.length]);
   useBus(['lists', 'reviews', 'progress'], load);
 
   const continueWatching = useMemo(() => {
@@ -52,6 +71,17 @@ export default function Dashboard() {
       .sort((a, b) => b.pct - a.pct)
       .slice(0, 8);
   }, [lists, progressFor]);
+
+  /** "Next: S2 E5 · 23m in" for a series, "47m left" for a film. */
+  const resumeLabel = (item: { tmdb_id: number; media_type: 'movie' | 'tv'; seasons?: SeasonInfo[] }) => {
+    if (item.media_type === 'tv') {
+      const next = nextFor(item);
+      if (!next) return '';
+      return `Next: ${episodeLabel(next)}${next.minutes ? ` · ${next.minutes}m in` : ''}`;
+    }
+    const entry = progress[`movie:${item.tmdb_id}`];
+    return entry?.total ? `${fmtRuntime(entry.total - entry.minutes)} left` : '';
+  };
 
   const upNext = useMemo(() => {
     const list = lists.find((l) => /^want to watch$/i.test(l.name)) ?? lists[0];
@@ -131,6 +161,9 @@ export default function Dashboard() {
                           {item.title}
                         </div>
                         <ProgressBar value={pct} label={`${item.title} progress`} />
+                        <div className="truncate faint" style={{ fontSize: 'var(--text-xs)' }}>
+                          {resumeLabel(item)}
+                        </div>
                       </div>
                     }
                   />
@@ -175,6 +208,29 @@ export default function Dashboard() {
         </div>
 
         <div className="stack gap-5">
+          {upcoming.length > 0 && (
+            <Panel title="Upcoming episodes" icon={<CalendarDays size={16} />} flush>
+              <div className="stack gap-1" style={{ padding: 'var(--space-2)' }}>
+                {upcoming.slice(0, 6).map((e) => (
+                  <button
+                    key={e.show_id}
+                    className="list-row"
+                    style={{ textAlign: 'left', width: '100%' }}
+                    onClick={() => openMedia({ tmdb_id: e.show_id, media_type: 'tv', title: e.title, poster_url: e.poster_url })}
+                  >
+                    <span className="grow" style={{ minWidth: 0 }}>
+                      <span className="truncate" style={{ display: 'block', fontWeight: 600 }}>{e.title}</span>
+                      <span className="truncate faint" style={{ display: 'block', fontSize: 'var(--text-xs)' }}>
+                        S{e.season_number} E{e.episode_number}{e.name ? ` · ${e.name}` : ''}
+                      </span>
+                    </span>
+                    <Chip>{airsIn(e.air_date)}</Chip>
+                  </button>
+                ))}
+              </div>
+            </Panel>
+          )}
+
           <Panel
             title="Pinned lists"
             icon={<ListVideo size={16} />}

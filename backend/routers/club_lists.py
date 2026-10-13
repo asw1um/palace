@@ -17,6 +17,14 @@ class rename_club_list_request(BaseModel):
     name: str
 
 
+def _check_name(club_obj, name, skip_id=None):
+    if len(name) > 50:
+        raise HTTPException(status_code=400, detail='List name must be 50 characters or fewer')
+    for lst in club_obj.lists:
+        if lst.id != skip_id and lst.name.lower() == name.lower():
+            raise HTTPException(status_code=409, detail='This club already has a list with that name')
+
+
 @router.post('/{club_id}/lists', status_code=201)
 async def create_club_list(
     club_id: int,
@@ -33,6 +41,7 @@ async def create_club_list(
     name = body.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail='List name cannot be empty')
+    _check_name(club_obj, name)
 
     new_list = movielist(name=name, club_id=club_id)
     db_session.add(new_list)
@@ -104,6 +113,7 @@ async def rename_club_list(
     new_name = body.name.strip()
     if not new_name:
         raise HTTPException(status_code=400, detail='Name cannot be empty')
+    _check_name(club_obj, new_name, skip_id=list_obj.id)
 
     old_name = list_obj.name
     list_obj.name = new_name

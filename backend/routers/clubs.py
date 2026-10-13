@@ -3,30 +3,31 @@ import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
-from werkzeug.utils import secure_filename
 
 from deps import get_current_user, get_db
 from models import user as User, club as Club, movielist
 from activity import log_event
+from utils import read_image
 
 router = APIRouter()
 
 CLUB_IMAGE_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'instance', 'uploads', 'clubs')
 os.makedirs(CLUB_IMAGE_FOLDER, exist_ok=True)
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 
-def _allowed_file(filename: str) -> bool:
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+def _check_club_name(db_session, name, skip_id=None):
+    if len(name) > 50:
+        raise HTTPException(status_code=400, detail='Club name must be 50 characters or fewer')
+    taken = db_session.query(Club).filter(func.lower(Club.name) == name.lower()).first()
+    if taken and taken.id != skip_id:
+        raise HTTPException(status_code=409, detail='A club with that name already exists')
 
 
 def _abs_url(path: str | None, request: Request) -> str | None:
-    if not path:
-        return None
-    if path.startswith('http'):
-        return path
-    return f"{str(request.base_url).rstrip('/')}{path}"
+    # keep it relative, the frontend proxies /uploads
+    return path or None
 
 
 class create_club_request(BaseModel):
@@ -70,6 +71,9 @@ async def create_club(
     name = body.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail='Club name cannot be empty')
+    _check_club_name(db_session, name)
+    if len(body.description or '') > 500:
+        raise HTTPException(status_code=400, detail='Description must be 500 characters or fewer')
 
     new_club = Club(name=name, description=body.description, admin_id=current_user.id)
     new_club.members.append(current_user)
@@ -145,8 +149,11 @@ async def update_club(
     if not club_obj.can_manage(current_user):
         raise HTTPException(status_code=403, detail='Only the club admin or a mod can edit this club')
     if body.name and body.name.strip():
+        _check_club_name(db_session, body.name.strip(), skip_id=club_obj.id)
         club_obj.name = body.name.strip()
     if body.description is not None:
+        if len(body.description.strip()) > 500:
+            raise HTTPException(status_code=400, detail='Description must be 500 characters or fewer')
         club_obj.description = body.description.strip()
     db_session.commit()
     return {'club': club_obj.to_dict()}
@@ -193,6 +200,7 @@ async def rename_club(
     new_name = body.name.strip()
     if not new_name:
         raise HTTPException(status_code=400, detail='Name cannot be empty')
+    _check_club_name(db_session, new_name, skip_id=club_obj.id)
 
     old_name = club_obj.name
     club_obj.name = new_name
@@ -222,17 +230,18 @@ async def upload_club_image(
         raise HTTPException(status_code=404)
     if not club_obj.can_manage(current_user):
         raise HTTPException(status_code=403, detail='Only the club admin or a mod can change the club image')
-    if not file.filename or not _allowed_file(file.filename):
-        raise HTTPException(status_code=400, detail='Invalid file type')
 
-    ext = file.filename.rsplit('.', 1)[1].lower()
+    content, ext = await read_image(file)
     filename = f"club_{club_id}_{int(time.time())}.{ext}"
     filepath = os.path.join(CLUB_IMAGE_FOLDER, filename)
-    content = await file.read()
     with open(filepath, 'wb') as f:
         f.write(content)
 
     url = f"/uploads/clubs/{filename}"
+    if club_obj.image_url and club_obj.image_url != url:
+        old_path = os.path.join(CLUB_IMAGE_FOLDER, os.path.basename(club_obj.image_url))
+        if os.path.exists(old_path):
+            os.remove(old_path)
     club_obj.image_url = url
     db_session.commit()
     return {'url': _abs_url(url, request)}

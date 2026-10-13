@@ -4,7 +4,7 @@ import { Bell, BellOff, CheckCheck, Trash2, UserPlus, Users, Star, ArrowRight } 
 import { notifications as notificationsApi } from '@/data/api';
 import type { Notification } from '@/data/types';
 import { emit } from '@/lib/bus';
-import { timeAgo } from '@/lib/format';
+import { parseDate, timeAgo } from '@/lib/format';
 import { Menu, type MenuPoint } from './ui/Menu';
 import { Button } from './ui/Button';
 import { Chip } from './ui/Bits';
@@ -31,7 +31,7 @@ export function NotificationsMenu({
   const router = useRouter();
   const unread = rows.filter((n) => !n.is_read);
   const shown = [...rows]
-    .sort((a, b) => Number(a.is_read) - Number(b.is_read) || +new Date(b.created_at) - +new Date(a.created_at))
+    .sort((a, b) => Number(a.is_read) - Number(b.is_read) || +parseDate(b.created_at) - +parseDate(a.created_at))
     .slice(0, 6);
 
   const markRead = async (n: Notification) => {

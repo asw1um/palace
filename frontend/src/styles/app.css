@@ -1010,3 +1010,257 @@
   --fs-13:       13px;
   --fs-12:       12px;
 }
+
+/* ---------------------------------------------------------------------------
+   Cast links (media modal) + person page header
+   ------------------------------------------------------------------------- */
+.cast-link {
+  color: inherit;
+  text-decoration: none;
+  padding: var(--sp-2) var(--sp-3);
+  margin: calc(var(--sp-2) * -1) calc(var(--sp-3) * -1);
+  border-radius: var(--r-md);
+}
+.cast-link:hover,
+.cast-link:focus-visible {
+  background: var(--accent-softer);
+}
+.cast-link:hover .cast-link__name,
+.cast-link:focus-visible .cast-link__name {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.person-head {
+  display: flex;
+  gap: var(--space-5);
+  align-items: flex-start;
+}
+.person-head__photo {
+  flex: 0 0 140px;
+  width: 140px;
+  aspect-ratio: 2 / 3;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+@media (max-width: 600px) {
+  .person-head { flex-direction: column; }
+}
+
+/* ---------------------------------------------------------------------------
+   Trailer popup (media modal)
+   ------------------------------------------------------------------------- */
+.trailer-modal .modal__body { padding: 0; }
+.trailer-frame {
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+.trailer-frame iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Profile cover + image cropper (ImageCropDialog.tsx)
+   ------------------------------------------------------------------------- */
+/* Fixed ratio so the cropper's banner frame matches what the profile shows.
+   Keep in sync with BANNER_ASPECT. */
+.profile-cover {
+  position: relative;
+  aspect-ratio: 5 / 1;
+}
+
+.crop-stage {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.crop-stage:active { cursor: grabbing; }
+.crop-stage:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.crop-stage--avatar { max-width: 340px; margin-inline: auto; }
+/* Margin around the banner frame shows what's being cropped away. */
+.crop-stage--banner { padding: 56px 44px; }
+.crop-stage__frame { position: relative; width: 100%; }
+.crop-stage--avatar .crop-stage__mask { border-radius: 50%; }
+.crop-stage img,
+.crop-preview img { pointer-events: none; user-select: none; }
+
+/* Dims everything outside the area that will actually be shown. */
+.crop-stage__mask {
+  position: absolute;
+  inset: 0;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, .6);
+  outline: 2px solid rgba(255, 255, 255, .85);
+  outline-offset: -2px;
+  pointer-events: none;
+}
+
+.crop-preview {
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: var(--surface-3);
+}
+
+/* Miniature profile header */
+.crop-mock {
+  width: 320px;
+  max-width: 100%;
+  overflow: hidden;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.crop-mock__banner {
+  height: 64px;
+  overflow: hidden;
+  background: var(--accent-soft);
+}
+.crop-mock__banner > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.crop-mock__row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  padding: 0 var(--space-3) var(--space-3);
+  margin-top: -22px;
+  position: relative;
+}
+.crop-mock__avatar { border: 3px solid var(--surface-inset); box-sizing: content-box; }
+
+/* ---------------------------------------------------------------------------
+   Custom site background (Backdrop.tsx) - sits behind everything, over --bg
+   ------------------------------------------------------------------------- */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.backdrop__media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ---------------------------------------------------------------------------
+   Resume / runtime bar and season editor (WatchTools.tsx)
+   ------------------------------------------------------------------------- */
+.watch-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.season-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--space-3);
+}
+
+/* ---------------------------------------------------------------------------
+   Where to watch, more like this, review comments (TitleExtras.tsx)
+   ------------------------------------------------------------------------- */
+.provider {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px var(--space-2) 2px 2px;
+  font-size: var(--text-xs);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.provider img { border-radius: var(--r-sm); display: block; }
+
+.similar-row {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+}
+.similar-card {
+  flex: 0 0 104px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0;
+  font-size: var(--text-xs);
+  text-align: left;
+  color: var(--text-muted);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.similar-card img {
+  width: 104px;
+  height: 156px;
+  object-fit: cover;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+}
+.similar-card:hover { color: var(--text); }
+.similar-card:hover img,
+.similar-card:focus-visible img { border-color: var(--accent); }
+
+.review-comments {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+  flex-basis: 100%;
+}
+
+/* ---------------------------------------------------------------------------
+   Public shared list page (SharedList.tsx) - rendered outside the app shell
+   ------------------------------------------------------------------------- */
+.shared-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 1200px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4);
+}
+.shared-page footer { margin-top: auto; padding-top: var(--space-5); }
+.shared-tile { color: inherit; text-decoration: none; }
+.shared-tile__poster {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.shared-tile:hover .shared-tile__poster { border-color: var(--accent); }
+
+/* ---------------------------------------------------------------------------
+   Phone fixes - kept last so they win over the rules above
+   ------------------------------------------------------------------------- */
+@media (max-width: 860px) {
+  /* keep the end of the page clear of the fixed bottom nav */
+  .page-wrap { padding-bottom: calc(56px + var(--sp-4) + env(safe-area-inset-bottom, 0px)); }
+}
+@media (max-width: 600px) {
+  /* two posters across instead of one giant one */
+  .grid--posters { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+}

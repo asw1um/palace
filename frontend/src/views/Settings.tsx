@@ -9,6 +9,7 @@ import { useAppData } from '@/components/AppData';
 import { ThemeControls } from '@/components/ThemeStudio';
 import { SiteStatus } from '@/components/SiteStatus';
 import { ImportDialog } from '@/components/ImportDialog';
+import { DeleteAccountPanel, ExportPanel, PasswordPanel } from '@/components/AccountSettings';
 import { Button } from '@/components/ui/Button';
 import { Field, Input, Select, Switch, Textarea } from '@/components/ui/Field';
 import { Chip, Panel } from '@/components/ui/Bits';
@@ -105,6 +106,13 @@ export default function Settings() {
                 </div>
               </div>
             </Panel>
+          )}
+
+          {section === 'profile' && (
+            <>
+              <PasswordPanel />
+              <DeleteAccountPanel />
+            </>
           )}
 
           {section === 'library' && (
@@ -208,14 +216,29 @@ export default function Settings() {
           )}
 
           {section === 'data' && (
-            <Panel title="Data source" icon={<Server size={16} />}>
-              <p className="muted" style={{ fontSize: 'var(--text-sm)' }}>
-                Palace talks to the live Palace API backend.
-              </p>
-            </Panel>
+            <>
+              <ExportPanel />
+              <Panel title="Data source" icon={<Server size={16} />}>
+                <p className="muted" style={{ fontSize: 'var(--text-sm)' }}>
+                  Palace talks to the live Palace API backend.
+                </p>
+              </Panel>
+            </>
           )}
 
-          {section === 'about' && <SiteStatus />}
+          {section === 'about' && (
+            <>
+              <SiteStatus />
+              <Panel title="Credits" icon={<Info size={16} />}>
+                <p className="muted" style={{ fontSize: 'var(--text-sm)', maxWidth: '70ch' }}>
+                  Film and series information, posters and cast photos come from{' '}
+                  <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer">TMDB</a>.
+                  This product uses the TMDB API but is not endorsed or certified by TMDB.
+                  Streaming availability is provided by JustWatch.
+                </p>
+              </Panel>
+            </>
+          )}
         </div>
       </div>
 

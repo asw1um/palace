@@ -24,6 +24,8 @@ jobs:
 
       - name: Check imports
         working-directory: backend
+        env:
+          JWT_SECRET_KEY: ci
         run: python -c "import main"
 
   frontend:

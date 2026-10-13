@@ -69,3 +69,9 @@ export { default as Users } from 'lucide-react/dist/esm/icons/users.js';
 export { default as UserX } from 'lucide-react/dist/esm/icons/user-x.js';
 export { default as Wand2 } from 'lucide-react/dist/esm/icons/wand-2.js';
 export { default as X } from 'lucide-react/dist/esm/icons/x.js';
+
+export { default as Copy } from 'lucide-react/dist/esm/icons/copy.js';
+export { default as Download } from 'lucide-react/dist/esm/icons/download.js';
+export { default as Lock } from 'lucide-react/dist/esm/icons/lock.js';
+export { default as MessageSquare } from 'lucide-react/dist/esm/icons/message-square.js';
+export { default as Share2 } from 'lucide-react/dist/esm/icons/share-2.js';

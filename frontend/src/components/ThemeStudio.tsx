@@ -1,11 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { RotateCcw } from '@/lib/icons';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { RotateCcw, Trash2, Upload } from '@/lib/icons';
 import { useTheme } from '@/theme/ThemeProvider';
 import {
   isHex, normaliseHex, PRESETS, type Density,
 } from '@/theme/themeConfig';
+import {
+  BACKGROUND_ACCEPT, clearBackgroundFile, formatBytes, inspectBackground, RECOMMENDED,
+  saveBackgroundFile,
+} from '@/theme/background';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Field, Input, Segmented, Slider } from './ui/Field';
@@ -80,6 +85,126 @@ function ColourPicker({
 }
 
 /* -------------------------------------------------------------------------- */
+/* Custom background                                                           */
+/* -------------------------------------------------------------------------- */
+
+const KIND_LABEL = { image: 'Image', gif: 'GIF', video: 'Video' } as const;
+
+function BackgroundPicker() {
+  const { theme, set } = useTheme();
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const bg = theme.background;
+
+  const choose = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    try {
+      const info = await inspectBackground(file);
+      await saveBackgroundFile(file);
+      set({ background: { ...info, id: Date.now() } });
+    } catch (e) {
+      toast.error(e instanceof Error && e.message ? e.message : 'Could not use that file.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    set({ background: null });
+    await clearBackgroundFile().catch(() => {});
+  };
+
+  const small = bg && (bg.width < RECOMMENDED.minWidth || bg.height < RECOMMENDED.minHeight);
+
+  return (
+    <div className="stack gap-4">
+      <div className="setting-row">
+        <div className="setting-row__text">
+          <div className="setting-row__title">{bg ? bg.name : 'No custom background'}</div>
+          <div className="setting-row__desc">
+            {bg
+              ? `${KIND_LABEL[bg.kind]} · ${bg.width} × ${bg.height} · ${formatBytes(bg.size)}`
+              : 'Use your own image, GIF or video behind the whole site.'}
+          </div>
+        </div>
+        <div className="row gap-2">
+          <Button icon={<Upload size={15} />} disabled={busy} onClick={() => input.current?.click()}>
+            {busy ? 'Loading…' : bg ? 'Replace' : 'Choose file'}
+          </Button>
+          {bg && (
+            <Button variant="ghost" icon={<Trash2 size={15} />} onClick={remove}>
+              Remove
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {small && (
+        <p style={{ color: 'var(--warning)', fontSize: 'var(--text-xs)' }}>
+          This is smaller than {RECOMMENDED.minWidth} × {RECOMMENDED.minHeight}, so it will be
+          stretched to fill the screen and may look blurry.
+        </p>
+      )}
+
+      {bg && (
+        <div className="setting-row">
+          <div className="setting-row__text">
+            <div className="setting-row__title">Background visibility</div>
+            <div className="setting-row__desc">
+              {Math.round(theme.backgroundOpacity * 100)}% — lower keeps text easier to read.
+            </div>
+          </div>
+          <div style={{ width: 180 }}>
+            <Slider
+              ariaLabel="Background visibility"
+              min={0.05}
+              max={1}
+              step={0.05}
+              value={theme.backgroundOpacity}
+              onChange={(backgroundOpacity) => set({ backgroundOpacity })}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="panel panel--inset stack gap-2" style={{ padding: 'var(--space-3)' }}>
+        <div className="eyebrow">Recommended sizes</div>
+        {RECOMMENDED.tips.map(([kind, tip]) => (
+          <div key={kind} className="row gap-3" style={{ fontSize: 'var(--text-xs)', alignItems: 'baseline' }}>
+            <strong style={{ width: 44, flexShrink: 0 }}>{kind}</strong>
+            <span className="muted">{tip}</span>
+          </div>
+        ))}
+        <div className="faint" style={{ fontSize: 'var(--text-xs)' }}>
+          The background is cropped to fill the window, so keep anything important near the middle.
+        </div>
+        <div className="row gap-3" style={{ fontSize: 'var(--text-xs)', alignItems: 'baseline' }}>
+          <strong style={{ width: 44, flexShrink: 0 }}>Saved</strong>
+          <span className="muted">
+            On this device only, not in the cloud. It is stored in this browser and never uploaded
+            to your account, so it won&apos;t appear on your other devices or browsers. Keep the
+            original file on your PC: clearing your browser data removes the background and
+            you&apos;ll need the file to set it again.
+          </span>
+        </div>
+      </div>
+
+      <input
+        ref={input}
+        type="file"
+        accept={BACKGROUND_ACCEPT}
+        hidden
+        onChange={(e) => {
+          choose(e.target.files?.[0]);
+          e.target.value = '';
+        }}
+      />
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /* Full control set                                                            */
 /* -------------------------------------------------------------------------- */
 
@@ -111,6 +236,11 @@ export function ThemeControls() {
           value={theme.header ?? '#1e4c80'}
           onChange={(header) => set({ header })}
         />
+      </section>
+
+      <section className="stack gap-3">
+        <div className="eyebrow">Background</div>
+        <BackgroundPicker />
       </section>
 
       <section className="stack gap-4">

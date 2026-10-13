@@ -40,9 +40,15 @@ export function runtime(minutes?: number | null): string {
   return h ? `${h}h${m ? ` ${m}m` : ''}` : `${m}m`;
 }
 
+/** The API sends UTC timestamps with no zone suffix; without one, JS reads them as local time. */
+export function parseDate(input: string | number | Date): Date {
+  if (typeof input === 'string' && /^\d{4}-\d{2}-\d{2}T[\d:.]+$/.test(input)) return new Date(`${input}Z`);
+  return new Date(input);
+}
+
 /** "3 days ago" */
 export function timeAgo(input: string | number | Date): string {
-  const then = new Date(input).getTime();
+  const then = parseDate(input).getTime();
   if (Number.isNaN(then)) return '';
   const secs = Math.round((Date.now() - then) / 1000);
   const table: [number, Intl.RelativeTimeFormatUnit][] = [

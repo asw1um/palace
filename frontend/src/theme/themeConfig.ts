@@ -1,3 +1,5 @@
+import type { BackgroundInfo } from './background';
+
 export type Density = 'comfortable' | 'compact';
 
 export interface ThemeState {
@@ -6,6 +8,9 @@ export interface ThemeState {
   density: Density;
   radius: number;    // 0.4–1.5 multiplier
   textSize: number;  // 0.9–1.2 multiplier
+  /** Custom site background; the file itself is in IndexedDB (see background.ts). */
+  background: BackgroundInfo | null;
+  backgroundOpacity: number;  // 0.05–1, how strongly the background shows through
 }
 
 export interface Preset {
@@ -30,6 +35,8 @@ export const DEFAULT_THEME: ThemeState = {
   density: 'comfortable',
   radius: 1,
   textSize: 1,
+  background: null,
+  backgroundOpacity: 0.4,
 };
 
 export const THEME_KEY = 'palace.theme.v2';

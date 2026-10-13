@@ -7,10 +7,18 @@
 
 import { client, readFile, TOKEN_KEY } from './client';
 import { rank } from '@/lib/fuzzy';
+import { episodeKey, type SeasonInfo } from '@/lib/episodes';
 import type {
-  Activity, AuthResponse, Club, Friendship, List, ListItem, MediaType,
-  Notification, Review, TMDBResult, User, UserSettings, UserStats,
+  Activity, AuthResponse, Club, EpisodeInfo, Friendship, List, ListItem, MediaType,
+  Notification, PersonDetails, PersonResult, Review, ReviewComment, SharedList, TMDBResult,
+  UpcomingEpisode, User, UserSettings, UserStats,
 } from './types';
+
+/** Two-letter country from the browser's language (en-GB -> GB), for "where to watch". */
+function region(): string {
+  const code = typeof navigator === 'undefined' ? '' : navigator.language.split('-')[1] ?? '';
+  return /^[A-Za-z]{2}$/.test(code) ? code.toUpperCase() : 'US';
+}
 
 /* -------------------------------------------------------------------------- */
 /* Normalisers                                                                 */
@@ -103,6 +111,21 @@ export const auth = {
   logout() {
     localStorage.removeItem(TOKEN_KEY);
   },
+
+  /** Changing the password signs every other device out and returns a fresh token for this one. */
+  async changePassword(current: string, next: string): Promise<void> {
+    const res = await client.post('/auth/change-password', { current_password: current, new_password: next });
+    localStorage.setItem(TOKEN_KEY, res.data.access_token);
+  },
+
+  async deleteAccount(password: string): Promise<void> {
+    await client.post('/auth/delete-account', { password });
+  },
+
+  /** Everything stored about the account, for the user to keep. */
+  async exportData(): Promise<unknown> {
+    return (await client.get('/auth/export')).data;
+  },
 };
 
 /* -------------------------------------------------------------------------- */
@@ -131,19 +154,20 @@ function applyOrder<T extends { id: number }>(rows: T[], key: string, bucket: st
 
 export const lists = {
   async all(): Promise<List[]> {
-    const rows = ((await client.get('/lists/with-movies')).data as List[]).map(normaliseList);
+    const res = await client.get('/lists/with-movies');
+    const rows = ((res.data.lists ?? res.data) as List[]).map(normaliseList);
     return applyOrder(rows, ORDER_KEY, 'mine');
   },
 
   async one(id: number): Promise<List | null> {
-    const l = normaliseList((await client.get(`/lists/${id}`)).data as List);
-    if (!l) return null;
+    const res = await client.get(`/lists/${id}`);
+    const l = normaliseList((res.data.list ?? res.data) as List);
     return { ...l, items: applyOrder(l.items ?? [], ITEM_ORDER_KEY, String(id)) };
   },
 
   async create(name: string): Promise<List> {
-    const res = await client.post('/lists/', { name });
-    return normaliseList(res.data);
+    const res = await client.post('/lists', { name });
+    return normaliseList(res.data.list ?? res.data);
   },
 
   async rename(id: number, name: string): Promise<void> {
@@ -185,6 +209,20 @@ export const lists = {
     writeOrder(ITEM_ORDER_KEY, map);
   },
 
+  /** Turns on a public read-only link for the list and returns its token. */
+  async share(id: number): Promise<string> {
+    return (await client.post(`/lists/${id}/share`)).data.token;
+  },
+
+  async unshare(id: number): Promise<void> {
+    await client.delete(`/lists/${id}/share`);
+  },
+
+  /** What a share link shows. Needs no login. */
+  async shared(token: string): Promise<SharedList> {
+    return (await client.get(`/shared/${encodeURIComponent(token)}`, { silent: true })).data;
+  },
+
   /** Which of my lists already hold this title — powers the duplicate warning. */
   async containing(tmdbId: number): Promise<List[]> {
     const all = await lists.all();
@@ -207,11 +245,17 @@ export const clubs = {
   },
   async one(id: number): Promise<Club | null> {
     const res = await client.get(`/clubs/${id}`);
-    return { ...res.data, lists: (res.data.lists ?? []).map(normaliseList) };
+    const club = res.data.club ?? res.data;
+    return {
+      ...club,
+      // The detail response carries the members themselves rather than a count.
+      member_count: club.member_count ?? club.members?.length ?? 0,
+      lists: (club.lists ?? []).map(normaliseList),
+    };
   },
   async create(name: string, description: string): Promise<Club> {
     const res = await client.post('/clubs', { name, description });
-    return res.data;
+    return res.data.club ?? res.data;
   },
   async join(id: number) {
     await client.post(`/clubs/${id}/join`);
@@ -221,7 +265,7 @@ export const clubs = {
   },
   async createList(clubId: number, name: string): Promise<List> {
     const res = await client.post(`/clubs/${clubId}/lists`, { name });
-    return normaliseList(res.data);
+    return normaliseList(res.data.list ?? res.data);
   },
   async pin(id: number, pinned: boolean) {
     await client.post(`/clubs/${id}/${pinned ? 'pin' : 'unpin'}`);
@@ -239,7 +283,8 @@ export const people = {
   },
   async one(username: string): Promise<User | null> {
     const res = await client.get(`/auth/users/${username}`);
-    return res.data.user ?? res.data;
+    const user = res.data.user ?? res.data;
+    return res.data.lists ? { ...user, lists: (res.data.lists as List[]).map(normaliseList) } : user;
   },
   /** Friends are Demo-only until the backend ships them. — issue #113 */
   async friends(): Promise<Friendship[]> {
@@ -268,7 +313,25 @@ export const discover = {
     return res.data.results ?? res.data;
   },
   async details(id: number, mediaType: MediaType): Promise<TMDBResult | null> {
-    const res = await client.get(`/${mediaType === 'tv' ? 'tv' : 'movie'}/${id}`);
+    const res = await client.get(`/${mediaType === 'tv' ? 'tv' : 'movie'}/${id}`, {
+      params: { region: region() },
+    });
+    return res.data;
+  },
+  /** Actors and crew matching a name. */
+  async people(query: string): Promise<PersonResult[]> {
+    if (!query.trim()) return [];
+    const res = await client.get('/search/person', { params: { query }, silent: true });
+    return res.data.results ?? [];
+  },
+  /** Real episode names, air dates and runtimes for one season. */
+  async season(tmdbId: number, seasonNumber: number): Promise<EpisodeInfo[]> {
+    const res = await client.get(`/tv/${tmdbId}/season/${seasonNumber}`, { silent: true });
+    return res.data.episodes ?? [];
+  },
+  /** A cast/crew member plus everything they've worked on. */
+  async person(id: number): Promise<PersonDetails | null> {
+    const res = await client.get(`/person/${id}/credits`);
     return res.data;
   },
   /** Local title corpus used for "did you mean" suggestions. */
@@ -300,6 +363,7 @@ function normaliseReview(r: any): Review {
     likes: r.reactions?.likes ?? 0,
     dislikes: r.reactions?.dislikes ?? 0,
     my_reaction: r.reactions?.my_reaction ?? null,
+    comment_count: r.comment_count ?? 0,
   };
 }
 
@@ -328,6 +392,15 @@ export const reviews = {
   async react(id: number, reaction: 'like' | 'dislike') {
     await client.post(`/reviews/${id}/react`, { reaction });
   },
+  async comments(reviewId: number): Promise<ReviewComment[]> {
+    return (await client.get(`/reviews/${reviewId}/comments`, { silent: true })).data.comments ?? [];
+  },
+  async addComment(reviewId: number, content: string): Promise<ReviewComment> {
+    return (await client.post(`/reviews/${reviewId}/comments`, { content })).data.comment;
+  },
+  async removeComment(commentId: number) {
+    await client.delete(`/reviews/comments/${commentId}`);
+  },
   /** Average of user ratings, shown next to the TMDB score. — issue #111 */
   async average(tmdbId: number, mediaType: MediaType): Promise<{ avg: number; count: number }> {
     const rows = await reviews.forTitle(tmdbId, mediaType);
@@ -340,11 +413,33 @@ export const reviews = {
 /* Progress                                                                    */
 /* -------------------------------------------------------------------------- */
 
+export { episodeKey };
+
+/** The episode someone stopped partway through, and how many minutes in. */
+export interface WatchPosition {
+  season: number;
+  episode: number;
+  minutes: number;
+}
+
 export interface ProgressEntry {
   episodes: string[];
   watched: boolean;
   minutes: number;
   updated: string;
+  /** Films: full length the minutes are measured against. */
+  total?: number;
+  /** Series: a saved spot inside an episode. */
+  position?: WatchPosition | null;
+}
+
+function toPosition(row: any): WatchPosition | null {
+  return row ? { season: row.season_number, episode: row.episode_number, minutes: row.minutes ?? 0 } : null;
+}
+
+/** A film counts as watched once the minutes reach its length. */
+function filmWatched(minutes: number, total: number): boolean {
+  return total > 0 ? minutes >= total : minutes > 0;
 }
 
 export const progress = {
@@ -354,16 +449,22 @@ export const progress = {
       const res = await client.get('/watchlist/all-progress', { silent: true });
       const out: Record<string, ProgressEntry> = {};
       const data = res.data ?? {};
-      for (const [showId, episodes] of Object.entries(data.shows ?? data)) {
-        const eps = Array.isArray(episodes)
-          ? (episodes as string[])
-          : Object.entries(episodes as Record<string, boolean>)
-              .filter(([, v]) => v)
-              .map(([k]) => k);
+      // Shows come back as { showId: { "season-episode": watched } }.
+      for (const [showId, episodes] of Object.entries(data.shows ?? {})) {
+        const eps = Object.entries(episodes as Record<string, boolean>)
+          .filter(([, v]) => v)
+          .map(([k]) => episodeKey(...(k.split('-').map(Number) as [number, number])));
         out[`tv:${showId}`] = { episodes: eps, watched: false, minutes: eps.length * 45, updated: '' };
       }
-      for (const [movieId, done] of Object.entries(data.movies ?? {})) {
-        out[`movie:${movieId}`] = { episodes: [], watched: !!done, minutes: 0, updated: '' };
+      for (const [showId, row] of Object.entries(data.positions ?? {})) {
+        const key = `tv:${showId}`;
+        out[key] = { ...(out[key] ?? { episodes: [], watched: false, minutes: 0, updated: '' }), position: toPosition(row) };
+      }
+      for (const [movieId, row] of Object.entries(data.movies ?? {})) {
+        const { watched_minutes: minutes = 0, total_minutes: total = 0 } = (row ?? {}) as {
+          watched_minutes?: number; total_minutes?: number;
+        };
+        out[`movie:${movieId}`] = { episodes: [], watched: filmWatched(minutes, total), minutes, total, updated: '' };
       }
       return out;
     } catch {
@@ -374,13 +475,45 @@ export const progress = {
   async forTitle(mediaType: MediaType, tmdbId: number) {
     if (mediaType === 'movie') {
       const res = await client.get(`/watchlist/movie-progress/${tmdbId}`, { silent: true }).catch(() => null);
-      const watchedMinutes = res?.data?.watched_minutes ?? 0;
-      return { episodes: [], watched: watchedMinutes > 0, minutes: watchedMinutes, updated: '' };
+      const watchedMinutes: number = res?.data?.watched_minutes ?? 0;
+      const total: number = res?.data?.total_minutes ?? 0;
+      return {
+        episodes: [], watched: filmWatched(watchedMinutes, total), minutes: watchedMinutes, total,
+        updated: '', position: null,
+      };
     }
     const res = await client.get(`/watchlist/progress/${tmdbId}`, { silent: true }).catch(() => null);
-    const map: Record<string, boolean> = res?.data ?? {};
-    const episodes = Object.entries(map).filter(([, v]) => v).map(([k]) => k);
-    return { episodes, watched: false, minutes: episodes.length * 45, updated: '' };
+    const rows: { season_number: number; episode_number: number; watched: boolean }[] =
+      res?.data?.progress ?? [];
+    const episodes = rows.filter((r) => r.watched).map((r) => episodeKey(r.season_number, r.episode_number));
+    return {
+      episodes, watched: false, minutes: episodes.length * 45, total: 0, updated: '',
+      position: toPosition(res?.data?.position),
+    };
+  },
+
+  /** Next episodes still to air for series in the user's lists, soonest first. */
+  async upcoming(): Promise<UpcomingEpisode[]> {
+    const res = await client.get('/watchlist/upcoming', { silent: true, timeout: 60_000 });
+    return res.data.episodes ?? [];
+  },
+
+  /** Remembers the minute someone stopped at inside an episode. */
+  async setPosition(tmdbId: number, season: number, episode: number, minutes: number) {
+    await client.put('/watchlist/position', {
+      show_id: tmdbId, season_number: season, episode_number: episode, minutes,
+    });
+  },
+
+  async clearPosition(tmdbId: number) {
+    await client.delete(`/watchlist/position/${tmdbId}`);
+  },
+
+  /** Sets how far into a film someone is; `total` is the film's length. */
+  async setMovieMinutes(tmdbId: number, minutes: number, total: number) {
+    await client.post('/watchlist/movie-progress', {
+      movie_id: tmdbId, watched_minutes: minutes, total_minutes: total,
+    });
   },
 
   async setEpisode(tmdbId: number, season: number, episode: number, watched: boolean, cascade: boolean) {
@@ -389,14 +522,55 @@ export const progress = {
     });
   },
 
+  /** Marks whole seasons watched or unwatched in one request. */
+  async setSeasons(
+    tmdbId: number,
+    seasons: { season_number: number; episode_count: number }[],
+    watched: boolean,
+  ) {
+    await client.post('/watchlist/bulk-show-progress', { show_id: tmdbId, watched, seasons });
+  },
+
   /** Marks a movie watched — parity with shows. — issue #33 */
-  async setMovieWatched(tmdbId: number, watched: boolean) {
-    const meta = await discover.details(tmdbId, 'movie').catch(() => null);
+  async setMovieWatched(tmdbId: number, watched: boolean, runtime?: number | null) {
+    // Callers that know the length (including one the user entered) pass it in.
+    const total = runtime || (await discover.details(tmdbId, 'movie').catch(() => null))?.runtime || 100;
     await client.post('/watchlist/movie-progress', {
       movie_id: tmdbId,
-      watched_minutes: watched ? meta?.runtime ?? 100 : 0,
-      total_minutes: meta?.runtime ?? 100,
+      watched_minutes: watched ? total : 0,
+      total_minutes: total,
     });
+  },
+};
+
+/* -------------------------------------------------------------------------- */
+/* Custom runtimes and season counts                                           */
+/* -------------------------------------------------------------------------- */
+
+/** What a user has overridden for one title, where TMDB is wrong or has nothing. */
+export interface CustomMeta {
+  tmdb_id: number;
+  media_type: MediaType;
+  runtime: number | null;
+  seasons: SeasonInfo[] | null;
+}
+
+export const customMedia = {
+  /** Every override the user has saved, keyed like progress: `"movie:123"` / `"tv:456"`. */
+  async all(): Promise<Record<string, CustomMeta>> {
+    const res = await client.get('/custom-media', { silent: true });
+    const out: Record<string, CustomMeta> = {};
+    for (const row of (res.data.items ?? []) as CustomMeta[]) out[`${row.media_type}:${row.tmdb_id}`] = row;
+    return out;
+  },
+  async setRuntime(tmdbId: number, runtime: number) {
+    await client.put(`/custom-media/movie/${tmdbId}`, { runtime });
+  },
+  async setSeasons(tmdbId: number, seasons: SeasonInfo[]) {
+    await client.put(`/custom-media/tv/${tmdbId}`, { seasons });
+  },
+  async reset(mediaType: MediaType, tmdbId: number) {
+    await client.delete(`/custom-media/${mediaType}/${tmdbId}`);
   },
 };
 
@@ -440,26 +614,32 @@ export const settings = {
 };
 
 export const stats = {
-  async forUser(userId: number): Promise<UserStats> {
-    // The backend has no stats endpoint yet — derive what we can from lists.
-    const [myLists, myReviews] = await Promise.all([
-      lists.all().catch(() => [] as List[]),
+  /** Pass `theirLists` for someone else's profile; without it the viewer's own lists are used. */
+  async forUser(userId: number, theirLists?: List[]): Promise<UserStats> {
+    // Titles come from lists and ratings from reviews; watch time, streak and the
+    // heatmap come from the backend, bucketed into days in this browser's timezone.
+    const [myLists, myReviews, watch] = await Promise.all([
+      theirLists ? Promise.resolve(theirLists) : lists.all().catch(() => [] as List[]),
       reviews.byUser(userId).catch(() => [] as Review[]),
+      client
+        .get(`/watchlist/stats/${userId}`, { params: { tz: -new Date().getTimezoneOffset() }, silent: true })
+        .then((res) => res.data as Partial<Pick<UserStats, 'episodes' | 'minutes' | 'streak' | 'heatmap'>>)
+        .catch(() => null),
     ]);
     const items = myLists.flatMap((l) => l.items ?? []);
     const unique = new Set(items.map((i) => i.tmdb_id));
     return {
       titles: unique.size,
       movies: items.filter((i) => i.media_type === 'movie').length,
-      episodes: 0,
-      minutes: items.reduce((a, i) => a + (i.runtime ?? 0), 0),
+      episodes: watch?.episodes ?? 0,
+      minutes: watch?.minutes ?? 0,
       reviews: myReviews.length,
       avgRating: myReviews.length
         ? myReviews.reduce((a, r) => a + r.rating, 0) / myReviews.length
         : 0,
       rewatches: 0,
-      streak: 0,
-      heatmap: [],
+      streak: watch?.streak ?? 0,
+      heatmap: watch?.heatmap ?? [],
       topGenres: [],
     };
   },

@@ -27,7 +27,7 @@
 .heatmap__weekdays span {
   height: var(--cell);
   line-height: var(--cell);
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-faint);
   text-align: right;
   padding-right: 2px;
@@ -39,6 +39,9 @@
   overflow-y: hidden;
   flex: 1;
   min-width: 0;
+  /* The grid is sized from this box's width, so its content must not feed back
+     into the layout — otherwise the panel can grow but never shrink again. */
+  contain: inline-size;
 }
 
 /* Month labels row — uses inline gridTemplateColumns from the component */
@@ -71,7 +74,7 @@
 .heat-cell {
   width: var(--cell);
   height: var(--cell);
-  border-radius: 2px;
+  border-radius: 3px;
   background: var(--hm-0, var(--surface-3));
   cursor: default;
   transition: opacity 80ms;

@@ -24,6 +24,29 @@ class ShowProgress(db.Model):
         }
 
 
+class EpisodePosition(db.Model):
+    # where the user stopped in a show, one row per show
+    __tablename__ = 'episode_positions'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    show_id = db.Column(db.Integer, nullable=False)
+    season_number = db.Column(db.Integer, nullable=False)
+    episode_number = db.Column(db.Integer, nullable=False)
+    minutes = db.Column(db.Integer, default=0)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'show_id', name='uq_user_show_position'),)
+
+    def to_dict(self):
+        return {
+            'show_id': self.show_id,
+            'season_number': self.season_number,
+            'episode_number': self.episode_number,
+            'minutes': self.minutes or 0,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
 class MovieProgress(db.Model):
     __tablename__ = 'movie_progress'
     id = db.Column(db.Integer, primary_key=True)

@@ -24,7 +24,12 @@ client.interceptors.response.use(
       window.location.assign('/login');
     }
     if (!err.config?.silent) {
-      const msg = err.response?.data?.error || err.response?.data?.msg || err.message;
+      const detail = err.response?.data?.detail;
+      const msg =
+        (typeof detail === 'string' && detail) ||
+        err.response?.data?.error ||
+        err.response?.data?.msg ||
+        err.message;
       if (msg && err.response?.status !== 404) toast.error(String(msg));
     }
     return Promise.reject(err);
@@ -47,6 +52,17 @@ export function isDemo(): boolean {
 
 export async function detectMode(): Promise<RunMode> {
   return 'live';
+}
+
+/**
+ * The API returns upload URLs on its own origin (http://127.0.0.1:5000/uploads/…),
+ * which the browser can't always reach and next/image refuses to optimise.
+ * Uploads are proxied at /uploads on this origin, so use the path alone.
+ */
+export function uploadUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const at = url.indexOf('/uploads/');
+  return /^https?:\/\//.test(url) && at !== -1 ? url.slice(at) : url;
 }
 
 /** Reads a File into a data URL (used for avatars, banners, backdrops). */

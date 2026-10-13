@@ -1,10 +1,13 @@
+import secrets
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import Any
 
 from deps import get_current_user, get_db
-from models import user as User, movielist
+from models import user as User, movielist, ListShare
 from models import movie as MovieModel, show as ShowModel, show_season
 from activity import log_event
 from cache import lists_cache_get, lists_cache_set, lists_cache_invalidate
@@ -23,6 +26,16 @@ class rename_list_request(BaseModel):
 
 class add_to_list_request(BaseModel):
     movie: dict
+
+
+def _check_list_name(db_session, name, user_id, skip_id=None):
+    if len(name) > 50:
+        raise HTTPException(status_code=400, detail='List name must be 50 characters or fewer')
+    taken = db_session.query(movielist).filter(
+        movielist.user_id == user_id, func.lower(movielist.name) == name.lower()
+    ).first()
+    if taken and taken.id != skip_id:
+        raise HTTPException(status_code=409, detail='You already have a list with that name')
 
 
 @router.get('')
@@ -49,6 +62,7 @@ async def get_user_lists_with_movies(
     return {'lists': result}
 
 
+@router.post('', status_code=201)
 @router.post('/', status_code=201)
 async def create_list(
     body: create_list_request,
@@ -58,6 +72,7 @@ async def create_list(
     name = body.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail='List name cannot be empty')
+    _check_list_name(db_session, name, current_user.id)
 
     new_list = movielist(name=name, user_id=current_user.id)
     db_session.add(new_list)
@@ -98,7 +113,52 @@ async def get_list(
         raise HTTPException(status_code=403, detail='You do not have permission to view this list')
     if list_obj.is_club_list() and not list_obj.club.is_member(current_user):
         raise HTTPException(status_code=403, detail='You must be a club member to view this list')
-    return {'list': list_obj.to_dict(include_movies=True, include_shows=True)}
+    data = list_obj.to_dict(include_movies=True, include_shows=True)
+    share = db_session.query(ListShare).filter_by(list_id=list_obj.id).first()
+    data['share_token'] = share.token if share else None
+    return {'list': data}
+
+
+def _can_share(list_obj, user):
+    if list_obj.is_club_list():
+        return list_obj.club.can_manage(user)
+    return list_obj.user_id == user.id
+
+
+@router.post('/{list_id}/share')
+async def share_list(
+    list_id: int,
+    current_user: User = Depends(get_current_user),
+    db_session: Session = Depends(get_db),
+):
+    list_obj = db_session.get(movielist, list_id)
+    if not list_obj:
+        raise HTTPException(status_code=404)
+    if not _can_share(list_obj, current_user):
+        raise HTTPException(status_code=403, detail='No permission to share this list')
+
+    share = db_session.query(ListShare).filter_by(list_id=list_id).first()
+    if not share:
+        share = ListShare(list_id=list_id, token=secrets.token_urlsafe(16))
+        db_session.add(share)
+        db_session.commit()
+    return {'token': share.token}
+
+
+@router.delete('/{list_id}/share')
+async def unshare_list(
+    list_id: int,
+    current_user: User = Depends(get_current_user),
+    db_session: Session = Depends(get_db),
+):
+    list_obj = db_session.get(movielist, list_id)
+    if not list_obj:
+        raise HTTPException(status_code=404)
+    if not _can_share(list_obj, current_user):
+        raise HTTPException(status_code=403, detail='No permission to share this list')
+    db_session.query(ListShare).filter_by(list_id=list_id).delete()
+    db_session.commit()
+    return {'message': 'Link removed'}
 
 
 @router.delete('/{list_id}')
@@ -121,6 +181,7 @@ async def delete_list(
         extra_data={'list_name': list_obj.name},
         session=db_session,
     )
+    db_session.query(ListShare).filter_by(list_id=list_obj.id).delete()
     db_session.delete(list_obj)
     db_session.commit()
     lists_cache_invalidate(current_user.id)
@@ -144,6 +205,7 @@ async def rename_list(
     new_name = body.name.strip()
     if not new_name:
         raise HTTPException(status_code=400, detail='Name cannot be empty')
+    _check_list_name(db_session, new_name, current_user.id, skip_id=list_obj.id)
 
     old_name = list_obj.name
     list_obj.name = new_name
@@ -216,15 +278,27 @@ async def add_to_list(
     poster_url = movie_data.get('poster_url') or movie_data.get('poster')
     media_type = movie_data.get('media_type', 'movie')
 
+    if not isinstance(tmdb_id, int) or isinstance(tmdb_id, bool) or tmdb_id <= 0:
+        raise HTTPException(status_code=400, detail='Invalid tmdb_id')
+    if not isinstance(title, str) or not title.strip() or len(title) > 200:
+        raise HTTPException(status_code=400, detail='Invalid title')
+    if media_type not in ('movie', 'tv'):
+        raise HTTPException(status_code=400, detail='Invalid media type')
+    if poster_url is not None and (not isinstance(poster_url, str) or len(poster_url) > 300):
+        raise HTTPException(status_code=400, detail='Invalid poster')
+
     if media_type == 'tv':
         existing = db_session.query(ShowModel).filter_by(user_id=current_user.id, tmdb_id=tmdb_id).first()
         if existing:
             show_obj = existing
         else:
+            # fetch first, flushing before this locks sqlite for the cache write
+            show_details = fetch_show_details(tmdb_id)
+            if not show_details:
+                raise HTTPException(status_code=404, detail='Show not found')
             show_obj = ShowModel(title=title, poster_url=poster_url, tmdb_id=tmdb_id, user_id=current_user.id)
             db_session.add(show_obj)
             db_session.flush()
-            show_details = fetch_show_details(tmdb_id)
             if show_details:
                 show_obj.total_seasons = show_details.get('number_of_seasons') or 0
                 for season in show_details.get('seasons', []):

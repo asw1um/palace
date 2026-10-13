@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
-  Check, Clock, Eye, ExternalLink, HelpCircle, ListPlus, Plus, Star, ThumbsDown,
+  Check, Clock, Eye, ExternalLink, HelpCircle, ListPlus, PlayCircle, Plus, Star, ThumbsDown,
   ThumbsUp, Trash2, Users,
 } from '@/lib/icons';
 import { toast } from 'sonner';
-import { discover, progress as progressApi, reviews as reviewsApi } from '@/data/api';
-import type { Review, TMDBResult } from '@/data/types';
+import { discover, progress as progressApi, reviews as reviewsApi, type WatchPosition } from '@/data/api';
+import { countEpisodes } from '@/lib/episodes';
+import type { EpisodeInfo, Review, TMDBResult } from '@/data/types';
 import { percent, runtime as fmtRuntime, timeAgo, year } from '@/lib/format';
 import { emit } from '@/lib/bus';
 import { useAuth } from '@/data/AuthContext';
@@ -16,21 +18,27 @@ import { Avatar, CheckBox, Chip, Empty, Panel, Ring, Skeleton, Stars, Tabs } fro
 import { Switch, Textarea } from './ui/Field';
 import { Markdown, MARKDOWN_HELP } from './Markdown';
 import { useAppData, type TitleRef } from './AppData';
+import { FilmProgress, NextUpBar, SeasonEditor } from './WatchTools';
+import { MoreLikeThis, ReviewComments, WhereToWatch } from './TitleExtras';
 
 type Tab = 'overview' | 'episodes' | 'reviews';
 
 export function MediaModal({
   open, target, onClose,
 }: { open: boolean; target: TitleRef | null; onClose: () => void }) {
-  const { openAddTo, quickAdd, cascadeEpisodes } = useAppData();
+  const { openAddTo, quickAdd, cascadeEpisodes, custom, openMedia } = useAppData();
   const { user } = useAuth();
   const [details, setDetails] = useState<TMDBResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('overview');
   const [watchedEps, setWatchedEps] = useState<Set<string>>(new Set());
   const [movieWatched, setMovieWatched] = useState(false);
+  const [movieMinutes, setMovieMinutes] = useState(0);
+  const [position, setPosition] = useState<WatchPosition | null>(null);
+  const [editSeasons, setEditSeasons] = useState(false);
   const [season, setSeason] = useState(1);
   const [rows, setRows] = useState<Review[]>([]);
+  const [trailerOpen, setTrailerOpen] = useState(false);
 
   const isTv = target?.media_type === 'tv';
 
@@ -39,6 +47,8 @@ export function MediaModal({
     const p = await progressApi.forTitle(target.media_type, target.tmdb_id);
     setWatchedEps(new Set(p.episodes));
     setMovieWatched(p.watched);
+    setMovieMinutes(p.minutes);
+    setPosition(p.position ?? null);
   }, [target]);
 
   const loadReviews = useCallback(async () => {
@@ -50,6 +60,8 @@ export function MediaModal({
     if (!open || !target) return;
     setTab('overview');
     setSeason(1);
+    setTrailerOpen(false);
+    setEditSeasons(false);
     setLoading(true);
     discover
       .details(target.tmdb_id, target.media_type)
@@ -60,13 +72,27 @@ export function MediaModal({
     loadReviews();
   }, [open, target, loadProgress, loadReviews]);
 
-  const seasons = details?.seasons ?? [];
-  const totalEpisodes = details?.number_of_episodes ?? 0;
+  // The user's own runtime / season counts win over TMDB's where they've set them.
+  const mine = target ? custom[`${target.media_type}:${target.tmdb_id}`] : undefined;
+  const tmdbSeasons = details?.seasons ?? [];
+  const seasons = mine?.seasons ?? tmdbSeasons;
+  const totalEpisodes = mine?.seasons
+    ? countEpisodes(mine.seasons)
+    : details?.number_of_episodes || countEpisodes(tmdbSeasons);
+  const runtime = mine?.runtime ?? details?.runtime ?? 0;
   const pct = isTv
-    ? percent(watchedEps.size, totalEpisodes)
+    ? Math.min(100, percent(watchedEps.size, totalEpisodes))
     : movieWatched
       ? 100
-      : 0;
+      : runtime
+        ? Math.min(100, percent(movieMinutes, runtime))
+        : 0;
+
+  const progressChanged = async () => {
+    await loadProgress();
+    emit('progress');
+    emit('lists');
+  };
 
   const userScore = useMemo(() => {
     if (!rows.length) return null;
@@ -83,8 +109,9 @@ export function MediaModal({
 
   const toggleMovie = async () => {
     if (!target) return;
-    await progressApi.setMovieWatched(target.tmdb_id, !movieWatched);
+    await progressApi.setMovieWatched(target.tmdb_id, !movieWatched, runtime);
     setMovieWatched(!movieWatched);
+    setMovieMinutes(!movieWatched ? runtime : 0);
     emit('progress');
     emit('lists');
     toast.success(!movieWatched ? 'Marked as watched' : 'Marked as unwatched');
@@ -94,7 +121,7 @@ export function MediaModal({
     if (!target) return;
     const meta = seasons.find((s) => s.season_number === sNum);
     if (!meta) return;
-    await progressApi.setEpisode(target.tmdb_id, sNum, watched ? meta.episode_count : 1, watched, true);
+    await progressApi.setSeasons(target.tmdb_id, [meta], watched);
     await loadProgress();
     emit('progress');
   };
@@ -106,7 +133,14 @@ export function MediaModal({
   ];
 
   return (
-    <Modal open={open} onClose={onClose} hideHeader className="media-modal" width={940}>
+    // Escape reaches every open dialog, so while the trailer is up it only closes that.
+    <Modal
+      open={open}
+      onClose={trailerOpen ? () => setTrailerOpen(false) : onClose}
+      hideHeader
+      className="media-modal"
+      width={940}
+    >
       {loading && !details ? (
         <div className="stack gap-4" style={{ padding: 'var(--space-6)' }}>
           <Skeleton h={180} r="var(--r-md)" />
@@ -157,9 +191,9 @@ export function MediaModal({
                     <Users size={12} /> {(userScore / 2).toFixed(1)} Palace · {rows.length}
                   </Chip>
                 )}
-                {!isTv && details?.runtime ? (
+                {!isTv && runtime ? (
                   <Chip>
-                    <Clock size={12} /> {fmtRuntime(details.runtime)}
+                    <Clock size={12} /> {fmtRuntime(runtime)}
                   </Chip>
                 ) : null}
                 {isTv && details?.number_of_seasons ? (
@@ -191,6 +225,11 @@ export function MediaModal({
                     {movieWatched ? 'Watched' : 'Mark watched'}
                   </Button>
                 )}
+                {details?.trailer_key && (
+                  <Button icon={<PlayCircle size={15} />} onClick={() => setTrailerOpen(true)}>
+                    Play trailer
+                  </Button>
+                )}
                 {details?.tmdb_url && (
                   <Button
                     variant="ghost"
@@ -212,15 +251,50 @@ export function MediaModal({
             </div>
           </div>
 
+          {target && details && (
+            <div style={{ paddingTop: 'var(--space-4)' }}>
+              {isTv ? (
+                <NextUpBar
+                  tmdbId={target.tmdb_id}
+                  seasons={seasons}
+                  watched={watchedEps}
+                  position={position}
+                  onChanged={progressChanged}
+                />
+              ) : (
+                <FilmProgress
+                  tmdbId={target.tmdb_id}
+                  tmdbRuntime={details.runtime ?? 0}
+                  customRuntime={mine?.runtime ?? null}
+                  minutes={movieMinutes}
+                  onChanged={progressChanged}
+                />
+              )}
+            </div>
+          )}
+
           <div style={{ padding: '0 var(--space-6)' }}>
             <Tabs tabs={tabs} value={tab} onChange={setTab} />
           </div>
 
           <div style={{ padding: 'var(--space-5) var(--space-6) var(--space-6)' }}>
-            {tab === 'overview' && <Overview details={details} />}
+            {tab === 'overview' && <Overview details={details} onNavigate={onClose} onOpen={openMedia} />}
 
-            {tab === 'episodes' && isTv && (
+            {tab === 'episodes' && isTv && target && (editSeasons || !seasons.length) && (
+              <SeasonEditor
+                tmdbId={target.tmdb_id}
+                seasons={seasons}
+                isCustom={!!mine?.seasons}
+                hasTmdbData={tmdbSeasons.length > 0}
+                onDone={() => setEditSeasons(false)}
+              />
+            )}
+
+            {tab === 'episodes' && isTv && !editSeasons && seasons.length > 0 && (
               <Episodes
+                tmdbId={target!.tmdb_id}
+                onEdit={() => setEditSeasons(true)}
+                isCustom={!!mine?.seasons}
                 seasons={seasons}
                 season={season}
                 setSeason={setSeason}
@@ -244,12 +318,33 @@ export function MediaModal({
           </div>
         </>
       )}
+
+      <Modal
+        open={open && trailerOpen}
+        onClose={() => setTrailerOpen(false)}
+        title={`${target?.title ?? ''} — Trailer`}
+        className="trailer-modal"
+        width={960}
+      >
+        {trailerOpen && details?.trailer_key && (
+          <div className="trailer-frame">
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${details.trailer_key}?autoplay=1&rel=0`}
+              title={`${target?.title ?? ''} trailer`}
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+              allowFullScreen
+            />
+          </div>
+        )}
+      </Modal>
     </Modal>
   );
 }
 
 /* ----------------------------------------------------------------- Overview */
-function Overview({ details }: { details: TMDBResult | null }) {
+function Overview({
+  details, onNavigate, onOpen,
+}: { details: TMDBResult | null; onNavigate: () => void; onOpen: (ref: TitleRef) => void }) {
   if (!details) return <Empty title="No details available" />;
   return (
     <div className="stack gap-5">
@@ -272,27 +367,49 @@ function Overview({ details }: { details: TMDBResult | null }) {
           </div>
           <div className="row gap-4 wrap">
             {details.cast.slice(0, 15).map((c) => (
-              <div key={c.id} className="row gap-2">
+              <Link
+                key={c.id}
+                href={`/person/${c.id}`}
+                className="row gap-2 cast-link"
+                onClick={onNavigate}
+              >
                 <Avatar src={c.profile_url} name={c.name} size={34} />
                 <div>
-                  <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>{c.name}</div>
+                  <div className="cast-link__name" style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>
+                    {c.name}
+                  </div>
                   <div className="faint" style={{ fontSize: 'var(--text-xs)' }}>
                     {c.character}
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
       )}
+
+      <WhereToWatch providers={details.providers} />
+      <MoreLikeThis items={details.similar} onOpen={onOpen} />
     </div>
   );
 }
 
+/** "16 Oct 2026", or "Thu 16 Oct" style wording is left to the browser's locale. */
+function airDate(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  return Number.isNaN(d.getTime())
+    ? ''
+    : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 /* ----------------------------------------------------------------- Episodes */
 function Episodes({
-  seasons, season, setSeason, watched, onToggle, onMarkSeason,
+  tmdbId, seasons, season, setSeason, watched, onToggle, onMarkSeason, onEdit, isCustom,
 }: {
+  tmdbId: number;
+  onEdit: () => void;
+  /** True when these counts are the user's own rather than TMDB's. */
+  isCustom: boolean;
   seasons: { season_number: number; episode_count: number }[];
   season: number;
   setSeason: (n: number) => void;
@@ -302,6 +419,19 @@ function Episodes({
 }) {
   const { cascadeEpisodes, setCascadeEpisodes } = useAppData();
   const current = seasons.find((s) => s.season_number === season) ?? seasons[0];
+  const [info, setInfo] = useState<Record<number, EpisodeInfo>>({});
+
+  // Real names, air dates and runtimes for the season on screen.
+  useEffect(() => {
+    if (!current) return;
+    let alive = true;
+    setInfo({});
+    discover
+      .season(tmdbId, current.season_number)
+      .then((eps) => alive && setInfo(Object.fromEntries(eps.map((e) => [e.episode_number, e]))))
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [tmdbId, current?.season_number]);
 
   if (!seasons.length) return <Empty title="No episode data" />;
 
@@ -334,9 +464,14 @@ function Episodes({
             );
           })}
         </div>
-        <Button size="sm" onClick={() => current && onMarkSeason(current.season_number, !seasonDone)}>
-          {seasonDone ? 'Unmark season' : 'Mark season watched'}
-        </Button>
+        <div className="row gap-2">
+          <Button variant="ghost" size="sm" onClick={onEdit}>
+            {isCustom ? 'Edit seasons (yours)' : 'Wrong episode count?'}
+          </Button>
+          <Button size="sm" onClick={() => current && onMarkSeason(current.season_number, !seasonDone)}>
+            {seasonDone ? 'Unmark season' : 'Mark season watched'}
+          </Button>
+        </div>
       </div>
 
       <div className="row gap-3 between panel panel--inset" style={{ padding: 'var(--space-3)' }}>
@@ -365,9 +500,14 @@ function Episodes({
                 <span className="mono faint" style={{ fontSize: 'var(--text-xs)', width: 54 }}>
                   S{String(current.season_number).padStart(2, '0')}E{String(num).padStart(2, '0')}
                 </span>
-                <span className="episode-row__title grow truncate">Episode {num}</span>
-                <span className="faint" style={{ fontSize: 'var(--text-xs)' }}>
-                  45m
+                <span className="episode-row__title grow truncate" title={info[num]?.overview || undefined}>
+                  {info[num]?.name || `Episode ${num}`}
+                </span>
+                <span className="faint" style={{ fontSize: 'var(--text-xs)', whiteSpace: 'nowrap' }}>
+                  {[
+                    info[num]?.air_date ? airDate(info[num].air_date) : '',
+                    info[num]?.runtime ? fmtRuntime(info[num].runtime) : '',
+                  ].filter(Boolean).join(' · ')}
                 </span>
               </div>
             );
@@ -531,7 +671,7 @@ export function ReviewCard({ review, onChanged }: { review: Review; onChanged: (
         <Markdown text={review.body} className="muted" />
       )}
 
-      <div className="row gap-2" style={{ marginTop: 'var(--space-3)' }}>
+      <div className="row gap-2 wrap" style={{ marginTop: 'var(--space-3)' }}>
         <button
           className="chip"
           aria-pressed={review.my_reaction === 'like'}
@@ -552,6 +692,7 @@ export function ReviewCard({ review, onChanged }: { review: Review; onChanged: (
         >
           <ThumbsDown size={13} /> {review.dislikes}
         </button>
+        <ReviewComments reviewId={review.id} reviewAuthorId={review.user_id} count={review.comment_count ?? 0} />
       </div>
     </article>
   );

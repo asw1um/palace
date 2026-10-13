@@ -11,6 +11,8 @@ export interface User {
   pinned_list_ids?: number[];
   pinned_club_ids?: number[];
   created_at?: string;
+  /** Only on a profile fetched by username. */
+  lists?: List[];
 }
 
 export interface Movie {
@@ -73,6 +75,8 @@ export interface List {
   order?: number;
   created_at?: string;
   updated_at?: string;
+  /** Set when the list has a public share link (owner only). */
+  share_token?: string | null;
 }
 
 export interface Club {
@@ -123,6 +127,26 @@ export interface CastMember {
   order: number;
 }
 
+export interface PersonCredit {
+  id: number;
+  media_type: MediaType;
+  title: string;
+  poster_url: string | null;
+  release_date: string;
+  rating: number | null;
+  popularity: number;
+  role: string;
+}
+
+export interface PersonDetails {
+  id: number;
+  name: string;
+  profile_url: string | null;
+  department: string;
+  biography: string;
+  credits: PersonCredit[];
+}
+
 export interface TitleRef {
   tmdb_id: number;
   media_type: MediaType;
@@ -150,6 +174,74 @@ export interface TMDBResult {
   cast?: CastMember[];
   tmdb_url?: string | null;
   trailer_key?: string | null;
+  /** Streaming / rent / buy options for the viewer's country, when TMDB has any. */
+  providers?: WatchProviders | null;
+  similar?: {
+    id: number;
+    media_type: MediaType;
+    title: string;
+    poster_url: string | null;
+    release_date: string | null;
+    rating: number | null;
+  }[];
+}
+
+export interface WatchProvider {
+  name: string;
+  logo_url: string | null;
+}
+
+export interface WatchProviders {
+  region: string;
+  link: string | null;
+  stream: WatchProvider[];
+  rent: WatchProvider[];
+  buy: WatchProvider[];
+}
+
+/** One episode as TMDB describes it. */
+export interface EpisodeInfo {
+  episode_number: number;
+  name: string;
+  overview: string;
+  air_date: string;
+  runtime: number | null;
+}
+
+/** The next episode still to air for a series in the user's lists. */
+export interface UpcomingEpisode {
+  show_id: number;
+  title: string;
+  poster_url: string | null;
+  air_date: string;
+  season_number: number;
+  episode_number: number;
+  name: string;
+}
+
+export interface ReviewComment {
+  id: number;
+  review_id: number;
+  user_id: number;
+  content: string;
+  created_at: string;
+  author: Pick<User, 'id' | 'username' | 'nickname' | 'profile_picture'> | null;
+}
+
+/** What a public share link exposes: no ids, no usernames. */
+export interface SharedList {
+  name: string;
+  owner: string;
+  is_club: boolean;
+  items: { tmdb_id: number; media_type: MediaType; title: string; poster_url: string | null }[];
+}
+
+/** An actor or crew member from search. */
+export interface PersonResult {
+  id: number;
+  name: string;
+  profile_url: string | null;
+  department: string;
 }
 
 export interface Review {
@@ -168,6 +260,7 @@ export interface Review {
   dislikes: number;
   my_reaction?: 'like' | 'dislike' | null;
   user?: User;
+  comment_count?: number;
 }
 
 export interface UserSettings {

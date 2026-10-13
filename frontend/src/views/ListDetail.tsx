@@ -3,8 +3,9 @@ import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft, Check, Eye, GripVertical, LayoutGrid, ListPlus, Pencil, Plus, Rows3, Search,
-  Trash2,
+  Share2, Trash2,
 } from '@/lib/icons';
+import { ShareListDialog } from '@/components/ShareListDialog';
 import { toast } from 'sonner';
 import { lists as listsApi } from '@/data/api';
 import type { List, ListItem } from '@/data/types';
@@ -37,6 +38,7 @@ export default function ListDetail() {
   const [editing, setEditing] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [renaming, setRenaming] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [draft, setDraft] = useState('');
   const dragId = useRef<number | null>(null);
 
@@ -233,11 +235,22 @@ export default function ListDetail() {
           >
             {editing ? 'Done' : 'Edit'}
           </Button>
+          <Button icon={<Share2 size={15} />} onClick={() => setSharing(true)}>
+            {list.share_token ? 'Shared' : 'Share'}
+          </Button>
           <Button variant="primary" icon={<Plus size={15} />} onClick={() => router.push('/discover')}>
             Add titles
           </Button>
         </div>
       </header>
+
+      <ShareListDialog
+        open={sharing}
+        listId={list.id}
+        token={list.share_token ?? null}
+        onClose={() => setSharing(false)}
+        onChanged={(share_token) => setList((l) => (l ? { ...l, share_token } : l))}
+      />
 
       {total > 0 && (
         <div className="stack gap-2">
