@@ -338,7 +338,7 @@ export default function Dashboard() {
  * start with the name they had at the time ("Mira reviewed Heat") and others with
  * a capitalised verb ("Created club: X"), so trim both down to just the action.
  */
-const NAMED_ACTION = /(joined the forum|created list:|reviewed|updated their review|changed their (?:profile picture|banner))/;
+const NAMED_ACTION = /(joined the forum|created list:|reviewed\b|updated their review|changed their (?:profile picture|banner))/;
 
 function actionText(description: string): string {
   const named = description.match(NAMED_ACTION);

@@ -41,6 +41,8 @@ interface AppDataCtx {
   seasonsFor: (ref: { tmdb_id: number; seasons?: SeasonInfo[] }) => SeasonInfo[];
   /** Puts a title the user just finished into their Watched list, if the setting is on. */
   fileWatched: (ref: TitleRef) => Promise<void>;
+  /** Puts a title the user just started into Currently Watching, unless a list already has it. */
+  fileStarted: (ref: TitleRef) => Promise<void>;
   /** Where to resume a series, with minutes when they stopped partway. Null when caught up or unknown. */
   nextFor: (ref: { tmdb_id: number; seasons?: SeasonInfo[] }) => WatchPosition | null;
   openMedia: (ref: TitleRef) => void;
@@ -170,6 +172,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [lists],
   );
 
+  const fileStarted = useCallback(
+    async (ref: TitleRef) => {
+      if (!autoMoveEnabled()) return;
+      const held = lists.some((l) => l.items?.some((i) => i.tmdb_id === ref.tmdb_id && i.media_type === ref.media_type));
+      const watching = lists.find((l) => /^currently watching$/i.test(l.name));
+      if (held || !watching) return;
+      await listsApi.add(watching.id, ref);
+      toast.success(`Added ${ref.title} to Currently Watching`);
+      emit('lists');
+    },
+    [lists],
+  );
+
   const markWatched = useCallback(async (ref: TitleRef, watched: boolean, opts?: { silent?: boolean }) => {
     if (ref.media_type === 'movie') {
       await progressApi.setMovieWatched(ref.tmdb_id, watched, custom[`movie:${ref.tmdb_id}`]?.runtime);
@@ -245,6 +260,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       seasonsFor,
       nextFor,
       fileWatched,
+      fileStarted,
       openMedia: setMedia,
       openAddTo: (ref: TitleRef | TitleRef[]) =>
         setAddTargets(Array.isArray(ref) ? (ref.length ? ref : null) : [ref]),
@@ -254,7 +270,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       cascadeEpisodes,
       setCascadeEpisodes,
     }),
-    [lists, loadingLists, refreshLists, progress, progressFor, custom, seasonsFor, nextFor, fileWatched, quickAdd, markWatched, cascadeEpisodes, setCascadeEpisodes],
+    [lists, loadingLists, refreshLists, progress, progressFor, custom, seasonsFor, nextFor, fileWatched, fileStarted, quickAdd, markWatched, cascadeEpisodes, setCascadeEpisodes],
   );
 
   return (

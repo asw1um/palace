@@ -28,7 +28,7 @@ type Tab = 'overview' | 'episodes' | 'reviews';
 export function MediaModal({
   open, target, onClose,
 }: { open: boolean; target: TitleRef | null; onClose: () => void }) {
-  const { openAddTo, quickAdd, cascadeEpisodes, custom, openMedia, fileWatched, lists } = useAppData();
+  const { openAddTo, quickAdd, cascadeEpisodes, custom, openMedia, fileWatched, fileStarted, lists } = useAppData();
   const { user } = useAuth();
   const [details, setDetails] = useState<TMDBResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -99,6 +99,7 @@ export function MediaModal({
     const { done, total } = seriesProgress(seasons, p.episodes);
     const finished = isTv ? total > 0 && done >= total : p.watched;
     if (finished) await fileWatched(target);
+    else if (p.episodes.length || p.minutes > 0 || p.position) await fileStarted(target);
   };
 
   /** The user's lists that hold this title, with the item's id in each for removing it. */
