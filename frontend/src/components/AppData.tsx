@@ -5,11 +5,12 @@ import {
 import { toast } from 'sonner';
 import { AlertTriangle, Check, FolderPlus, Plus } from '@/lib/icons';
 import {
-  customMedia, lists as listsApi, progress as progressApi, type CustomMeta, type ProgressEntry,
-  type WatchPosition,
+  clubs as clubsApi, customMedia, discover, lists as listsApi, progress as progressApi,
+  type CustomMeta, type ProgressEntry, type WatchPosition,
 } from '@/data/api';
-import { countEpisodes, episodeKey, nextEpisode, type SeasonInfo } from '@/lib/episodes';
-import type { List, MediaType } from '@/data/types';
+import { useAuth } from '@/data/AuthContext';
+import { episodeKey, nextEpisode, seriesProgress, type SeasonInfo } from '@/lib/episodes';
+import type { Club, List, MediaType } from '@/data/types';
 import { emit, useBus } from '@/lib/bus';
 import { titleCase } from '@/lib/format';
 import { useLocalState } from '@/lib/hooks';
@@ -38,6 +39,8 @@ interface AppDataCtx {
   custom: Record<string, CustomMeta>;
   /** Seasons for a series: the user's own counts when set, otherwise what the list item carries. */
   seasonsFor: (ref: { tmdb_id: number; seasons?: SeasonInfo[] }) => SeasonInfo[];
+  /** Puts a title the user just finished into their Watched list, if the setting is on. */
+  fileWatched: (ref: TitleRef) => Promise<void>;
   /** Where to resume a series, with minutes when they stopped partway. Null when caught up or unknown. */
   nextFor: (ref: { tmdb_id: number; seasons?: SeasonInfo[] }) => WatchPosition | null;
   openMedia: (ref: TitleRef) => void;
@@ -128,14 +131,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           : entry.watched ? 100 : 0;
         return { watched: entry.watched, pct };
       }
-      const mine = custom[`tv:${ref.tmdb_id}`]?.seasons;
-      const total = mine
-        ? countEpisodes(mine)
-        : lists
-            .flatMap((l) => l.items ?? [])
-            .find((i) => i.tmdb_id === ref.tmdb_id)?.total_episodes ?? 0;
-      const pct = total ? Math.min(100, Math.round((entry.episodes.length / total) * 100)) : 0;
-      return { watched: entry.watched || pct >= 100, pct };
+      const seasons =
+        custom[`tv:${ref.tmdb_id}`]?.seasons ??
+        lists.flatMap((l) => l.items ?? []).find((i) => i.tmdb_id === ref.tmdb_id && i.media_type === 'tv')?.seasons ??
+        [];
+      const { done, total } = seriesProgress(seasons, entry.episodes);
+      const pct = total ? Math.min(100, Math.round((done / total) * 100)) : 0;
+      return { watched: entry.watched || (total > 0 && done >= total), pct };
     },
     [progress, lists, custom],
   );
@@ -155,20 +157,82 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [lists],
   );
 
+  const fileWatched = useCallback(
+    async (ref: TitleRef) => {
+      if (!autoMoveEnabled()) return;
+      const watchedList = lists.find((l) => /^watched$/i.test(l.name));
+      if (!watchedList) return;
+      if (watchedList.items?.some((i) => i.tmdb_id === ref.tmdb_id && i.media_type === ref.media_type)) return;
+      await listsApi.add(watchedList.id, ref);
+      toast.success(`Added ${ref.title} to Watched`);
+      emit('lists');
+    },
+    [lists],
+  );
+
   const markWatched = useCallback(async (ref: TitleRef, watched: boolean, opts?: { silent?: boolean }) => {
     if (ref.media_type === 'movie') {
       await progressApi.setMovieWatched(ref.tmdb_id, watched, custom[`movie:${ref.tmdb_id}`]?.runtime);
     } else {
-      // Marking a whole series watched fills in every episode.
-      const seasons = seasonsFor(ref);
-      if (seasons.length) await progressApi.setSeasons(ref.tmdb_id, seasons, watched);
+      // Marking a whole series watched fills in every episode. A series that isn't in
+      // any list yet has no season counts locally, so ask TMDB for them.
+      let seasons = seasonsFor(ref);
+      if (!seasons.length) {
+        seasons = (await discover.details(ref.tmdb_id, 'tv').catch(() => null))?.seasons ?? [];
+      }
+      seasons = seasons.filter((s) => s.season_number > 0);
+      if (!seasons.length) {
+        toast.error(`No episode data for ${ref.title} yet, so it can't be marked`);
+        return;
+      }
+      await progressApi.setSeasons(ref.tmdb_id, seasons, watched);
     }
     if (!opts?.silent) {
       toast.success(watched ? `Marked ${ref.title} watched` : `Marked ${ref.title} unwatched`);
     }
     emit('progress');
     emit('lists');
-  }, [custom, seasonsFor]);
+    if (watched) await fileWatched(ref);
+  }, [custom, seasonsFor, fileWatched]);
+
+  /* Finished titles leave "Want to watch" / "Currently watching" for "Watched".
+     Controlled by the switch in Settings → Library. */
+  const moving = useRef(new Set<string>());
+  useEffect(() => {
+    if (loadingLists || !autoMoveEnabled()) return;
+    const watchedList = lists.find((l) => /^watched$/i.test(l.name));
+    if (!watchedList) return;
+    const finished = lists
+      .filter((l) => /^(want to watch|currently watching)$/i.test(l.name))
+      .flatMap((l) => (l.items ?? []).filter((i) => progressFor(i).watched).map((item) => ({ from: l, item })))
+      .filter(({ from, item }) => !moving.current.has(`${from.id}:${item.id}`));
+    if (!finished.length) return;
+    finished.forEach(({ from, item }) => moving.current.add(`${from.id}:${item.id}`));
+
+    (async () => {
+      const moved: string[] = [];
+      for (const { from, item } of finished) {
+        try {
+          const already = watchedList.items?.some(
+            (i) => i.tmdb_id === item.tmdb_id && i.media_type === item.media_type,
+          );
+          if (!already) await listsApi.add(watchedList.id, item);
+          await listsApi.removeItem(from.id, item.id);
+          if (!moved.includes(item.title)) moved.push(item.title);
+          // Done with this one; if it's added back and finished again it should move again.
+          moving.current.delete(`${from.id}:${item.id}`);
+        } catch {
+          /* leave it where it is; it stays in `moving` so this doesn't loop */
+        }
+      }
+      if (moved.length) {
+        toast.success(
+          moved.length === 1 ? `Moved ${moved[0]} to Watched` : `Moved ${moved.length} finished titles to Watched`,
+        );
+        emit('lists');
+      }
+    })();
+  }, [lists, loadingLists, progressFor]);
 
   const value = useMemo<AppDataCtx>(
     () => ({
@@ -180,6 +244,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       custom,
       seasonsFor,
       nextFor,
+      fileWatched,
       openMedia: setMedia,
       openAddTo: (ref: TitleRef | TitleRef[]) =>
         setAddTargets(Array.isArray(ref) ? (ref.length ? ref : null) : [ref]),
@@ -189,7 +254,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       cascadeEpisodes,
       setCascadeEpisodes,
     }),
-    [lists, loadingLists, refreshLists, progress, progressFor, custom, seasonsFor, nextFor, quickAdd, markWatched, cascadeEpisodes, setCascadeEpisodes],
+    [lists, loadingLists, refreshLists, progress, progressFor, custom, seasonsFor, nextFor, fileWatched, quickAdd, markWatched, cascadeEpisodes, setCascadeEpisodes],
   );
 
   return (
@@ -206,6 +271,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** The "Move finished titles to Watched" switch; on unless the user turned it off. */
+function autoMoveEnabled(): boolean {
+  try {
+    return localStorage.getItem('palace.autoWatchedMove') !== 'false';
+  } catch {
+    return true;
+  }
+}
+
 // eslint-disable-next-line react-refresh/only-export-components
 export function useAppData(): AppDataCtx {
   const ctx = useContext(Ctx);
@@ -218,9 +292,34 @@ export function useAppData(): AppDataCtx {
 /* -------------------------------------------------------------------------- */
 
 function AddToListDialog({ targets, onClose }: { targets: TitleRef[] | null; onClose: () => void }) {
-  const { lists, openCreateList } = useAppData();
+  const { lists: myLists, openCreateList } = useAppData();
+  const { user } = useAuth();
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [clubs, setClubs] = useState<Club[]>([]);
+
+  // Club lists the user is allowed to add to (admins, mods and helpers).
+  useEffect(() => {
+    if (!targets?.length) return;
+    clubsApi
+      .mineWithLists()
+      .then((rows) =>
+        setClubs(
+          rows.filter(
+            (c) =>
+              !!user &&
+              (c.admin_id === user.id || c.mod_ids?.includes(user.id) || c.helper_ids?.includes(user.id)),
+          ),
+        ),
+      )
+      .catch(() => setClubs([]));
+  }, [targets?.length, user?.id]);
+
+  const clubLists = useMemo(
+    () => clubs.flatMap((c) => (c.lists ?? []).map((l) => ({ ...l, clubName: c.name }))),
+    [clubs],
+  );
+  const lists = useMemo(() => [...myLists, ...clubLists], [myLists, clubLists]);
 
   const single = targets?.length === 1 ? targets[0] : null;
   const key = targets?.map((t) => t.tmdb_id).join(',') ?? '';
@@ -249,6 +348,7 @@ function AddToListDialog({ targets, onClose }: { targets: TitleRef[] | null; onC
       const what = targets.length > 1 ? `${targets.length} titles` : `“${targets[0].title}”`;
       toast.success(`Added ${what} to ${selected.size} list${selected.size > 1 ? 's' : ''}`);
       emit('lists');
+      emit('clubs');
       onClose();
     } finally {
       setSaving(false);
@@ -312,7 +412,10 @@ function AddToListDialog({ targets, onClose }: { targets: TitleRef[] | null; onC
                   });
                 }}
               />
-              <span className="grow truncate">{titleCase(l.name)}</span>
+              <span className="grow truncate">
+                {titleCase(l.name)}
+                {'clubName' in l && <span className="faint"> · {(l as { clubName: string }).clubName}</span>}
+              </span>
               {has ? (
                 <Chip tone="success">
                   <Check size={12} /> In list

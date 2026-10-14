@@ -14,8 +14,9 @@ import { Input, Select } from '@/components/ui/Field';
 import { Chip, Empty, Panel, Skeleton } from '@/components/ui/Bits';
 import { useConfirm } from '@/components/ui/Modal';
 import { emit } from '@/lib/bus';
-import { titleCase } from '@/lib/format';
+import { titleCase, plural } from '@/lib/format';
 import { useLocalState } from '@/lib/hooks';
+import { useAuth } from '@/data/AuthContext';
 
 type Sort = 'manual' | 'az' | 'za' | 'size' | 'recent';
 
@@ -28,7 +29,8 @@ export default function Lists() {
   const [renaming, setRenaming] = useState<number | null>(null);
   const [draft, setDraft] = useState('');
   const [importOpen, setImportOpen] = useState(false);
-  const [pinned, setPinned] = useLocalState<number[]>('palace.pinnedLists', []);
+  const { user, patchUser } = useAuth();
+  const pinned = user?.pinned_list_ids ?? [];
   const dragId = useRef<number | null>(null);
 
   const ordered = useMemo(() => {
@@ -85,9 +87,15 @@ export default function Lists() {
     emit('lists');
   };
 
-  const togglePin = (id: number) => {
-    setPinned((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-    listsApi.pin(id, !pinned.includes(id)).catch(() => {});
+  const togglePin = async (id: number) => {
+    const next = pinned.includes(id) ? pinned.filter((x) => x !== id) : [...pinned, id];
+    try {
+      // The server allows four pins; it says so if this one is too many.
+      await listsApi.pin(id, !pinned.includes(id));
+      patchUser({ pinned_list_ids: next });
+    } catch {
+      /* the request layer already showed why */
+    }
   };
 
   return (
@@ -97,7 +105,7 @@ export default function Lists() {
           <h1>My lists</h1>
           <p className="page-head__sub">
             {lists.length} list{lists.length === 1 ? '' : 's'} ·{' '}
-            {lists.reduce((a, l) => a + (l.movie_count ?? 0) + (l.show_count ?? 0), 0)} titles
+            {plural(lists.reduce((a, l) => a + (l.movie_count ?? 0) + (l.show_count ?? 0), 0), 'title')}
           </p>
         </div>
         <div className="page-head__actions">
@@ -218,7 +226,7 @@ export default function Lists() {
                 <div className="row gap-2 between">
                   <div className="row gap-2">
                     {/* Films and series both counted. — issue #46 */}
-                    <Chip>{l.movie_count ?? 0} films</Chip>
+                    <Chip>{plural(l.movie_count ?? 0, 'film')}</Chip>
                     <Chip>{l.show_count ?? 0} series</Chip>
                   </div>
                   {editing && (

@@ -285,7 +285,18 @@ async def leave_club(
     if not club_obj.is_member(current_user):
         raise HTTPException(status_code=400, detail='Not a member')
 
+    uid = current_user.id
+    if club_obj.admin_id == uid:
+        # the club needs an admin, so it goes to a mod first, then any member
+        others = [m for m in club_obj.members if m.id != uid]
+        if not others:
+            raise HTTPException(status_code=400, detail='You are the only member, delete the club instead')
+        mods = [m for m in others if m.id in (club_obj.mod_ids or [])]
+        club_obj.admin_id = (mods or others)[0].id
+
     club_obj.remove_member(current_user)
+    club_obj.mod_ids = [i for i in (club_obj.mod_ids or []) if i not in (uid, club_obj.admin_id)]
+    club_obj.helper_ids = [i for i in (club_obj.helper_ids or []) if i not in (uid, club_obj.admin_id)]
     db_session.commit()
 
     log_event(

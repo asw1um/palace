@@ -69,7 +69,7 @@ export function MoreLikeThis({
   return (
     <div>
       <div className="eyebrow" style={{ marginBottom: 'var(--space-3)' }}>More like this</div>
-      <div className="similar-row no-scrollbar">
+      <div className="similar-row">
         {items.map((s) => (
           <button
             key={`${s.media_type}-${s.id}`}

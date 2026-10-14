@@ -1,7 +1,7 @@
 import { useState, type DragEvent as ReactDragEvent, type ReactNode } from 'react';
 import Image from 'next/image';
 import {
-  Check, Eye, Film, FolderPlus, GripVertical, Info, ListPlus, Plus, Star, Trash2, Tv,
+  Check, Eye, Film, FolderPlus, GripVertical, Info, ListPlus, Plus, Star, Trash2, Tv, X,
 } from '@/lib/icons';
 import { Menu, MenuItem, MenuLabel, MenuSep, useContextMenu } from './ui/Menu';
 import { IconButton } from './ui/Button';
@@ -109,6 +109,23 @@ export function Poster({
           </div>
         )}
 
+        {/* Touch screens have no hover, so the hover actions below never show there;
+            this keeps a way to take the title out of the list. */}
+        {onRemove && !selectable && (
+          <button
+            className="poster__remove"
+            aria-label={`Remove ${item.title} from this list`}
+            title="Remove from this list"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <X size={14} />
+          </button>
+        )}
+
         {/* Hover actions — hidden while picking tiles */}
         {!selectable && (
           <div className="poster__actions">
@@ -130,6 +147,17 @@ export function Poster({
             >
               {watched ? <Check size={15} /> : <Eye size={15} />}
             </IconButton>
+            {onRemove && (
+              <IconButton
+                label="Remove from this list"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove();
+                }}
+              >
+                <Trash2 size={15} />
+              </IconButton>
+            )}
           </div>
         )}
 

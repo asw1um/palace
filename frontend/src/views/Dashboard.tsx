@@ -16,6 +16,7 @@ import { Panel, Avatar, Chip, Empty, Skeleton, Stat, ProgressBar } from '@/compo
 import { Button } from '@/components/ui/Button';
 import { Markdown } from '@/components/Markdown';
 import { useBus } from '@/lib/bus';
+import { fullRows, useGridColumns } from '@/lib/hooks';
 import { percent, runtime as fmtRuntime, titleCase, timeAgo } from '@/lib/format';
 import { episodeLabel, type SeasonInfo } from '@/lib/episodes';
 /** "Today", "Tomorrow", "in 4 days", then a date once it's more than a week out. */
@@ -83,10 +84,20 @@ export default function Dashboard() {
     return entry?.total ? `${fmtRuntime(entry.total - entry.minutes)} left` : '';
   };
 
+  // Lists pinned on the My Lists page; until some are, the panel shows the first few lists.
+  const pinnedLists = useMemo(
+    () => lists.filter((l) => user?.pinned_list_ids?.includes(l.id)),
+    [lists, user?.pinned_list_ids],
+  );
+
+  const [upNextRef, upNextCols] = useGridColumns(5);
+
   const upNext = useMemo(() => {
     const list = lists.find((l) => /^want to watch$/i.test(l.name)) ?? lists[0];
-    return (list?.items ?? []).slice(0, 8);
-  }, [lists]);
+    // A preview of the watchlist: up to two whole rows, never a part-filled one.
+    const items = list?.items ?? [];
+    return items.slice(0, fullRows(items.length, upNextCols, 2));
+  }, [lists, upNextCols]);
 
 
   const hours = Math.round((stats?.minutes ?? 0) / 60);
@@ -145,7 +156,7 @@ export default function Dashboard() {
               </div>
             ) : continueWatching.length === 0 ? (
               <Empty icon={<PlayCircle size={22} />} title="Nothing in progress">
-                Start a series or mark a film watched and it will show up here.
+                Start a series, or stop a film partway through, and it will show up here.
               </Empty>
             ) : (
               <div className="grid grid--posters">
@@ -183,7 +194,7 @@ export default function Dashboard() {
                 Add something from Discover and it will appear here.
               </Empty>
             ) : (
-              <div className="grid grid--posters">
+              <div className="grid grid--posters" ref={upNextRef}>
                 {upNext.map((item) => {
                   const p = progressFor(item);
                   return <Poster key={item.id} item={item} watched={p.watched} progress={p.pct} />;
@@ -232,7 +243,7 @@ export default function Dashboard() {
           )}
 
           <Panel
-            title="Pinned lists"
+            title={pinnedLists.length ? 'Pinned lists' : 'Your lists'}
             icon={<ListVideo size={16} />}
             actions={
               <Button variant="ghost" size="sm" onClick={() => router.push('/lists')}>
@@ -246,7 +257,7 @@ export default function Dashboard() {
               {!loadingLists && lists.length === 0 && (
                 <Empty title="No lists yet" icon={<ListVideo size={20} />} />
               )}
-              {lists.slice(0, 6).map((l) => (
+              {(pinnedLists.length ? pinnedLists : lists.slice(0, 6)).map((l) => (
                 <Link key={l.id} href={`/lists/${l.id}`} className="list-row">
                   <span className="grow truncate">{titleCase(l.name)}</span>
                   <Chip>{(l.movie_count ?? 0) + (l.show_count ?? 0)}</Chip>
@@ -322,6 +333,19 @@ export default function Dashboard() {
 }
 
 /** Activity rows link through to whatever they are about. — issue #40 */
+/**
+ * The row already leads with the person's current name. Some stored descriptions
+ * start with the name they had at the time ("Mira reviewed Heat") and others with
+ * a capitalised verb ("Created club: X"), so trim both down to just the action.
+ */
+const NAMED_ACTION = /(joined the forum|created list:|reviewed|updated their review|changed their (?:profile picture|banner))/;
+
+function actionText(description: string): string {
+  const named = description.match(NAMED_ACTION);
+  if (named?.index) return description.slice(named.index);
+  return description.charAt(0).toLowerCase() + description.slice(1);
+}
+
 export function ActivityRow({ activity }: { activity: Activity }) {
   const router = useRouter();
   const target = activity.actor?.username ? `/profile/${activity.actor.username}` : '/activity';
@@ -335,7 +359,7 @@ export function ActivityRow({ activity }: { activity: Activity }) {
       <div className="grow" style={{ minWidth: 0 }}>
         <div style={{ fontSize: 'var(--text-sm)' }}>
           <strong>{activity.actor?.nickname ?? activity.actor?.username ?? 'Someone'}</strong>{' '}
-          <Markdown text={activity.description} className="muted" inline />
+          <Markdown text={actionText(activity.description)} className="muted" inline />
         </div>
         <div className="faint" style={{ fontSize: 'var(--text-xs)' }}>
           {activity.time_ago ?? timeAgo(activity.created_at)}

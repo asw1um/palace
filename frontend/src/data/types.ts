@@ -297,9 +297,3 @@ export interface AuthResponse {
   user: User;
 }
 
-export interface Friendship {
-  id: number;
-  user: User;
-  status: 'pending' | 'accepted' | 'incoming';
-  since: string;
-}

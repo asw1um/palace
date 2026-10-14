@@ -330,6 +330,7 @@ async def add_to_list(
 async def remove_from_list(
     list_id: int,
     item_id: int,
+    media_type: str | None = None,
     current_user: User = Depends(get_current_user),
     db_session: Session = Depends(get_db),
 ):
@@ -339,7 +340,8 @@ async def remove_from_list(
     if not list_obj.can_edit(current_user):
         raise HTTPException(status_code=403, detail='No permission to edit this list')
 
-    movie_obj = db_session.get(MovieModel, item_id)
+    # movies and shows have their own ids, so the same number can be both
+    movie_obj = db_session.get(MovieModel, item_id) if media_type != 'tv' else None
     if movie_obj and movie_obj in list_obj.movies:
         list_obj.movies.remove(movie_obj)
         db_session.commit()
@@ -349,7 +351,7 @@ async def remove_from_list(
         lists_cache_invalidate(current_user.id)
         return {'message': 'Movie removed from list'}
 
-    show_obj = db_session.get(ShowModel, item_id)
+    show_obj = db_session.get(ShowModel, item_id) if media_type != 'movie' else None
     if show_obj and show_obj in list_obj.shows:
         list_obj.shows.remove(show_obj)
         db_session.commit()

@@ -11,7 +11,7 @@ import { Avatar, Chip, Empty, Skeleton, Tabs } from '@/components/ui/Bits';
 import { Modal } from '@/components/ui/Modal';
 import { emit } from '@/lib/bus';
 import { rank } from '@/lib/fuzzy';
-import { timeAgo } from '@/lib/format';
+import { timeAgo, plural } from '@/lib/format';
 type Tab = 'mine' | 'all';
 
 export default function Clubs() {
@@ -114,7 +114,8 @@ export default function Clubs() {
       ) : (
         <div className="grid grid--cards" ref={gridRef}>
           {rows.map((club) => {
-            const joined = club.members?.some((m) => m.id === user?.id) ?? false;
+            // The list response carries a member count, not the members, so go by "my clubs".
+            const joined = data.my_clubs.some((c) => c.id === club.id);
             return (
               <article key={club.id} className="card" onClick={() => router.push(`/clubs/${club.id}`)}>
                 <div className="row gap-3" style={{ marginBottom: 'var(--space-3)' }}>
@@ -138,7 +139,7 @@ export default function Clubs() {
                     <Chip>
                       <Users size={12} /> {club.member_count}
                     </Chip>
-                    {!!club.lists?.length && <Chip>{club.lists.length} lists</Chip>}
+                    {!!club.lists?.length && <Chip>{plural(club.lists.length, 'list')}</Chip>}
                   </div>
                   <Button
                     size="sm"

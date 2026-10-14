@@ -76,7 +76,7 @@ export default function NotificationsPage() {
         </div>
       ) : shown.length === 0 ? (
         <Empty icon={<BellOff size={22} />} title="Nothing here" >
-          New club invites, friend requests and reactions land on this page.
+          Club invites and updates land on this page.
         </Empty>
       ) : (
         <Panel flush>

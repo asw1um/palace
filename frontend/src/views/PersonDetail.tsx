@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Film, Sparkles, Tv, User } from '@/lib/icons';
 import { discover } from '@/data/api';
 import type { PersonDetails } from '@/data/types';
+import { useGridColumns } from '@/lib/hooks';
 import { useAppData } from '@/components/AppData';
 import { Poster } from '@/components/Poster';
 import { Button } from '@/components/ui/Button';
@@ -27,7 +28,8 @@ export default function PersonDetail() {
   const [loading, setLoading] = useState(true);
   const [kind, setKind] = useState<Kind>('all');
   const [sort, setSort] = useState<Sort>('popular');
-  const [limit, setLimit] = useState(PAGE);
+  const [pages, setPages] = useState(1);
+  const [gridRef, cols] = useGridColumns();
   const [bioOpen, setBioOpen] = useState(false);
 
   useEffect(() => {
@@ -57,8 +59,12 @@ export default function PersonDetail() {
   }, [person, kind, sort]);
 
   useEffect(() => {
-    setLimit(PAGE);
+    setPages(1);
   }, [id, kind, sort]);
+
+  // Whole rows per page; the last page shows whatever is left.
+  const perPage = Math.max(1, Math.round(PAGE / cols)) * cols;
+  const limit = Math.min(perPage * pages, shown.length);
 
   if (loading) {
     return (
@@ -169,7 +175,7 @@ export default function PersonDetail() {
         </Empty>
       ) : (
         <>
-          <div className="grid grid--posters">
+          <div className="grid grid--posters" ref={gridRef}>
             {shown.slice(0, limit).map((c) => {
               const ref = {
                 tmdb_id: c.id,
@@ -203,8 +209,8 @@ export default function PersonDetail() {
 
           {limit < shown.length && (
             <div className="row center">
-              <Button variant="soft" icon={<Sparkles size={15} />} onClick={() => setLimit((l) => l + PAGE)}>
-                Show {Math.min(PAGE, shown.length - limit)} more
+              <Button variant="soft" icon={<Sparkles size={15} />} onClick={() => setPages((p) => p + 1)}>
+                Show {Math.min(perPage, shown.length - limit)} more
               </Button>
             </div>
           )}

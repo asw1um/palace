@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input, Textarea } from '@/components/ui/Field';
 import { Avatar, Chip, Empty, Panel, Skeleton, Stat, Tabs } from '@/components/ui/Bits';
 import { Modal } from '@/components/ui/Modal';
-import { titleCase, timeAgo } from '@/lib/format';
+import { titleCase, timeAgo, plural } from '@/lib/format';
 import { useLocalState } from '@/lib/hooks';
 
 type Tab = 'overview' | 'lists' | 'reviews';
@@ -37,7 +37,7 @@ export default function Profile() {
   const [editing, setEditing] = useState(false);
   const [nickname, setNickname] = useState('');
   const [bio, setBio] = useState('');
-  const [pinnedLists] = useLocalState<number[]>('palace.pinnedLists', []);
+  const pinnedLists = me?.pinned_list_ids ?? [];
   const avatarInput = useRef<HTMLInputElement>(null);
   const bannerInput = useRef<HTMLInputElement>(null);
   const [crop, setCrop] = useState<{ file: File; kind: CropKind } | null>(null);
@@ -284,7 +284,7 @@ export default function Profile() {
             <section key={l.id}>
               <div className="section-head">
                 <h2>{titleCase(l.name)}</h2>
-                <Chip>{(l.movie_count ?? 0) + (l.show_count ?? 0)} titles</Chip>
+                <Chip>{plural((l.movie_count ?? 0) + (l.show_count ?? 0), 'title')}</Chip>
               </div>
               {(l.items ?? []).length === 0 ? (
                 <Panel>

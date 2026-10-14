@@ -398,16 +398,22 @@ def get_person_credits(person_id):
 
 
 def discover_trending():
-    data = _cached_tmdb_request(f"{base_url}/trending/all/week", {"page": 1}, ttl_hours=_TTL_POPULAR)
-    if not data:
-        return []
+    # 3 pages so the grid has enough to fill whole rows
     results = []
-    for item in data.get("results", []):
-        mt = item.get('media_type')
-        if mt == 'movie':
-            results.append(format_movie(item))
-        elif mt == 'tv':
-            results.append(format_show(item))
+    seen = set()
+    for page in (1, 2, 3):
+        data = _cached_tmdb_request(f"{base_url}/trending/all/week", {"page": page}, ttl_hours=_TTL_POPULAR)
+        if not data:
+            break
+        for item in data.get("results", []):
+            mt = item.get('media_type')
+            if (mt, item.get('id')) in seen:
+                continue
+            seen.add((mt, item.get('id')))
+            if mt == 'movie':
+                results.append(format_movie(item))
+            elif mt == 'tv':
+                results.append(format_show(item))
     return results
 
 

@@ -84,6 +84,7 @@ async def get_global_activity(
     public_types = [
         'new_user', 'user_created_club', 'user_joined_club', 'user_left_club',
         'user_renamed_club', 'user_deleted_club', 'user_changed_pfp', 'user_changed_banner',
+        'user_reviewed',
     ]
     logs = db_session.query(activity_log).filter(
         activity_log.event_type.in_(public_types)

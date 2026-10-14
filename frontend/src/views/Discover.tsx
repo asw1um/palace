@@ -7,7 +7,7 @@ import { Poster } from '@/components/Poster';
 import { Button } from '@/components/ui/Button';
 import { SearchInput, Segmented, Select } from '@/components/ui/Field';
 import { Empty, Skeleton } from '@/components/ui/Bits';
-import { useDebounced } from '@/lib/hooks';
+import { fullRows, useDebounced, useGridColumns } from '@/lib/hooks';
 import { suggest } from '@/lib/fuzzy';
 type Kind = 'all' | 'movie' | 'tv';
 type Sort = 'popular' | 'rating' | 'newest' | 'az';
@@ -23,9 +23,9 @@ export default function Discover() {
   const [trending, setTrending] = useState<TMDBResult[]>([]);
   const [results, setResults] = useState<TMDBResult[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [limit, setLimit] = useState(PAGE);
+  const [pages, setPages] = useState(1);
   const debounced = useDebounced(query, 260);
-  const gridRef = useRef<HTMLDivElement>(null);
+  const [gridRef, cols] = useGridColumns();
 
   useEffect(() => {
     discover
@@ -69,10 +69,16 @@ export default function Discover() {
     return sorted;
   }, [source, kind, genre, sort, results]);
 
+  // Always show whole rows: a page is however many rows come closest to PAGE titles.
+  const perPage = Math.max(1, Math.round(PAGE / cols)) * cols;
+  // Trending is an open-ended feed, so it stops on a full row. Search results are a
+  // complete set: every one is shown by the last page, even if that row comes up short.
+  const end = results ? shown.length : fullRows(shown.length, cols);
+  const limit = Math.min(perPage * pages, end);
   const visible = shown.slice(0, limit);
 
   useEffect(() => {
-    setLimit(PAGE);
+    setPages(1);
   }, [debounced, kind, genre, sort]);
 
 
@@ -153,8 +159,8 @@ export default function Discover() {
       )}
 
       {loading ? (
-        <div className="grid grid--posters">
-          {Array.from({ length: 12 }, (_, i) => (
+        <div className="grid grid--posters" ref={gridRef}>
+          {Array.from({ length: cols * 2 }, (_, i) => (
             <Skeleton key={i} h="auto" r="var(--r-md)" />
           ))}
         </div>
@@ -199,10 +205,10 @@ export default function Discover() {
           </div>
 
           {/* Trending used to stop at ~20 titles. — issue #49 */}
-          {limit < shown.length && (
+          {limit < end && (
             <div className="row center">
-              <Button variant="soft" icon={<Sparkles size={15} />} onClick={() => setLimit((l) => l + PAGE)}>
-                Show {Math.min(PAGE, shown.length - limit)} more
+              <Button variant="soft" icon={<Sparkles size={15} />} onClick={() => setPages((p) => p + 1)}>
+                Show {Math.min(perPage, end - limit)} more
               </Button>
             </div>
           )}

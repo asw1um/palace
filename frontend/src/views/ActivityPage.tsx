@@ -10,6 +10,43 @@ import { useBus } from '@/lib/bus';
 
 type Tab = 'global' | 'me';
 
+/** Readable names for the filter chips; the API sends internal event names. */
+const EVENT_LABELS: Record<string, string> = {
+  new_user: 'New members',
+  user_created_club: 'Clubs created',
+  user_joined_club: 'Club joins',
+  user_left_club: 'Club leaves',
+  user_renamed_club: 'Club renames',
+  user_deleted_club: 'Clubs deleted',
+  user_changed_pfp: 'Profile pictures',
+  user_changed_banner: 'Banners',
+  user_created_list: 'Lists created',
+  user_renamed_list: 'List renames',
+  user_deleted_list: 'Lists deleted',
+  user_created_club_list: 'Club lists created',
+  user_renamed_club_list: 'Club list renames',
+  user_deleted_club_list: 'Club lists deleted',
+  user_added_movie: 'Films added',
+  user_added_show: 'Series added',
+  user_removed_movie: 'Films removed',
+  user_removed_show: 'Series removed',
+  user_in_club_added_movie: 'Films added to clubs',
+  user_in_club_added_show: 'Series added to clubs',
+  user_in_club_removed_movie: 'Films removed from clubs',
+  user_in_club_removed_show: 'Series removed from clubs',
+  user_reviewed: 'Reviews',
+  user_updated_review: 'Review edits',
+  user_liked_review: 'Review likes',
+  user_disliked_review: 'Review dislikes',
+};
+
+function eventLabel(type: string): string {
+  if (EVENT_LABELS[type]) return EVENT_LABELS[type];
+  // Anything new still reads as words rather than a code name.
+  const words = type.replace(/^user_/, '').replace(/_/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 export default function ActivityPage() {
   const [tab, setTab] = useState<Tab>('global');
   const [rows, setRows] = useState<Activity[]>([]);
@@ -70,7 +107,7 @@ export default function ActivityPage() {
         <div className="row gap-2 wrap">
           {types.map((t) => (
             <button key={t} className="chip" aria-pressed={type === t} onClick={() => setType(t)}>
-              {t === 'all' ? 'All' : t}
+              {t === 'all' ? 'All' : eventLabel(t)}
             </button>
           ))}
         </div>

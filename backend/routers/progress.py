@@ -220,7 +220,8 @@ def get_upcoming(
     seen = set()
     upcoming = []
     for s in shows:
-        if not s.tmdb_id or s.tmdb_id in seen:
+        # shows taken off every list still have a row, skip those
+        if not s.tmdb_id or s.tmdb_id in seen or not s.show_lists:
             continue
         seen.add(s.tmdb_id)
         nxt = get_next_episode(s.tmdb_id)

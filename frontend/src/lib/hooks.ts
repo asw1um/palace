@@ -30,6 +30,36 @@ export function useLocalState<T>(key: string, initial: T) {
   return [value, setValue] as const;
 }
 
+/**
+ * How many columns an auto-fill grid has right now. Attach the returned ref to the
+ * grid; the count follows the window as it resizes. Used to show whole rows of
+ * posters instead of leaving a gap at the end of the last one.
+ */
+export function useGridColumns(fallback = 6) {
+  const [el, setEl] = useState<HTMLElement | null>(null);
+  const [cols, setCols] = useState(fallback);
+
+  useEffect(() => {
+    if (!el) return;
+    const measure = () => {
+      const n = getComputedStyle(el).gridTemplateColumns.split(' ').filter(Boolean).length;
+      if (n) setCols(n);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [el]);
+
+  return [setEl, cols] as const;
+}
+
+/** The most items, up to `count`, that fill complete rows of `cols`; fewer than one row is left alone. */
+export function fullRows(count: number, cols: number, maxRows = Infinity): number {
+  if (count <= cols) return count;
+  return Math.min(Math.floor(count / cols), maxRows) * cols;
+}
+
 export function useMediaQuery(query: string): boolean {
   // Starts false on purpose: reading the real value here makes the first client
   // render differ from the server's and React throws a hydration error.

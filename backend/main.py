@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from models.database import Base, init_db
+from migrate import run as run_migrations, fill_review_titles
 from routers import auth, users, settings, notifications, movies, shows, progress, lists, clubs, club_lists, reviews, search, custom_media, activity, shared
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -24,6 +25,11 @@ engine = init_db(DATABASE_URL)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    run_migrations()
+    try:
+        fill_review_titles()
+    except Exception as e:
+        print(f'Could not fill review titles: {e}')
     yield
 
 

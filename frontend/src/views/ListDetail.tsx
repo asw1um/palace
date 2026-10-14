@@ -7,7 +7,7 @@ import {
 } from '@/lib/icons';
 import { ShareListDialog } from '@/components/ShareListDialog';
 import { toast } from 'sonner';
-import { lists as listsApi } from '@/data/api';
+import { clubs as clubsApi, lists as listsApi } from '@/data/api';
 import type { List, ListItem } from '@/data/types';
 import { useAppData } from '@/components/AppData';
 import { Poster } from '@/components/Poster';
@@ -15,13 +15,22 @@ import { Button } from '@/components/ui/Button';
 import { Input, SearchInput, Segmented, Select } from '@/components/ui/Field';
 import { CheckBox, Chip, Empty, ProgressBar, Skeleton } from '@/components/ui/Bits';
 import { useConfirm } from '@/components/ui/Modal';
-import { emit } from '@/lib/bus';
+import { emit, useBus } from '@/lib/bus';
 import { plural, timeAgo, titleCase, year } from '@/lib/format';
 import { rank } from '@/lib/fuzzy';
 import { useLocalState } from '@/lib/hooks';
 
 type Sort = 'manual' | 'az' | 'za' | 'added' | 'year' | 'progress';
 type View = 'grid' | 'rows';
+
+/** The "Confirm before removing" switch in Settings → Library; on unless turned off. */
+function confirmRemovals(): boolean {
+  try {
+    return localStorage.getItem('palace.confirmRemove') !== 'false';
+  } catch {
+    return true;
+  }
+}
 
 export default function ListDetail() {
   const { id } = useParams();
@@ -52,6 +61,9 @@ export default function ListDetail() {
   };
 
   useEffect(load, [listId]);
+  // Titles can leave or join this list from elsewhere (the title pop-up, or a finished
+  // title moving to Watched), so follow list changes instead of showing a stale page.
+  useBus(['lists'], load);
 
   const items = useMemo(() => {
     let rows = [...(list?.items ?? [])];
@@ -103,7 +115,7 @@ export default function ListDetail() {
 
   const bulkRemove = async () => {
     if (!list) return;
-    const ok = await confirm({
+    const ok = !confirmRemovals() || await confirm({
       title: `Remove ${plural(chosen.length, 'title')}?`,
       message: `They will be taken out of ${titleCase(list.name)}. Your other lists keep them.`,
       confirmLabel: 'Remove',
@@ -119,7 +131,7 @@ export default function ListDetail() {
 
   const removeItem = async (item: ListItem) => {
     if (!list) return;
-    const ok = await confirm({
+    const ok = !confirmRemovals() || await confirm({
       title: `Remove "${item.title}"?`,
       message: `It will be taken out of ${titleCase(list.name)}.`,
       confirmLabel: 'Remove',
@@ -136,7 +148,9 @@ export default function ListDetail() {
     const clean = draft.trim();
     setRenaming(false);
     if (!list || !clean || clean === list.name) return;
-    await listsApi.rename(list.id, clean);
+    // A club's list is renamed through the club, which checks the caller is a mod or admin.
+    if (list.club_id) await clubsApi.renameList(list.club_id, list.id, clean);
+    else await listsApi.rename(list.id, clean);
     toast.success('List renamed');
     load();
     emit('lists');
@@ -197,7 +211,7 @@ export default function ListDetail() {
             </h1>
           )}
           <div className="row gap-2 wrap">
-            <Chip>{list.movie_count ?? 0} films</Chip>
+            <Chip>{plural(list.movie_count ?? 0, 'film')}</Chip>
             <Chip>{list.show_count ?? 0} series</Chip>
             {watched > 0 && (
               <Chip tone="success">

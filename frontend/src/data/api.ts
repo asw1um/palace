@@ -9,7 +9,7 @@ import { client, readFile, TOKEN_KEY } from './client';
 import { rank } from '@/lib/fuzzy';
 import { episodeKey, type SeasonInfo } from '@/lib/episodes';
 import type {
-  Activity, AuthResponse, Club, EpisodeInfo, Friendship, List, ListItem, MediaType,
+  Activity, AuthResponse, Club, EpisodeInfo, List, ListItem, MediaType,
   Notification, PersonDetails, PersonResult, Review, ReviewComment, SharedList, TMDBResult,
   UpcomingEpisode, User, UserSettings, UserStats,
 } from './types';
@@ -41,7 +41,9 @@ function normaliseList(l: List): List {
       watched: m.watched,
     })),
     ...(l.shows ?? []).map((s) => ({
-      id: s.id,
+      // Films and series are numbered separately on the server, so a list can hold
+      // film 5 and series 5. Series get a negative id here to keep items unique.
+      id: -s.id,
       list_id: l.id,
       tmdb_id: s.tmdb_id ?? s.id,
       media_type: 'tv' as MediaType,
@@ -189,8 +191,11 @@ export const lists = {
     });
   },
 
+  /** `itemId` is a list item's id: negative for a series (see normaliseList). */
   async removeItem(listId: number, itemId: number) {
-    await client.delete(`/lists/${listId}/remove/${itemId}`);
+    await client.delete(`/lists/${listId}/remove/${Math.abs(itemId)}`, {
+      params: { media_type: itemId < 0 ? 'tv' : 'movie' },
+    });
   },
 
   async pin(id: number, pinned: boolean) {
@@ -263,6 +268,38 @@ export const clubs = {
   async leave(id: number) {
     await client.post(`/clubs/${id}/leave`);
   },
+  async update(id: number, patch: { name?: string; description?: string }) {
+    await client.put(`/clubs/${id}`, patch);
+  },
+  async remove(id: number) {
+    await client.delete(`/clubs/${id}`);
+  },
+  async uploadImage(id: number, file: File) {
+    const form = new FormData();
+    form.append('file', file);
+    await client.post(`/clubs/${id}/upload-image`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  /** Mods can rename the club, manage lists and kick; helpers can add titles to lists. */
+  async setMod(id: number, userId: number, on: boolean) {
+    await client.request({ method: on ? 'post' : 'delete', url: `/clubs/${id}/mods/${userId}` });
+  },
+  async setHelper(id: number, userId: number, on: boolean) {
+    await client.request({ method: on ? 'post' : 'delete', url: `/clubs/${id}/helpers/${userId}` });
+  },
+  async kick(id: number, userId: number) {
+    await client.post(`/clubs/${id}/kick/${userId}`);
+  },
+  async renameList(clubId: number, listId: number, name: string) {
+    await client.post(`/clubs/${clubId}/lists/${listId}/rename`, { name });
+  },
+  async removeList(clubId: number, listId: number) {
+    await client.delete(`/clubs/${clubId}/lists/${listId}`);
+  },
+  /** Clubs the user belongs to, each with its lists and their items. */
+  async mineWithLists(): Promise<Club[]> {
+    const res = await client.get('/clubs/my-clubs-with-lists', { silent: true });
+    return (res.data.clubs ?? []).map((c: Club) => ({ ...c, lists: (c.lists ?? []).map(normaliseList) }));
+  },
   async createList(clubId: number, name: string): Promise<List> {
     const res = await client.post(`/clubs/${clubId}/lists`, { name });
     return normaliseList(res.data.list ?? res.data);
@@ -285,16 +322,6 @@ export const people = {
     const res = await client.get(`/auth/users/${username}`);
     const user = res.data.user ?? res.data;
     return res.data.lists ? { ...user, lists: (res.data.lists as List[]).map(normaliseList) } : user;
-  },
-  /** Friends are Demo-only until the backend ships them. — issue #113 */
-  async friends(): Promise<Friendship[]> {
-    return [];
-  },
-  async addFriend(userId: number) {
-  },
-  async respondFriend(id: number, accept: boolean) {
-  },
-  async removeFriend(id: number) {
   },
 };
 
@@ -376,13 +403,19 @@ export const reviews = {
     const res = await client.get(`/reviews/user/${userId}`);
     return (res.data.reviews ?? res.data).map(normaliseReview);
   },
-  async upsert(input: { tmdb_id: number; media_type: MediaType; rating: number; body: string; contains_spoilers?: boolean }) {
+  async upsert(input: {
+    tmdb_id: number; media_type: MediaType; rating: number; body: string; contains_spoilers?: boolean;
+    /** Stored with the review so profiles and the activity feed can name the title. */
+    title?: string; poster_url?: string | null;
+  }) {
     const res = await client.post('/reviews', {
       tmdb_id: input.tmdb_id,
       media_type: input.media_type,
       rating: input.rating,
       content: input.body,
       is_spoiler: input.contains_spoilers ?? false,
+      title: input.title ?? '',
+      poster_url: input.poster_url ?? '',
     });
     return res.data;
   },
@@ -579,6 +612,11 @@ export const customMedia = {
 /* -------------------------------------------------------------------------- */
 
 export const activity = {
+  /** What has happened inside one club. */
+  async forClub(clubId: number, limit = 30): Promise<Activity[]> {
+    const res = await client.get(`/activity/club/${clubId}`, { params: { limit }, silent: true });
+    return res.data.activities ?? res.data;
+  },
   async feed(scope: 'global' | 'me', limit = 50): Promise<Activity[]> {
     const res = await client.get(scope === 'me' ? '/activity/user' : '/activity/global', {
       params: { limit },

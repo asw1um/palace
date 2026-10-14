@@ -3,13 +3,15 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   Check, Clock, Eye, ExternalLink, HelpCircle, ListPlus, PlayCircle, Plus, Star, ThumbsDown,
-  ThumbsUp, Trash2, Users,
+  ThumbsUp, Trash2, Users, X,
 } from '@/lib/icons';
 import { toast } from 'sonner';
-import { discover, progress as progressApi, reviews as reviewsApi, type WatchPosition } from '@/data/api';
-import { countEpisodes } from '@/lib/episodes';
+import {
+  discover, lists as listsApi, progress as progressApi, reviews as reviewsApi, type WatchPosition,
+} from '@/data/api';
+import { seriesProgress } from '@/lib/episodes';
 import type { EpisodeInfo, Review, TMDBResult } from '@/data/types';
-import { percent, runtime as fmtRuntime, timeAgo, year } from '@/lib/format';
+import { percent, runtime as fmtRuntime, timeAgo, titleCase, year } from '@/lib/format';
 import { emit } from '@/lib/bus';
 import { useAuth } from '@/data/AuthContext';
 import { Modal } from './ui/Modal';
@@ -26,7 +28,7 @@ type Tab = 'overview' | 'episodes' | 'reviews';
 export function MediaModal({
   open, target, onClose,
 }: { open: boolean; target: TitleRef | null; onClose: () => void }) {
-  const { openAddTo, quickAdd, cascadeEpisodes, custom, openMedia } = useAppData();
+  const { openAddTo, quickAdd, cascadeEpisodes, custom, openMedia, fileWatched, lists } = useAppData();
   const { user } = useAuth();
   const [details, setDetails] = useState<TMDBResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,6 +51,7 @@ export function MediaModal({
     setMovieWatched(p.watched);
     setMovieMinutes(p.minutes);
     setPosition(p.position ?? null);
+    return p;
   }, [target]);
 
   const loadReviews = useCallback(async () => {
@@ -76,12 +79,11 @@ export function MediaModal({
   const mine = target ? custom[`${target.media_type}:${target.tmdb_id}`] : undefined;
   const tmdbSeasons = details?.seasons ?? [];
   const seasons = mine?.seasons ?? tmdbSeasons;
-  const totalEpisodes = mine?.seasons
-    ? countEpisodes(mine.seasons)
-    : details?.number_of_episodes || countEpisodes(tmdbSeasons);
+  // Specials (season 0) don't count towards finishing a series.
+  const { done: watchedCount, total: totalEpisodes } = seriesProgress(seasons, watchedEps);
   const runtime = mine?.runtime ?? details?.runtime ?? 0;
   const pct = isTv
-    ? Math.min(100, percent(watchedEps.size, totalEpisodes))
+    ? Math.min(100, percent(watchedCount, totalEpisodes))
     : movieWatched
       ? 100
       : runtime
@@ -89,8 +91,31 @@ export function MediaModal({
         : 0;
 
   const progressChanged = async () => {
-    await loadProgress();
+    const p = await loadProgress();
     emit('progress');
+    emit('lists');
+    if (!target || !p) return;
+    // Just finished it? File it under Watched.
+    const { done, total } = seriesProgress(seasons, p.episodes);
+    const finished = isTv ? total > 0 && done >= total : p.watched;
+    if (finished) await fileWatched(target);
+  };
+
+  /** The user's lists that hold this title, with the item's id in each for removing it. */
+  const inLists = useMemo(
+    () =>
+      !target
+        ? []
+        : lists.flatMap((l) => {
+            const item = l.items?.find((i) => i.tmdb_id === target.tmdb_id && i.media_type === target.media_type);
+            return item ? [{ list: l, itemId: item.id }] : [];
+          }),
+    [lists, target],
+  );
+
+  const removeFrom = async (listId: number, itemId: number, listName: string) => {
+    await listsApi.removeItem(listId, itemId);
+    toast.success(`Removed from ${titleCase(listName)}`);
     emit('lists');
   };
 
@@ -102,9 +127,7 @@ export function MediaModal({
   const toggleEpisode = async (sNum: number, eNum: number, next: boolean) => {
     if (!target) return;
     await progressApi.setEpisode(target.tmdb_id, sNum, eNum, next, cascadeEpisodes);
-    await loadProgress();
-    emit('progress');
-    emit('lists');
+    await progressChanged();
   };
 
   const toggleMovie = async () => {
@@ -115,6 +138,7 @@ export function MediaModal({
     emit('progress');
     emit('lists');
     toast.success(!movieWatched ? 'Marked as watched' : 'Marked as unwatched');
+    if (!movieWatched) await fileWatched(target);
   };
 
   const markSeason = async (sNum: number, watched: boolean) => {
@@ -122,8 +146,7 @@ export function MediaModal({
     const meta = seasons.find((s) => s.season_number === sNum);
     if (!meta) return;
     await progressApi.setSeasons(target.tmdb_id, [meta], watched);
-    await loadProgress();
-    emit('progress');
+    await progressChanged();
   };
 
   const tabs = [
@@ -157,6 +180,10 @@ export function MediaModal({
               />
             )}
             <div className="media-hero__scrim" />
+            {/* The pop-up has no header bar, and on a phone there is no room to tap outside it. */}
+            <button className="media-hero__close" aria-label="Close" data-close onClick={onClose}>
+              <X size={18} />
+            </button>
 
             <div className="media-hero__poster">
               {target?.poster_url && (
@@ -250,6 +277,24 @@ export function MediaModal({
               </div>
             </div>
           </div>
+
+          {inLists.length > 0 && (
+            <div className="row gap-2 wrap in-lists" style={{ paddingTop: 'var(--space-4)' }}>
+              <span className="faint" style={{ fontSize: 'var(--text-xs)' }}>In your lists:</span>
+              {inLists.map(({ list, itemId }) => (
+                <span key={list.id} className="chip in-lists__chip">
+                  {titleCase(list.name)}
+                  <button
+                    aria-label={`Remove from ${titleCase(list.name)}`}
+                    title={`Remove from ${titleCase(list.name)}`}
+                    onClick={() => removeFrom(list.id, itemId, list.name)}
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
 
           {target && details && (
             <div style={{ paddingTop: 'var(--space-4)' }}>
@@ -547,6 +592,8 @@ function Reviews({
         rating,
         body: body.trim(),
         contains_spoilers: spoilers,
+        title: target.title,
+        poster_url: target.poster_url,
       });
       toast.success(mine ? 'Review updated' : 'Review posted');
       onChanged();

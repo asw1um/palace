@@ -20,6 +20,20 @@ export function countEpisodes(seasons: SeasonInfo[]): number {
 }
 
 /**
+ * How far through a series someone is, as watched / total. Specials (season 0)
+ * are optional extras, so they count on neither side: finishing every numbered
+ * season is finishing the series.
+ */
+export function seriesProgress(seasons: SeasonInfo[], watched: Iterable<string>): { done: number; total: number } {
+  const regular = seasons.filter((s) => s.season_number > 0);
+  const counted = regular.length ? regular : seasons;
+  const specialsCount = regular.length > 0;
+  let done = 0;
+  for (const key of watched) if (!specialsCount || !key.startsWith('s0e')) done += 1;
+  return { done, total: countEpisodes(counted) };
+}
+
+/**
  * Where to pick a series back up: the first unwatched episode after the latest
  * one watched. Someone who skipped the pilot is not sent back to it, but once
  * they reach the end any gaps they left are offered. Specials (season 0) are

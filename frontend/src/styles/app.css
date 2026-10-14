@@ -1194,10 +1194,19 @@
   display: flex;
   gap: var(--space-3);
   overflow-x: auto;
-  padding-bottom: var(--space-2);
+  padding-bottom: var(--space-3);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
 }
+.similar-row::-webkit-scrollbar { height: 8px; }
+.similar-row::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
+.similar-row::-webkit-scrollbar-track { background: transparent; }
 .similar-card {
   flex: 0 0 104px;
+  /* without this a long title stretches the card wider than its poster */
+  min-width: 0;
+  width: 104px;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -1264,3 +1273,64 @@
   /* two posters across instead of one giant one */
   .grid--posters { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
 }
+
+/* counts inside a selected chip were grey on the accent colour and hard to read */
+.chip[aria-pressed="true"] .faint { color: inherit; opacity: .8; }
+
+/* Close button on the title pop-up */
+.media-hero__close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: #fff;
+  background: rgba(0, 0, 0, .55);
+  border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.media-hero__close:hover { background: rgba(0, 0, 0, .8); }
+
+/* Remove button on a poster that sits in a list */
+.poster__remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: #fff;
+  background: rgba(0, 0, 0, .7);
+  border: 1px solid rgba(255, 255, 255, .3);
+  border-radius: 50%;
+  cursor: pointer;
+  /* with a mouse the hover actions carry a Remove button instead */
+  display: none;
+}
+@media (hover: none) {
+  .poster__remove { display: grid; }
+  /* it takes the corner the film/series badge uses */
+  .poster:has(.poster__remove) .poster__type { display: none; }
+}
+
+/* "In your lists" chips on the title pop-up */
+.in-lists__chip { gap: var(--space-1); padding-right: 2px; }
+.in-lists__chip button {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.in-lists__chip button:hover { color: #fff; background: var(--danger); }
