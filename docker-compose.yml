@@ -1,0 +1,30 @@
+# cp .env.example .env, fill it in, then: docker compose up -d --build
+# the frontend proxies /api and /uploads to the backend, so thats the one to expose
+# the backend port is only reachable from the host, for a reverse proxy that wants /api directly
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file: .env
+    volumes:
+      - palace-data:/app/backend/instance
+    ports:
+      - "127.0.0.1:${PALACE_API_PORT:-5080}:5000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        BACKEND_URL: http://backend:5000
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${PALACE_BIND:-127.0.0.1}:${PALACE_PORT:-8080}:3000"
+    restart: unless-stopped
+
+volumes:
+  palace-data:

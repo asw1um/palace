@@ -1,0 +1,1336 @@
+/* ============================================================================
+   App shell — early-2010s forum layout
+   Defines the shell, topbar, page-wrap, and all forum-themed page classes.
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   Shell skeleton
+   ------------------------------------------------------------------------- */
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+/* ---------------------------------------------------------------------------
+   Topbar — dark blue forum header
+   ------------------------------------------------------------------------- */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  flex-shrink: 0;
+  height: var(--topbar-h);
+  background: linear-gradient(to bottom,
+    color-mix(in srgb, var(--header) 70%, #fff),
+    var(--header));
+  border-bottom: 2px solid color-mix(in srgb, var(--header) 80%, #000);
+}
+
+.topbar__inner {
+  display: flex;
+  align-items: center;
+  max-width: var(--page-max);
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 var(--sp-5);
+  gap: 0;
+}
+
+/* Brand / logo */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  color: #fff;
+  font-weight: 800;
+  font-size: var(--fs-16);
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-right: var(--sp-4);
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+.brand__mark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: var(--r-xs);
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.28);
+  color: #fff;
+}
+
+.brand__word {
+  font-size: var(--fs-16);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #fff;
+}
+
+/* Navigation tabs */
+.topbar__nav {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.topbar__nav::-webkit-scrollbar { display: none; }
+
+.topbar__tab {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--sp-5);
+  height: 100%;
+  font-size: var(--fs-12);
+  font-weight: 700;
+  color: rgba(255,255,255,.66);
+  border-right: 1px solid rgba(255,255,255,.1);
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background var(--dur-1), color var(--dur-1);
+  letter-spacing: 0.01em;
+}
+.topbar__tab:hover {
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  text-decoration: none;
+}
+.topbar__tab.is-active {
+  background: rgba(255,255,255,.18);
+  color: #fff;
+  border-bottom: 2px solid #6aadff;
+}
+
+/* Right-side controls */
+.topbar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-left: auto;
+  padding-left: var(--sp-3);
+  flex-shrink: 0;
+}
+
+.topbar__icon-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: rgba(255,255,255,.66);
+  border-radius: var(--r-xs);
+  border: none;
+  background: none;
+  cursor: pointer;
+  position: relative;
+  transition: background var(--dur-1), color var(--dur-1);
+}
+.topbar__icon-btn:hover {
+  background: rgba(255,255,255,.14);
+  color: #fff;
+}
+.topbar__icon-btn svg { width: 15px; height: 15px; }
+.topbar__icon-btn:focus-visible {
+  outline: 2px solid rgba(255,255,255,.5);
+  outline-offset: 1px;
+}
+
+.topbar__avatar-btn {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: opacity var(--dur-1);
+}
+.topbar__avatar-btn:hover { opacity: 0.8; }
+.topbar__avatar-btn:focus-visible {
+  outline: 2px solid rgba(255,255,255,.5);
+  outline-offset: 2px;
+}
+
+/* Notification dot on topbar icon buttons */
+.dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f87171;
+  border: 1px solid rgba(255,255,255,.5);
+}
+
+/* ---------------------------------------------------------------------------
+   Main content area
+   ------------------------------------------------------------------------- */
+.main {
+  flex: 1;
+  min-height: 0;
+}
+
+.page-wrap {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile bottom nav bar
+   ------------------------------------------------------------------------- */
+.mobile-bar {
+  position: fixed;
+  bottom: 0;
+  inset-inline: 0;
+  z-index: var(--z-sticky);
+  background: #1a3a60;
+  border-top: 1px solid #0f2240;
+  height: 56px;
+}
+
+.mobile-bar__inner {
+  display: flex;
+  height: 100%;
+  max-width: var(--page-max);
+  margin: 0 auto;
+}
+
+.mobile-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: var(--fs-11);
+  font-weight: 700;
+  color: rgba(255,255,255,.55);
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background var(--dur-1), color var(--dur-1);
+}
+.mobile-tab svg { width: 18px; height: 18px; }
+.mobile-tab:hover { background: rgba(255,255,255,.1); color: #fff; }
+.mobile-tab.is-active { color: #6aadff; }
+
+/* ---------------------------------------------------------------------------
+   Forum section block — alternating header/body pattern
+   Matches <Panel title="..." icon={...}> render from Bits.tsx
+   ------------------------------------------------------------------------- */
+
+/* Category block — forum-style colored header + white body */
+.forum-block {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  overflow: hidden;
+  margin-bottom: var(--sp-4);
+}
+
+.forum-block__head {
+  padding: 5px 10px;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--header) 60%, #fff), var(--header));
+  border-bottom: 1px solid color-mix(in srgb, var(--header) 80%, #000);
+  font-size: var(--fs-12);
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.forum-block__body {
+  padding: var(--card-pad);
+}
+
+/* Sub-heading row (secondary colored bar) */
+.forum-sub-head {
+  padding: 4px 10px;
+  background: linear-gradient(to bottom, #c5d8ef, #b0c8e4);
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-11);
+  font-weight: 700;
+  color: #1a3a60;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+/* ---------------------------------------------------------------------------
+   Forum table — alternating-row table for lists / members / reviews
+   ------------------------------------------------------------------------- */
+.forum-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-12);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  overflow: hidden;
+  background: var(--surface-1);
+}
+
+.forum-table th {
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--header) 60%, #fff), var(--header));
+  color: #fff;
+  font-size: var(--fs-11);
+  font-weight: 700;
+  padding: 5px 10px;
+  text-align: left;
+  border-right: 1px solid rgba(255,255,255,.15);
+  letter-spacing: var(--tracking-caps);
+}
+.forum-table th:last-child { border-right: none; }
+
+.forum-table td {
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  vertical-align: top;
+  color: var(--text);
+}
+.forum-table td:last-child { border-right: none; }
+
+.forum-table tr:last-child td { border-bottom: none; }
+
+.forum-table tbody tr:nth-child(even) td {
+  background: var(--surface-2);
+}
+.forum-table tbody tr:hover td {
+  background: var(--accent-softer);
+}
+
+/* ---------------------------------------------------------------------------
+   Page title bar — replaces .page-head in base.css; used inline on pages
+   ------------------------------------------------------------------------- */
+
+/* Page-head (also defined in base.css for React imports) */
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  padding: var(--sp-3) var(--sp-5);
+  background: linear-gradient(to bottom,
+    color-mix(in srgb, var(--header) 70%, #fff),
+    var(--header));
+  border: 1px solid color-mix(in srgb, var(--header) 80%, #000);
+  border-radius: var(--r-xs);
+}
+
+.page-head h1 {
+  font-size: var(--fs-14);
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.page-head__sub {
+  font-size: var(--fs-11);
+  color: rgba(255,255,255,.65);
+  margin-top: 2px;
+}
+
+.page-head__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+/* ---------------------------------------------------------------------------
+   Stat blocks — small counters (Dashboard, Profile)
+   ------------------------------------------------------------------------- */
+.stat-block {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  padding: var(--sp-4);
+  text-align: center;
+}
+.stat-block__value {
+  font-size: var(--fs-22);
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
+.stat-block__label {
+  font-size: var(--fs-11);
+  color: var(--text-faint);
+  margin-top: var(--sp-1);
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------------
+   Activity feed row
+   ------------------------------------------------------------------------- */
+.activity-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-1);
+  transition: background var(--dur-1);
+}
+.activity-row:nth-child(even) {
+  background: var(--surface-2);
+}
+.activity-row:hover {
+  background: var(--accent-softer);
+}
+.activity-row:last-child { border-bottom: none; }
+
+/* ---------------------------------------------------------------------------
+   Poster grid sizing
+   ------------------------------------------------------------------------- */
+.posters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--poster-min, 120px), 1fr));
+  gap: var(--sp-3);
+}
+
+.poster-item {
+  position: relative;
+  aspect-ratio: 2/3;
+  overflow: hidden;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  transition: border-color var(--dur-1);
+}
+.poster-item:hover { border-color: var(--accent-line); }
+.poster-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ---------------------------------------------------------------------------
+   Profile banner — replaces gradient hero
+   ------------------------------------------------------------------------- */
+.profile-banner {
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--header) 55%, #fff), var(--header));
+  border: 1px solid #0f2240;
+  border-radius: var(--r-xs);
+  padding: var(--sp-6);
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-5);
+  min-height: 120px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+   Club / hero section
+   ------------------------------------------------------------------------- */
+.club-hero {
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--header) 55%, #fff), var(--header));
+  border: 1px solid #0f2240;
+  border-radius: var(--r-xs);
+  padding: var(--sp-5);
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive layout helpers
+   ------------------------------------------------------------------------- */
+.layout-sidebar {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: var(--sp-4);
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .layout-sidebar { grid-template-columns: 1fr; }
+}
+
+.layout-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+  align-items: start;
+}
+@media (max-width: 600px) {
+  .layout-2col { grid-template-columns: 1fr; }
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile adjustments
+   ------------------------------------------------------------------------- */
+@media (max-width: 860px) {
+  .page-wrap {
+    padding-bottom: calc(56px + var(--sp-4)); /* clear mobile-bar */
+  }
+
+  .topbar__tab { display: none; }
+  .topbar__nav { display: none; }
+
+  .grid--cards {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .page-wrap { padding: var(--sp-3); }
+  .page-head { padding: var(--sp-3) var(--sp-4); }
+}
+
+/* ---------------------------------------------------------------------------
+   Dashboard grid classes
+   ------------------------------------------------------------------------- */
+
+/* 4-column stats bar */
+.grid--stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-3);
+}
+@media (max-width: 860px) {
+  .grid--stats { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+  .grid--stats { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Two-column dashboard: wide main + narrow sidebar */
+.grid--dash {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: var(--sp-4);
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .grid--dash { grid-template-columns: 1fr; }
+}
+
+/* Poster tile grid */
+.grid--posters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+  gap: var(--sp-4);
+}
+
+/* Section heading row */
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 5px 10px;
+  background: linear-gradient(to bottom,
+    color-mix(in srgb, var(--header) 60%, #fff),
+    var(--header));
+  border: 1px solid color-mix(in srgb, var(--header) 70%, #000);
+  border-bottom: none;
+  color: #fff;
+  border-radius: var(--r-xs) var(--r-xs) 0 0;
+  margin-top: var(--sp-6);  /* gap between sections */
+}
+/* first section-head doesn't need extra top gap */
+.reveal:first-child .section-head { margin-top: 0; }
+
+/* Buttons and chips on the dark-blue section header */
+.section-head .btn--ghost,
+.section-head .btn--ghost:disabled {
+  color: #ffffff !important;
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(255,255,255,0.2) !important;
+}
+.section-head .btn--ghost:hover:not(:disabled) {
+  background: rgba(255,255,255,0.22) !important;
+  border-color: rgba(255,255,255,0.35) !important;
+  color: #ffffff !important;
+}
+.section-head .chip,
+.section-head .chip--accent {
+  background: rgba(255,255,255,0.22) !important;
+  border-color: rgba(255,255,255,0.38) !important;
+  color: #ffffff !important;
+}
+.section-head h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-12);
+  font-weight: 700;
+  color: #fff;
+}
+.section-head h2 svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.8;
+}
+.section-head + * {
+  border-top: none;
+}
+
+/* section reveal — no animation, just structure */
+.reveal {
+  display: flex;
+  flex-direction: column;
+}
+/* any direct child that isn't section-head gets a white bordered body */
+.reveal .empty,
+.reveal .grid--posters,
+.reveal .panel {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-top: none;   /* section-head already provides the top border */
+  border-radius: 0 0 var(--r-xs) var(--r-xs);
+  padding: var(--sp-4);
+}
+
+/* Activity item button */
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--fs-12);
+  color: var(--text);
+  border-bottom: 1px solid var(--line);
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1);
+}
+.activity-item:nth-child(even) { background: var(--surface-2); }
+.activity-item:hover { background: var(--accent-softer); }
+.activity-item:last-child { border-bottom: none; }
+
+/* ---------------------------------------------------------------------------
+   Poster component classes (.poster-tile wrapper + .poster image box)
+   ------------------------------------------------------------------------- */
+
+.poster-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.poster {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;   /* TMDB w500 = 500×750px — enforce ratio for uniform grid */
+  overflow: hidden;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  outline: none;
+  transition: border-color var(--dur-1);
+}
+.poster:hover { border-color: var(--accent-line); }
+.poster:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.poster img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;      /* fills 2:3 box; TMDB posters are exactly 2:3 so nothing is clipped */
+}
+
+/* Info block below the poster image — always rendered by Poster component */
+.poster__info {
+  padding: var(--sp-2) 0 0;
+  line-height: 1.3;
+}
+.poster__name {
+  font-size: var(--fs-12);
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.poster__meta {
+  font-size: var(--fs-11);
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+
+/* poster__info visibility is controlled by the component (see Poster.tsx) */
+
+.poster__fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-3);
+  font-size: var(--fs-11);
+  font-weight: 700;
+  color: var(--text-faint);
+  text-align: center;
+  overflow: hidden;
+}
+
+.poster__rating {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0,0,0,.65);
+  border-radius: var(--r-xs);
+}
+
+.poster__type {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  color: rgba(255,255,255,.8);
+  background: rgba(0,0,0,.55);
+  border-radius: var(--r-xs);
+}
+
+.poster__check {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(37,99,235,.35);
+  color: #fff;
+}
+
+.poster__grip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(255,255,255,.7);
+  pointer-events: none;
+}
+
+.poster__actions {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  background: rgba(0,0,0,.55);
+  opacity: 0;
+  transition: opacity var(--dur-1);
+}
+.poster:hover .poster__actions,
+.poster:focus-within .poster__actions {
+  opacity: 1;
+}
+
+.poster__progress {
+  position: absolute;
+  bottom: 0;
+  inset-inline: 0;
+  height: 3px;
+  background: rgba(255,255,255,.25);
+}
+.poster__progress span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.poster.is-selected {
+  border-color: var(--accent);
+  border-width: 2px;
+}
+
+/* Stat tile — used by <Stat> component from Bits.tsx */
+.stat {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  padding: var(--sp-4) var(--sp-5);
+  text-align: center;
+}
+.stat__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-11);
+  font-weight: 700;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  margin-bottom: var(--sp-2);
+}
+.stat__label svg { width: 13px; height: 13px; color: var(--accent); }
+.stat__value {
+  font-size: var(--fs-22);
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+}
+.stat__foot {
+  font-size: var(--fs-11);
+  color: var(--text-faint);
+  margin-top: var(--sp-1);
+}
+
+/* Checkbox */
+.checkbox {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--line-strong);
+  border-radius: var(--r-xs);
+  background: var(--surface-inset);
+  cursor: pointer;
+  color: transparent;
+  transition: background var(--dur-1), border-color var(--dur-1), color var(--dur-1);
+  flex-shrink: 0;
+}
+.checkbox[aria-checked='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.checkbox svg { width: 10px; height: 10px; }
+
+/* Stat block (used in Dashboard and Profile) */
+.stat-box {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  padding: var(--sp-4) var(--sp-5);
+  text-align: center;
+  border-radius: var(--r-xs);
+}
+.stat-box__value {
+  font-size: var(--fs-22);
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
+.stat-box__label {
+  font-size: var(--fs-11);
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+.stat-box__foot {
+  font-size: var(--fs-11);
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Horizontal rail (Profile, ListDetail — scrollable poster row)
+   ------------------------------------------------------------------------- */
+.rail {
+  display: flex;
+  gap: var(--sp-3);
+  overflow-x: auto;
+  padding-bottom: var(--sp-2);
+}
+.rail .poster-tile { flex-shrink: 0; width: var(--poster-min, 100px); }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Text clamp helpers */
+.clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+   Notifications — modifiers on list-row
+   ------------------------------------------------------------------------- */
+.notif-row { align-items: flex-start; padding-block: var(--sp-3); cursor: pointer; }
+.notif-row.is-unread { background: var(--accent-softer); }
+.notif-row.is-unread:hover { background: var(--accent-soft); }
+
+.activity-item__icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--text-faint);
+  border: 1px solid var(--line);
+}
+
+.list-row__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Settings page layout
+   ------------------------------------------------------------------------- */
+.settings-layout {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: var(--sp-5);
+  align-items: start;
+}
+@media (max-width: 680px) {
+  .settings-layout { grid-template-columns: 1fr; }
+}
+
+.settings-nav {
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  overflow: hidden;
+  position: sticky;
+  top: calc(var(--topbar-h) + var(--sp-4));
+}
+
+.settings-nav button,
+.settings-nav a {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--fs-12);
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--line);
+  transition: background var(--dur-1), color var(--dur-1);
+  text-align: left;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  background: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+.settings-nav button:last-child,
+.settings-nav a:last-child { border-bottom: none; }
+.settings-nav button:hover,
+.settings-nav a:hover { background: var(--accent-softer); color: var(--accent-text); }
+.settings-nav button.is-active,
+.settings-nav a.is-active {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-4) 0;
+  border-bottom: 1px solid var(--line);
+}
+.setting-row:last-child { border-bottom: none; }
+.setting-row__text { flex: 1; min-width: 0; }
+.setting-row__title {
+  font-size: var(--fs-13);
+  font-weight: 700;
+  color: var(--text);
+}
+.setting-row__desc {
+  font-size: var(--fs-12);
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Generic icon button (used in Profile etc.)
+   ------------------------------------------------------------------------- */
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-xs);
+  background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.3);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--dur-1);
+}
+.icon-btn:hover { background: rgba(255,255,255,.25); }
+.icon-btn svg { width: 15px; height: 15px; }
+
+/* ---------------------------------------------------------------------------
+   Density modes
+   ------------------------------------------------------------------------- */
+[data-density="compact"] {
+  --control-h:   24px;
+  --card-pad:    8px;
+  --content-pad: 10px;
+  --fs-13:       11px;
+  --fs-12:       10px;
+}
+
+[data-density="comfortable"] {
+  --control-h:   32px;
+  --card-pad:    14px;
+  --content-pad: 16px;
+  --fs-13:       13px;
+  --fs-12:       12px;
+}
+
+/* ---------------------------------------------------------------------------
+   Cast links (media modal) + person page header
+   ------------------------------------------------------------------------- */
+.cast-link {
+  color: inherit;
+  text-decoration: none;
+  padding: var(--sp-2) var(--sp-3);
+  margin: calc(var(--sp-2) * -1) calc(var(--sp-3) * -1);
+  border-radius: var(--r-md);
+}
+.cast-link:hover,
+.cast-link:focus-visible {
+  background: var(--accent-softer);
+}
+.cast-link:hover .cast-link__name,
+.cast-link:focus-visible .cast-link__name {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.person-head {
+  display: flex;
+  gap: var(--space-5);
+  align-items: flex-start;
+}
+.person-head__photo {
+  flex: 0 0 140px;
+  width: 140px;
+  aspect-ratio: 2 / 3;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+@media (max-width: 600px) {
+  .person-head { flex-direction: column; }
+}
+
+/* ---------------------------------------------------------------------------
+   Trailer popup (media modal)
+   ------------------------------------------------------------------------- */
+.trailer-modal .modal__body { padding: 0; }
+.trailer-frame {
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+.trailer-frame iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Profile cover + image cropper (ImageCropDialog.tsx)
+   ------------------------------------------------------------------------- */
+/* Fixed ratio so the cropper's banner frame matches what the profile shows.
+   Keep in sync with BANNER_ASPECT. */
+.profile-cover {
+  position: relative;
+  aspect-ratio: 5 / 1;
+}
+
+.crop-stage {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.crop-stage:active { cursor: grabbing; }
+.crop-stage:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.crop-stage--avatar { max-width: 340px; margin-inline: auto; }
+/* Margin around the banner frame shows what's being cropped away. */
+.crop-stage--banner { padding: 56px 44px; }
+.crop-stage__frame { position: relative; width: 100%; }
+.crop-stage--avatar .crop-stage__mask { border-radius: 50%; }
+.crop-stage img,
+.crop-preview img { pointer-events: none; user-select: none; }
+
+/* Dims everything outside the area that will actually be shown. */
+.crop-stage__mask {
+  position: absolute;
+  inset: 0;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, .6);
+  outline: 2px solid rgba(255, 255, 255, .85);
+  outline-offset: -2px;
+  pointer-events: none;
+}
+
+.crop-preview {
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: var(--surface-3);
+}
+
+/* Miniature profile header */
+.crop-mock {
+  width: 320px;
+  max-width: 100%;
+  overflow: hidden;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.crop-mock__banner {
+  height: 64px;
+  overflow: hidden;
+  background: var(--accent-soft);
+}
+.crop-mock__banner > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.crop-mock__row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  padding: 0 var(--space-3) var(--space-3);
+  margin-top: -22px;
+  position: relative;
+}
+.crop-mock__avatar { border: 3px solid var(--surface-inset); box-sizing: content-box; }
+
+/* ---------------------------------------------------------------------------
+   Custom site background (Backdrop.tsx) - sits behind everything, over --bg
+   ------------------------------------------------------------------------- */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.backdrop__media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ---------------------------------------------------------------------------
+   Resume / runtime bar and season editor (WatchTools.tsx)
+   ------------------------------------------------------------------------- */
+.watch-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.season-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--space-3);
+}
+
+/* ---------------------------------------------------------------------------
+   Where to watch, more like this, review comments (TitleExtras.tsx)
+   ------------------------------------------------------------------------- */
+.provider {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px var(--space-2) 2px 2px;
+  font-size: var(--text-xs);
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.provider img { border-radius: var(--r-sm); display: block; }
+
+.similar-row {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding-bottom: var(--space-3);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+.similar-row::-webkit-scrollbar { height: 8px; }
+.similar-row::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
+.similar-row::-webkit-scrollbar-track { background: transparent; }
+.similar-card {
+  flex: 0 0 104px;
+  /* without this a long title stretches the card wider than its poster */
+  min-width: 0;
+  width: 104px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0;
+  font-size: var(--text-xs);
+  text-align: left;
+  color: var(--text-muted);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.similar-card img {
+  width: 104px;
+  height: 156px;
+  object-fit: cover;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+}
+.similar-card:hover { color: var(--text); }
+.similar-card:hover img,
+.similar-card:focus-visible img { border-color: var(--accent); }
+
+.review-comments {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+  flex-basis: 100%;
+}
+
+/* ---------------------------------------------------------------------------
+   Public shared list page (SharedList.tsx) - rendered outside the app shell
+   ------------------------------------------------------------------------- */
+.shared-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 1200px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4);
+}
+.shared-page footer { margin-top: auto; padding-top: var(--space-5); }
+.shared-tile { color: inherit; text-decoration: none; }
+.shared-tile__poster {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.shared-tile:hover .shared-tile__poster { border-color: var(--accent); }
+
+/* ---------------------------------------------------------------------------
+   Phone fixes - kept last so they win over the rules above
+   ------------------------------------------------------------------------- */
+@media (max-width: 860px) {
+  /* keep the end of the page clear of the fixed bottom nav */
+  .page-wrap { padding-bottom: calc(56px + var(--sp-4) + env(safe-area-inset-bottom, 0px)); }
+}
+@media (max-width: 600px) {
+  /* two posters across instead of one giant one */
+  .grid--posters { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+}
+
+/* counts inside a selected chip were grey on the accent colour and hard to read */
+.chip[aria-pressed="true"] .faint { color: inherit; opacity: .8; }
+
+/* Close button on the title pop-up */
+.media-hero__close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: #fff;
+  background: rgba(0, 0, 0, .55);
+  border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.media-hero__close:hover { background: rgba(0, 0, 0, .8); }
+
+/* Remove button on a poster that sits in a list */
+.poster__remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: #fff;
+  background: rgba(0, 0, 0, .7);
+  border: 1px solid rgba(255, 255, 255, .3);
+  border-radius: 50%;
+  cursor: pointer;
+  /* with a mouse the hover actions carry a Remove button instead */
+  display: none;
+}
+@media (hover: none) {
+  .poster__remove { display: grid; }
+  /* it takes the corner the film/series badge uses */
+  .poster:has(.poster__remove) .poster__type { display: none; }
+}
+
+/* "In your lists" chips on the title pop-up */
+.in-lists__chip { gap: var(--space-1); padding-right: 2px; }
+.in-lists__chip button {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.in-lists__chip button:hover { color: #fff; background: var(--danger); }

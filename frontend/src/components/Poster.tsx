@@ -1,100 +1,215 @@
-const posterPatterns = [
-  'repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 2px, transparent 2px, transparent 8px)',
-  'repeating-linear-gradient(-45deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 2px, transparent 2px, transparent 8px)',
-  'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.06) 1px, transparent 0)',
-  'repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 6px)',
-  'repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 6px)',
-  'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)',
-];
+import { useState, type DragEvent as ReactDragEvent, type ReactNode } from 'react';
+import Image from 'next/image';
+import {
+  Check, Eye, Film, FolderPlus, GripVertical, Info, ListPlus, Plus, Star, Trash2, Tv, X,
+} from '@/lib/icons';
+import { Menu, MenuItem, MenuLabel, MenuSep, useContextMenu } from './ui/Menu';
+import { IconButton } from './ui/Button';
+import { useAppData } from './AppData';
+import { year } from '@/lib/format';
+import type { MediaType } from '@/data/types';
 
-interface PosterProps {
-  idx?: number;
-  poster_url?: string | null;
-  progress?: number;
-  style?: React.CSSProperties;
-  className?: string;
+export interface PosterRef {
+  tmdb_id: number;
+  media_type: MediaType;
+  title: string;
+  poster_url: string | null;
+  release_date?: string;
+  rating?: number;
 }
 
-export default function Poster({ idx = 0, poster_url, progress, style, className }: PosterProps) {
+export function Poster({
+  item, progress, watched, onRemove, footer, className = '',
+  selectable, selected, onSelect, draggable, onDragStart, onDragOver, onDrop,
+  priority,
+}: {
+  item: PosterRef;
+  /** 0–100; draws the thin bar along the bottom. */
+  progress?: number;
+  watched?: boolean;
+  onRemove?: () => void;
+  footer?: ReactNode;
+  className?: string;
+  /** Edit mode: clicking picks the tile instead of opening it. */
+  selectable?: boolean;
+  selected?: boolean;
+  onSelect?: () => void;
+  draggable?: boolean;
+  onDragStart?: () => void;
+  onDragOver?: (e: ReactDragEvent) => void;
+  onDrop?: () => void;
+  /** Marks the img as high-priority (LCP) so next/image loads it eagerly. */
+  priority?: boolean;
+}) {
+  const { openMedia, openAddTo, quickAdd, markWatched, openCreateList } = useAppData();
+  const menu = useContextMenu();
+  const [failed, setFailed] = useState(false);
+
+  const activate = () => (selectable ? onSelect?.() : openMedia(item));
+
   return (
-    <div
-      className={className}
-      style={{
-        position: 'relative',
-        width: '100%',
-        borderRadius: '10px',
-        overflow: 'hidden',
-        ...style,
-      }}
-    >
-      {/* Aspect ratio spacer: paddingTop % = height/width * 100 = 3/2 * 100 = 150% */}
-      <div style={{ paddingTop: '150%' }} />
+    <div className={`stack gap-2 poster-tile ${className}`}>
       <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          borderRadius: '10px',
-          backgroundImage: poster_url
-            ? `url(${poster_url})`
-            : posterPatterns[idx % posterPatterns.length],
-          backgroundSize: poster_url ? 'cover' : '10px 10px',
-          backgroundPosition: 'center',
-          border: '1px solid rgba(255,255,255,0.15)',
-          boxShadow: '0 2px 12px rgba(0,0,0,0.25)',
+        className={`poster ${selected ? 'is-selected' : ''} ${draggable ? 'is-draggable' : ''}`}
+        role={selectable ? 'checkbox' : 'button'}
+        aria-checked={selectable ? !!selected : undefined}
+        tabIndex={0}
+        aria-label={item.title}
+        draggable={draggable}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        onClick={activate}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            activate();
+          }
         }}
+        {...menu.triggerProps}
       >
-        {!poster_url && (
-          <div style={{ padding: '10px' }}>
-            <div
-              style={{
-                width: '8px',
-                height: '8px',
-                background: 'rgba(255,255,255,0.15)',
-                borderRadius: '50%',
+        {item.poster_url && !failed ? (
+          <Image
+            src={item.poster_url}
+            alt=""
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1280px) 25vw, 220px"
+            priority={priority}
+            style={{ objectFit: 'cover' }}
+            onError={() => setFailed(true)}
+          />
+        ) : (
+          <div className="poster__fallback">{item.title}</div>
+        )}
+
+        {/* Rating badge — top left */}
+        {!selectable && item.rating ? (
+          <div className="poster__rating">
+            <Star size={10} />
+            {item.rating.toFixed(1)}
+          </div>
+        ) : null}
+
+        {/* Media type — top right */}
+        {!selectable && (
+          <div className="poster__type">
+            {item.media_type === 'tv' ? <Tv size={11} /> : <Film size={11} />}
+          </div>
+        )}
+
+        {selectable ? (
+          <div className="poster__check" aria-hidden="true">
+            {selected && <Check size={14} />}
+          </div>
+        ) : null}
+
+        {draggable && (
+          <div className="poster__grip" aria-hidden="true">
+            <GripVertical size={14} />
+          </div>
+        )}
+
+        {/* Touch screens have no hover, so the hover actions below never show there;
+            this keeps a way to take the title out of the list. */}
+        {onRemove && !selectable && (
+          <button
+            className="poster__remove"
+            aria-label={`Remove ${item.title} from this list`}
+            title="Remove from this list"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <X size={14} />
+          </button>
+        )}
+
+        {/* Hover actions — hidden while picking tiles */}
+        {!selectable && (
+          <div className="poster__actions">
+            <IconButton
+              label="Add to list"
+              onClick={(e) => {
+                e.stopPropagation();
+                openAddTo(item);
               }}
-            />
+            >
+              <Plus size={15} />
+            </IconButton>
+            <IconButton
+              label={watched ? 'Watched' : 'Mark watched'}
+              onClick={(e) => {
+                e.stopPropagation();
+                markWatched(item, !watched);
+              }}
+            >
+              {watched ? <Check size={15} /> : <Eye size={15} />}
+            </IconButton>
+            {onRemove && (
+              <IconButton
+                label="Remove from this list"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove();
+                }}
+              >
+                <Trash2 size={15} />
+              </IconButton>
+            )}
+          </div>
+        )}
+
+        {progress !== undefined && progress > 0 && (
+          <div className="poster__progress">
+            <span style={{ width: `${Math.min(100, progress)}%` }} />
           </div>
         )}
       </div>
-      {progress !== undefined && progress > 0 && (
-        <>
-          {/* Subtle gradient overlay rising from bottom */}
-          <div style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: `${Math.max(5, Math.min(35, progress))}%`,
-            background: `linear-gradient(to top, var(--t-primary)66, transparent)`,
-            borderRadius: '0 0 10px 10px',
-            pointerEvents: 'none',
-            zIndex: 2,
-          }} />
-          {/* Thin progress bar at the very bottom */}
-          <div style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: '3px',
-            background: 'rgba(0,0,0,0.4)',
-            borderRadius: '0 0 10px 10px',
-            overflow: 'hidden',
-            pointerEvents: 'none',
-            zIndex: 3,
-          }}>
-            <div style={{
-              width: `${progress}%`,
-              height: '100%',
-              background: 'var(--t-primary)',
-              boxShadow: '0 0 6px var(--t-primary)',
-            }} />
-          </div>
-        </>
+
+      {/* Title + year: only when no footer is supplying its own title */}
+      {!footer && (
+        <div className="poster__info">
+          <div className="poster__name truncate">{item.title}</div>
+          {year(item.release_date) && (
+            <div className="poster__meta faint">{year(item.release_date)}</div>
+          )}
+        </div>
       )}
+
+      {footer}
+
+      <Menu open={menu.open} at={menu.at} onClose={menu.close}>
+        <MenuLabel>{item.title}</MenuLabel>
+        <MenuItem icon={<Info size={15} />} onClick={() => { menu.close(); openMedia(item); }}>
+          View details
+        </MenuItem>
+        <MenuItem icon={<ListPlus size={15} />} onClick={() => { menu.close(); openAddTo(item); }}>
+          Add to list…
+        </MenuItem>
+        <MenuItem icon={<Plus size={15} />} onClick={() => { menu.close(); quickAdd(item); }}>
+          Quick add to Want to watch
+        </MenuItem>
+        <MenuItem icon={<FolderPlus size={15} />} onClick={() => { menu.close(); openCreateList(item); }}>
+          New list with this title…
+        </MenuItem>
+        <MenuSep />
+        <MenuItem
+          icon={watched ? <Eye size={15} /> : <Check size={15} />}
+          onClick={() => { menu.close(); markWatched(item, !watched); }}
+        >
+          {watched ? 'Mark as unwatched' : 'Mark as watched'}
+        </MenuItem>
+        {onRemove && (
+          <>
+            <MenuSep />
+            <MenuItem icon={<Trash2 size={15} />} danger onClick={() => { menu.close(); onRemove(); }}>
+              Remove from this list
+            </MenuItem>
+          </>
+        )}
+      </Menu>
     </div>
   );
 }

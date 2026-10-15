@@ -47,3 +47,11 @@ class movielist(db.Model):
                 data['show_count'] = 0
                 data['shows'] = []
         return data
+
+
+class ListShare(db.Model):
+    # public read only link to a list
+    __tablename__ = 'list_shares'
+    id = db.Column(db.Integer, primary_key=True)
+    list_id = db.Column(db.Integer, db.ForeignKey('movielists.id'), nullable=False, unique=True)
+    token = db.Column(db.String(40), nullable=False, unique=True, index=True)

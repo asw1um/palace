@@ -1,12 +1,12 @@
 # Palace REST API
 
-A Flask-based REST API for tracking movies and TV shows, and sharing collections with friends. Built around TMDB's API with social features like clubs, reviews, and activity feeds.
+A FastAPI REST API for tracking movies and TV shows, and sharing collections with friends. Built around TMDB's API with social features like clubs, reviews, and activity feeds.
 
 ---
 
 ## Note on Frontend
 
-The frontend is entirely created with the help of AI, I do not claim any credit for any of the code. This project was mainly to focus on the backend, I just wanted a nice frotend to view.
+The frontend is entirely created with the help of AI and other people, I do not claim any credit for any of the code. This project was mainly to focus on the backend, I just wanted a nice frotend to view.
 
 ---
 
@@ -27,9 +27,10 @@ The frontend is entirely created with the help of AI, I do not claim any credit 
 
 ## Tech Stack
 
-- **Framework**: Flask
+- **Framework**: FastAPI
 - **Database**: SQLite with SQLAlchemy ORM
-- **Authentication**: Flask-JWT-Extended
+- **Authentication**: JWT (python-jose)
+- **Frontend**: Next.js
 - **External API**: TMDB (The Movie Database)
 - **CORS**: Enabled for cross-origin requests
 
@@ -39,7 +40,8 @@ The frontend is entirely created with the help of AI, I do not claim any credit 
 
 ### Prerequisites
 
-- Python 3.7+
+- Python 3.10+
+- Node.js 20+
 - TMDB API key — get one free at [https://www.themoviedb.org](https://www.themoviedb.org)
 
 ### 1. Clone the Repository
@@ -65,28 +67,55 @@ pip install -r requirements.txt
 
 ### 4. Configure Environment Variables
 
-Create a `.env` file in the project root:
+Copy `.env.example` to `.env` in the project root and fill it in:
 
 ```env
 TMDB_API_KEY=your_tmdb_api_key_here
 JWT_SECRET_KEY=your_secret_key_here
 ```
-### 5. Install front end Node Packages and Run Build
-Navigate into the frontend directory, install the required dependencies using npm, and compile the static assets to generate the `dist` folder required by the backend.
+
+The backend won't start without `JWT_SECRET_KEY`.
+
+### 5. Install front end Node Packages
 
 ```bash
 cd frontend
 npm install
-npm run build
 cd ..
 ```
+
 ### 6. Run the Application
 
+Backend and frontend run separately, so use two terminals:
+
 ```bash
-python backend/app.py
+cd backend
+uvicorn main:app --port 5000
 ```
 
-The API will start at `http://localhost:5000`
+```bash
+cd frontend
+npm run dev
+```
+
+The site is at `http://localhost:3000`, it proxies `/api` to the backend on port 5000.
+
+`start.sh` / `start.bat` do both in one go with a production build of the frontend.
+
+---
+
+## Running with Docker
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+```
+
+Fill in `.env` first. The site runs at `http://localhost:8080`, change the port with `PALACE_PORT` in `.env`.
+
+Pushing to `dev` runs `.github/workflows/deploy-dev.yml`, which pulls the branch on the server and rebuilds the containers.
+
+The database and uploads are kept in the `palace-data` volume so they survive rebuilds.
 
 ---
 
@@ -96,3 +125,7 @@ The API will start at `http://localhost:5000`
 - Production database (PostgreSQL/MySQL)
 - Friends list
 - Advanced search filters — search by actor or director to find all their movies/shows
+
+---
+
+This product uses the TMDB API but is not endorsed or certified by TMDB.

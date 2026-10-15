@@ -16,9 +16,8 @@ instance/
 *.db
 
 # Frontend — entire directory excluded
-
 .claude/
-
+.next/
 # Misc folders
 random/
 
@@ -45,6 +44,7 @@ coverage/
 # Build outputs
 build/
 dist/
+node_modules/
 
 # TypeScript
 *.tsbuildinfo
